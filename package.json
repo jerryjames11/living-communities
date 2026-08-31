@@ -4,8 +4,13 @@
   "private": true,
   "description": "Living Communities — home services marketplace connecting homeowners and local providers.",
   "main": "server.js",
-  "engines": { "node": ">=18" },
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "start": "node server.js"
+  },
+  "dependencies": {
+    "pg": "^8.23.0"
   }
 }

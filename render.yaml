@@ -1,0 +1,15 @@
+# Render "Blueprint" — lets Render auto-detect this service when you connect the repo.
+# Dashboard → New → Blueprint → pick this repo. Not required if you'd rather click through
+# "New Web Service" manually (see README), but this saves a few clicks.
+services:
+  - type: web
+    name: living-communities
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: DATABASE_URL
+        sync: false   # set manually in the dashboard once your Neon/Supabase DB exists
+      - key: ALLOWED_ORIGIN
+        value: "*"    # tighten to your real domain once you have one
