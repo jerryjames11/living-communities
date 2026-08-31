@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Living Communities</title>
+<style>
+:root{--ink:#17352f;--green:#286b58;--mint:#eaf4ef;--cream:#faf9f5;--gold:#d9a84e;--muted:#6d7b77;--white:#fff;--line:#dfe8e3}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink);background:var(--cream)}
+button{font:inherit;cursor:pointer}.nav{height:72px;padding:0 6%;display:flex;align-items:center;justify-content:space-between;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10}.logo{font-weight:800;font-size:22px;letter-spacing:-.5px}.logo span{color:var(--green)}.navlinks{display:flex;gap:28px;color:#51635e;font-size:14px}.nav button,.primary{border:0;border-radius:10px;padding:12px 18px;background:var(--green);color:#fff;font-weight:700}.secondary{border:1px solid #bdd0c8;background:#fff;color:var(--ink);border-radius:10px;padding:12px 18px;font-weight:700}
+.page{display:none}.page.active{display:block}.hero{padding:80px 6% 90px;display:grid;grid-template-columns:1.05fr .95fr;gap:60px;align-items:center;max-width:1300px;margin:auto}.eyebrow{color:var(--green);font-weight:800;font-size:13px;text-transform:uppercase;letter-spacing:1.3px}.hero h1{font-size:clamp(42px,5vw,70px);line-height:1.02;letter-spacing:-3px;margin:15px 0 22px}.hero p{font-size:19px;line-height:1.6;color:var(--muted);max-width:650px}.actions{display:flex;gap:12px;margin-top:30px;flex-wrap:wrap}.visual{background:var(--mint);border-radius:30px;padding:24px;min-height:430px;position:relative}.house{height:100%;min-height:380px;background:linear-gradient(135deg,#dcebe3,#f6eee0);border-radius:22px;display:flex;align-items:center;justify-content:center;font-size:120px;box-shadow:inset 0 0 0 1px #d1dfd9}.float{position:absolute;background:#fff;border:1px solid var(--line);border-radius:15px;padding:14px 16px;box-shadow:0 12px 30px #17352f16;font-size:13px}.f1{top:45px;left:0}.f2{bottom:55px;right:0}.section{padding:75px 6%;max-width:1300px;margin:auto}.center{text-align:center}.section h2{font-size:40px;letter-spacing:-1.5px;margin:8px 0 12px}.section>p{color:var(--muted);max-width:700px;margin:0 auto 38px;line-height:1.6}.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}.card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:25px}.icon{font-size:28px}.card h3{margin:12px 0 8px}.card p{color:var(--muted);line-height:1.5;font-size:14px}.band{background:var(--ink);color:#fff;padding:60px 6%;text-align:center}.band p{color:#c9d8d3}.footer{padding:35px 6%;background:#fff;border-top:1px solid var(--line);display:flex;justify-content:space-between;color:var(--muted);font-size:13px}
+.app{max-width:1250px;margin:auto;padding:35px 5%}.apphead{display:flex;justify-content:space-between;align-items:center;margin-bottom:25px}.apphead h1{margin:0;font-size:32px}.pill{background:var(--mint);color:var(--green);padding:8px 12px;border-radius:20px;font-size:12px;font-weight:700}.grid{display:grid;grid-template-columns:240px 1fr;gap:24px}.sidebar{background:#fff;border:1px solid var(--line);border-radius:18px;padding:15px;height:max-content}.sideitem{padding:12px;border-radius:10px;margin:3px 0;color:#60706b;font-size:14px}.sideitem.active{background:var(--mint);color:var(--green);font-weight:800}.content{min-width:0}.welcome{background:var(--ink);color:#fff;border-radius:20px;padding:28px;margin-bottom:20px}.welcome p{color:#c9d8d3;margin-bottom:0}.servicegrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.service{background:#fff;border:1px solid var(--line);border-radius:15px;padding:18px;text-align:left}.service:hover{border-color:#9bbbae}.service b{display:block;margin-top:8px;font-size:13px}.service small{color:var(--muted)}.request{background:#fff;border:1px solid var(--line);border-radius:17px;padding:20px;margin-top:20px}.requestrow{display:flex;justify-content:space-between;gap:15px;align-items:center}.request p{color:var(--muted);font-size:14px;line-height:1.5}.tag{display:inline-block;background:#f0f4f2;padding:6px 9px;border-radius:8px;font-size:11px;margin-right:5px}.provider{display:flex;justify-content:space-between;gap:15px;align-items:center}.quote{font-weight:800;color:var(--green)}.pricing{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}.price{background:#fff;border:1px solid var(--line);border-radius:20px;padding:28px}.price.featured{border:2px solid var(--green);transform:translateY(-6px)}.price h3{font-size:20px}.price .amount{font-size:36px;font-weight:800;margin:15px 0}.price li{margin:12px 0;color:var(--muted);font-size:14px;list-style:none}.price ul{padding:0}.back{border:0;background:none;color:var(--green);font-weight:800;margin-bottom:20px;padding:0}
+@media(max-width:800px){.navlinks{display:none}.hero{grid-template-columns:1fr;padding-top:50px}.cards,.pricing{grid-template-columns:1fr}.grid{grid-template-columns:1fr}.sidebar{display:none}.servicegrid{grid-template-columns:repeat(2,1fr)}.footer{flex-direction:column;gap:10px}.hero h1{letter-spacing:-2px}}
+
+.modal{position:fixed;inset:0;background:#17352f88;display:none;align-items:center;justify-content:center;padding:20px;z-index:50}.modal.show{display:flex}.modalbox{background:#fff;border-radius:22px;width:min(680px,100%);max-height:90vh;overflow:auto;padding:28px}.modalhead{display:flex;justify-content:space-between;align-items:center}.close{border:0;background:#eef4f1;border-radius:50%;width:36px;height:36px;font-size:20px}.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:15px}.field{display:flex;flex-direction:column;gap:7px;margin:12px 0}.field.full{grid-column:1/-1}.field label{font-size:12px;font-weight:800;color:#52645e}.field input,.field select,.field textarea{border:1px solid #cbd9d3;border-radius:10px;padding:12px;font:inherit;background:#fff}.field textarea{min-height:110px;resize:vertical}.steps{display:flex;gap:7px;margin:20px 0}.step{height:5px;flex:1;background:#dfe8e3;border-radius:5px}.step.on{background:var(--green)}.notice{background:var(--mint);border-radius:12px;padding:13px;font-size:13px;color:#36584d}.quotegrid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.quoteCard{border:1px solid var(--line);border-radius:14px;padding:16px}.quoteCard.selected{border:2px solid var(--green)}.profilebar{display:flex;align-items:center;gap:12px}.avatar{width:42px;height:42px;border-radius:50%;background:var(--mint);display:grid;place-items:center;font-weight:800;color:var(--green)}.statusline{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}.dot{width:8px;height:8px;border-radius:50%;background:#48a477}.mini-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:15px}@media(max-width:650px){.formgrid,.quotegrid{grid-template-columns:1fr}.field.full{grid-column:auto}.modalbox{padding:20px}}
+
+.authhint{font-size:12px;color:var(--muted);margin-top:8px}.loginbox{width:min(460px,100%)}.demoCreds{background:var(--mint);border-radius:12px;padding:14px;margin:14px 0;font-size:13px}.demoCreds code{background:#fff;padding:2px 5px;border-radius:5px}.toast{position:fixed;right:20px;bottom:20px;background:var(--ink);color:#fff;padding:14px 18px;border-radius:12px;box-shadow:0 10px 30px #17352f33;z-index:100;display:none}.toast.show{display:block}.hidden{display:none!important}
+</style>
+</head>
+<body>
+<nav class="nav">
+  <div class="logo">living <span>communities</span></div>
+  <div class="navlinks"><a onclick="show('home')">How It Works</a><a onclick="show('membership')">Membership</a><a onclick="show('home')">For Communities</a></div>
+  <button onclick="show('homeowner')">Sign In</button>
+</nav>
+
+<main id="home" class="page active">
+<section class="hero">
+<div><div class="eyebrow">The home-services layer for communities</div><h1>Better homes.<br>Stronger communities.</h1><p>Living Communities connects homeowners with local service providers for the everyday work that keeps a home looking, working and feeling its best.</p><div class="actions"><button class="primary" onclick="show('homeowner')">I’m a Homeowner</button><button class="secondary" onclick="show('provider')">I’m a Service Provider</button></div></div>
+<div class="visual"><div class="house">🏡</div><div class="float f1">✓ Lawn service requested</div><div class="float f2">💬 3 providers responded</div></div>
+</section>
+<section class="section center"><div class="eyebrow">How it works</div><h2>One place for the life of your home.</h2><p>Request help, connect with qualified providers and keep your home's services organized—all while your community stays connected.</p>
+<div class="cards"><div class="card"><div class="icon">🏠</div><h3>Request</h3><p>Tell us what your home needs. Add photos, timing and details without broadcasting your personal information.</p></div><div class="card"><div class="icon">🤝</div><h3>Connect</h3><p>Local providers review anonymous requests and reach out when they can help.</p></div><div class="card"><div class="icon">✨</div><h3>Get it done</h3><p>Compare responses, agree on the work and build your trusted home-service network.</p></div></div></section>
+<section class="band"><h2>Your HOA manages the community.<br>We help you manage your home.</h2><p>Living Communities is designed to complement—not replace—your HOA.</p></section>
+<section class="section center"><div class="eyebrow">For communities</div><h2>A better resident experience.</h2><p>Give homeowners a convenient service marketplace while creating a stronger network of local providers for the neighborhood.</p><button class="primary" onclick="show('membership')">Explore Membership</button></section>
+<footer class="footer"><b>living communities</b><span>© 2026 Living Communities · Better homes. Stronger communities.</span></footer>
+</main>
+
+<main id="homeowner" class="page">
+<div class="app"><button class="back" onclick="show('home')">← Back to Living Communities</button><div class="apphead"><h1>Homeowner Dashboard</h1><span class="pill">Richardson Community</span></div>
+<div class="grid"><aside class="sidebar">
+<div class="sideitem active" data-panel="dashboard" onclick="switchPanel('homeowner','dashboard')">Dashboard</div>
+<div class="sideitem" data-panel="requests" onclick="switchPanel('homeowner','requests')">My Requests</div>
+<div class="sideitem" data-panel="messages" onclick="switchPanel('homeowner','messages')">Messages</div>
+<div class="sideitem" data-panel="jobs" onclick="switchPanel('homeowner','jobs')">Scheduled Services</div>
+<div class="sideitem" data-panel="maintenance" onclick="switchPanel('homeowner','maintenance')">Home Maintenance</div>
+<div class="sideitem" data-panel="profile" onclick="switchPanel('homeowner','profile')">Profile</div>
+</aside>
+<section class="content">
+<div class="panel" data-panel="dashboard"><div class="welcome"><h2>What does your home need?</h2><p>Choose a service to create a request. Your identity and exact address remain private while providers review your request.</p></div>
+<div class="servicegrid">
+<div class="service" onclick="openRequest(this.querySelector('b').textContent)">🌱<b>Lawn & Landscaping</b><small>Yards, trees, cleanup</small></div><div class="service" onclick="openRequest(this.querySelector('b').textContent)">🧹<b>House Cleaning</b><small>Recurring or one-time</small></div><div class="service" onclick="openRequest(this.querySelector('b').textContent)">🏊<b>Pool Service</b><small>Cleaning & maintenance</small></div><div class="service" onclick="openRequest(this.querySelector('b').textContent)">🔧<b>Handyman</b><small>Repairs & projects</small></div><div class="service" onclick="openRequest(this.querySelector('b').textContent)">🚰<b>Plumbing</b><small>Leaks, fixtures, drains</small></div><div class="service" onclick="openRequest(this.querySelector('b').textContent)">⚡<b>Electrical</b><small>Lights, outlets, wiring</small></div><div class="service" onclick="openRequest(this.querySelector('b').textContent)">❄️<b>HVAC</b><small>Heating & cooling</small></div><div class="service" onclick="openRequest(this.querySelector('b').textContent)">🐜<b>Pest Control</b><small>Interior & exterior</small></div>
+</div>
+<div class="request"><div class="requestrow"><div><span class="tag">PLUMBING</span><span class="tag">THIS WEEK</span><h3>Kitchen sink leak</h3><p>Submitted yesterday · 3 providers have responded</p><div class="statusline"><span class="dot"></span> 3 providers are interested</div></div><button class="primary" onclick="openQuotes()">View 3 Responses</button></div></div>
+</div>
+<div class="panel hidden" data-panel="requests"><div id="ho-requests-list"></div></div>
+<div class="panel hidden" data-panel="messages"><div id="ho-messages-view"></div></div>
+<div class="panel hidden" data-panel="jobs"><div id="ho-jobs-list"></div></div>
+<div class="panel hidden" data-panel="maintenance"><div class="notice">Home maintenance reminders and seasonal checklists are part of the upcoming Home Manager plan. <a href="#" onclick="show('membership');return false" style="color:var(--green);font-weight:800">See Membership →</a></div></div>
+<div class="panel hidden" data-panel="profile"><div id="ho-profile-view"></div></div>
+</section></div></div>
+</main>
+
+<main id="provider" class="page">
+<div class="app"><button class="back" onclick="show('home')">← Back to Living Communities</button><div class="apphead"><h1>Provider Dashboard</h1><span class="pill">12 new opportunities</span></div>
+<div class="grid"><aside class="sidebar">
+<div class="sideitem active" data-panel="dashboard" onclick="switchPanel('provider','dashboard')">Request Feed</div>
+<div class="sideitem" data-panel="leads" onclick="switchPanel('provider','leads')">My Leads</div>
+<div class="sideitem" data-panel="messages" onclick="switchPanel('provider','messages')">Messages</div>
+<div class="sideitem" data-panel="leads" onclick="switchPanel('provider','leads')">Quotes</div>
+<div class="sideitem" data-panel="activejobs" onclick="switchPanel('provider','activejobs')">Active Jobs</div>
+<div class="sideitem" data-panel="completedjobs" onclick="switchPanel('provider','completedjobs')">Completed Jobs</div>
+<div class="sideitem" data-panel="profile" onclick="switchPanel('provider','profile')">Business Profile</div>
+</aside>
+<section class="content">
+<div class="panel" data-panel="dashboard"><div class="welcome"><h2>Find your next customer.</h2><p>Review nearby homeowner requests. Exact addresses and personal details stay private until the homeowner chooses to connect.</p></div>
+<div id="pr-feed-list"></div>
+</div>
+<div class="panel hidden" data-panel="leads"><div id="pr-leads-list"></div></div>
+<div class="panel hidden" data-panel="messages"><div id="pr-messages-view"></div></div>
+<div class="panel hidden" data-panel="activejobs"><div id="pr-activejobs-list"></div></div>
+<div class="panel hidden" data-panel="completedjobs"><div id="pr-completedjobs-list"></div></div>
+<div class="panel hidden" data-panel="profile"><div id="pr-profile-view"></div></div>
+</section></div></div>
+</main>
+
+<main id="membership" class="page">
+<div class="app"><button class="back" onclick="show('home')">← Back to Living Communities</button><div class="center"><div class="eyebrow">Membership</div><h1>Choose the way you want to care for your home.</h1><p style="color:var(--muted)">Start simple. Add more support as Living Communities becomes your home's service hub.</p></div>
+<div class="pricing" style="margin-top:40px"><div class="price"><span class="pill">Homeowner</span><h3>Free</h3><div class="amount">$0</div><ul><li>✓ Submit service requests</li><li>✓ Receive provider responses</li><li>✓ Compare providers</li><li>✓ Message providers</li><li>✓ Manage active requests</li></ul><button class="secondary" style="width:100%">Get Started</button></div>
+<div class="price featured"><span class="pill">Most Popular</span><h3>Living Communities Plus</h3><div class="amount">$X<small>/mo</small></div><ul><li>✓ Everything in Free</li><li>✓ Priority service matching</li><li>✓ Preferred provider network</li><li>✓ Member discounts</li><li>✓ Home maintenance reminders</li><li>✓ Digital service history</li><li>✓ Priority support</li></ul><button class="primary" style="width:100%">Join Plus</button></div>
+<div class="price"><span class="pill">Future</span><h3>Home Manager</h3><div class="amount">$XX<small>/mo</small></div><ul><li>✓ Everything in Plus</li><li>✓ Proactive maintenance planning</li><li>✓ Seasonal home checklist</li><li>✓ Recurring service coordination</li><li>✓ Complete home service record</li></ul><button class="secondary" style="width:100%">Coming Soon</button></div></div></div>
+</main>
+
+
+
+<div id="loginModal" class="modal"><div class="modalbox loginbox">
+ <div class="modalhead"><div><div class="eyebrow">Secure sign in</div><h2>Welcome back</h2></div><button class="close" onclick="closeLogin()">×</button></div>
+ <div class="demoCreds"><b>Demo accounts</b><br>Homeowner: <code>homeowner@livingcommunities.test</code> / <code>Homeowner123!</code><br>Provider: <code>provider@livingcommunities.test</code> / <code>Provider123!</code></div>
+ <div class="field"><label>EMAIL</label><input id="loginEmail" type="email" placeholder="you@example.com"></div>
+ <div class="field"><label>PASSWORD</label><input id="loginPassword" type="password" placeholder="Password"></div>
+ <div id="loginError" class="notice hidden"></div>
+ <div class="mini-actions"><button class="secondary" onclick="closeLogin()">Cancel</button><button class="primary" onclick="login()">Sign In</button></div>
+</div></div>
+<div id="toast" class="toast"></div>
+
+<div id="requestModal" class="modal"><div class="modalbox">
+ <div class="modalhead"><div><div class="eyebrow">New service request</div><h2 id="requestTitle">Tell us what your home needs</h2></div><button class="close" onclick="closeModal()">×</button></div>
+ <div class="steps"><div class="step on"></div><div class="step on"></div><div class="step"></div></div>
+ <div class="notice">🔒 Your name and exact address stay private while providers review your request.</div>
+ <div class="formgrid">
+  <div class="field"><label>SERVICE</label><select id="serviceType"><option>Lawn & Landscaping</option><option>House Cleaning</option><option>Pool Service</option><option>Handyman</option><option>Plumbing</option><option>Electrical</option><option>HVAC</option><option>Pest Control</option></select></div>
+  <div class="field"><label>URGENCY</label><select><option>Flexible</option><option>This week</option><option>ASAP</option><option>Emergency</option></select></div>
+  <div class="field full"><label>WHAT DO YOU NEED?</label><textarea placeholder="Describe the work you need done..."></textarea></div>
+  <div class="field"><label>PREFERRED DATE</label><input type="date"></div>
+  <div class="field"><label>PREFERRED TIME</label><select><option>Morning</option><option>Afternoon</option><option>Evening</option><option>Any time</option></select></div>
+  <div class="field full"><label>PHOTOS (OPTIONAL)</label><input type="file" multiple></div>
+ </div>
+ <div class="mini-actions"><button class="secondary" onclick="closeModal()">Cancel</button><button class="primary" onclick="submitRequest()">Publish Request</button></div>
+</div></div>
+
+<div id="quoteModal" class="modal"><div class="modalbox">
+ <div class="modalhead"><div><div class="eyebrow">Provider response</div><h2>Kitchen sink leak</h2></div><button class="close" onclick="closeModal()">×</button></div>
+ <div class="profilebar"><div class="avatar">RM</div><div><b>Richardson Pro Plumbing</b><div class="statusline"><span class="dot"></span>Verified provider · 4.9 ★</div></div></div>
+ <p style="color:var(--muted);line-height:1.5">“I can take a look Thursday afternoon. I’ve handled similar sink leaks and can provide the final price after inspection.”</p>
+ <div class="quoteCard selected"><small>ESTIMATED QUOTE</small><h2 style="margin:7px 0">$185–$250</h2><span class="tag">Thursday · 2–4 PM</span></div>
+ <div class="mini-actions"><button class="secondary" onclick="closeModal()">Message Provider</button><button class="primary" onclick="acceptQuote()">Accept & Schedule</button></div>
+</div></div>
+
+<div id="quotesModal" class="modal"><div class="modalbox">
+ <div class="modalhead"><div><div class="eyebrow">Compare providers</div><h2>3 responses</h2></div><button class="close" onclick="closeModal()">×</button></div>
+ <div class="quotegrid">
+  <div class="quoteCard selected"><div class="profilebar"><div class="avatar">RM</div><div><b>Richardson Pro Plumbing</b><div class="statusline">★ 4.9 · 86 jobs</div></div></div><h3>$185–$250</h3><p style="color:var(--muted);font-size:13px">Thursday, 2–4 PM</p><button class="primary" style="width:100%" onclick="openQuote()">View Response</button></div>
+  <div class="quoteCard"><div class="profilebar"><div class="avatar">AP</div><div><b>Allen Plumbing Co.</b><div class="statusline">★ 4.8 · 142 jobs</div></div></div><h3>$210–$275</h3><p style="color:var(--muted);font-size:13px">Friday, 9–11 AM</p><button class="secondary" style="width:100%">View Response</button></div>
+  <div class="quoteCard"><div class="profilebar"><div class="avatar">NT</div><div><b>North Texas Home Pro</b><div class="statusline">★ 4.7 · 54 jobs</div></div></div><h3>$175–$300</h3><p style="color:var(--muted);font-size:13px">This week · Flexible</p><button class="secondary" style="width:100%">View Response</button></div>
+ </div>
+</div></div>
+
+<script>
+const API = '/api';
+let authToken = localStorage.getItem('lc_token');
+let currentUser = null;
+
+async function api(path, options={}){
+  const headers={'Content-Type':'application/json',...(options.headers||{})};
+  if(authToken) headers.Authorization='Bearer '+authToken;
+  const res=await fetch(API+path,{...options,headers});
+  const data=await res.json().catch(()=>({}));
+  if(!res.ok) throw new Error(data.error||'Request failed');
+  return data;
+}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000)}
+// Escape any value that came from the server before it goes into innerHTML —
+// provider names, quote messages, request text, etc. are all user-entered.
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function initials(name){return esc(String(name||'?').split(' ').map(x=>x[0]).slice(0,2).join(''))}
+function openLogin(role){
+  if(role==='homeowner') document.getElementById('loginEmail').value='homeowner@livingcommunities.test';
+  if(role==='provider') document.getElementById('loginEmail').value='provider@livingcommunities.test';
+  document.getElementById('loginModal').classList.add('show');
+}
+function closeLogin(){document.getElementById('loginModal').classList.remove('show')}
+async function login(){
+  const err=document.getElementById('loginError');err.classList.add('hidden');
+  try{const d=await api('/auth/login',{method:'POST',body:JSON.stringify({email:document.getElementById('loginEmail').value,password:document.getElementById('loginPassword').value})});authToken=d.token;localStorage.setItem('lc_token',authToken);currentUser=d.user;closeLogin();show(currentUser.role==='homeowner'?'homeowner':'provider');await loadDashboard();toast('Signed in as '+currentUser.name)}catch(e){err.textContent=e.message;err.classList.remove('hidden')}
+}
+async function ensureAuth(role){
+  if(!authToken){openLogin(role);return false}
+  try{if(!currentUser) currentUser=(await api('/auth/me')).user;if(role&&currentUser.role!==role){toast('Please sign in with a '+role+' account.');return false}return true}catch(e){authToken=null;localStorage.removeItem('lc_token');openLogin(role);return false}
+}
+async function openApp(role){if(await ensureAuth(role)){show(role);loadDashboard()}}
+function logout(){api('/auth/logout',{method:'POST'}).catch(()=>{});authToken=null;currentUser=null;localStorage.removeItem('lc_token');show('home');toast('Signed out')}
+
+let quoteTargetRequestId='req_demo_sink';
+function openRequest(service){if(!authToken){openLogin('homeowner');return}document.getElementById('serviceType').value=service;document.getElementById('requestModal').classList.add('show')}
+function openQuotes(){document.getElementById('quotesModal').classList.add('show');loadQuotes('req_demo_sink')}
+function openQuote(){document.getElementById('quotesModal').classList.remove('show');document.getElementById('quoteModal').classList.add('show')}
+function closeModal(){document.querySelectorAll('.modal').forEach(m=>m.classList.remove('show'))}
+async function submitRequest(){
+  try{
+    const svc=document.getElementById('serviceType').value;
+    const d=await api('/requests',{method:'POST',body:JSON.stringify({serviceType:svc,title:svc+' request',description:document.querySelector('#requestModal textarea').value,urgency:document.querySelector('#requestModal select').value,preferredDate:document.querySelector('#requestModal input[type=date]').value,preferredTime:document.querySelectorAll('#requestModal select')[2]?.value||'Any time'})});
+    closeModal();toast('Request published successfully');await loadDashboard();
+  }catch(e){toast(e.message)}
+}
+async function acceptQuote(){
+  try{const qs=await api('/requests/req_demo_sink/quotes');const q=qs.quotes[0];await api('/quotes/'+q.id+'/accept',{method:'POST'});closeModal();toast('Quote accepted and job scheduled');await loadDashboard()}catch(e){toast(e.message)}
+}
+async function loadQuotes(requestId){
+  try{const d=await api('/requests/'+requestId+'/quotes');const cards=document.querySelector('#quotesModal .quotegrid');cards.innerHTML=d.quotes.map((q,i)=>`<div class="quoteCard ${i===0?'selected':''}"><div class="profilebar"><div class="avatar">${initials(q.provider.name)}</div><div><b>${esc(q.provider.name)}</b><div class="statusline">★ ${esc(q.provider.rating||'New')} · ${esc(q.provider.reviewCount||0)} jobs</div></div></div><h3>$${Number(q.amountMin)}–$${Number(q.amountMax)}</h3><p style="color:var(--muted);font-size:13px">${esc(q.availability)}</p><button class="${i===0?'primary':'secondary'}" style="width:100%" onclick="viewQuote('${esc(q.id)}')">View Response</button></div>`).join('')||'<div class="notice">No responses yet.</div>'}catch(e){toast(e.message)}
+}
+async function viewQuote(id){try{const d=await api('/requests/req_demo_sink/quotes');const q=d.quotes.find(x=>x.id===id);if(!q)return;document.querySelector('#quoteModal .quoteCard h2').textContent=`$${q.amountMin}–$${q.amountMax}`;document.querySelector('#quoteModal .profilebar b').textContent=q.provider.name;document.querySelector('#quoteModal .quoteCard .tag').textContent=q.availability;document.querySelector('#quoteModal p').textContent='“'+q.message+'”';document.getElementById('quotesModal').classList.remove('show');document.getElementById('quoteModal').classList.add('show');document.querySelector('#quoteModal .primary').onclick=()=>acceptSpecificQuote(id);document.querySelector('#quoteModal .secondary').onclick=()=>{closeModal();switchPanel('homeowner','messages');openThread('homeowner',q.providerId)}}catch(e){toast(e.message)}}
+async function acceptSpecificQuote(id){try{await api('/quotes/'+id+'/accept',{method:'POST'});closeModal();toast('Quote accepted and job scheduled');await loadDashboard()}catch(e){toast(e.message)}}
+
+async function submitProviderQuote(){try{await api('/requests/'+quoteTargetRequestId+'/quotes',{method:'POST',body:JSON.stringify({amountMin:document.getElementById('quoteMin').value,amountMax:document.getElementById('quoteMax').value,availability:document.getElementById('quoteAvailability').value,message:document.getElementById('quoteMessage').value})});closeModal();toast('Quote sent to homeowner');await loadDashboard()}catch(e){toast(e.message)}}
+let lastDashboard={homeowner:null,provider:null};
+let activePanel={homeowner:'dashboard',provider:'dashboard'};
+let activeThreadWith={homeowner:null,provider:null};
+let providersCache=null;
+async function getProviders(){if(!providersCache){try{providersCache=(await api('/providers')).providers}catch(e){providersCache=[]}}return providersCache}
+
+async function loadDashboard(){
+  if(!authToken)return;
+  try{
+    const d=await api('/dashboard');currentUser=d.user;
+    const page=currentUser.role==='homeowner'?'homeowner':'provider';
+    lastDashboard[page]=d;
+    const h=document.querySelector('#'+page+' .apphead h1'); if(h)h.textContent=currentUser.role==='homeowner'?'Homeowner Dashboard':'Provider Dashboard';
+    const pill=document.querySelector('#'+page+' .apphead .pill'); if(pill)pill.textContent=currentUser.role==='homeowner'?(currentUser.community||'My Community'):`${d.requests.filter(r=>!r.quote).length} open opportunities`;
+    const welcome=document.querySelector('#'+page+' .welcome h2'); if(welcome)welcome.textContent=currentUser.role==='homeowner'?`What does your home need, ${currentUser.name.split(' ')[0]}?`:'Find your next customer.';
+    if(currentUser.role==='homeowner'){
+      const req=d.requests[0]; const rbox=document.querySelector('#homeowner .request'); if(req&&rbox){rbox.querySelector('h3').textContent=req.title;rbox.querySelector('p').textContent=`Submitted ${new Date(req.createdAt).toLocaleDateString()} · ${req.quotes.length} providers have responded`;rbox.querySelector('.tag').textContent=req.serviceType.toUpperCase();rbox.querySelector('button').onclick=()=>{document.getElementById('quotesModal').classList.add('show');loadQuotes(req.id)}}
+    }else{
+      renderPrFeed(d);
+    }
+    renderPanel(page, activePanel[page]);
+  }catch(e){console.error(e)}
+}
+
+function switchPanel(role,panelName){
+  activePanel[role]=panelName;
+  document.querySelectorAll('#'+role+' .sidebar .sideitem').forEach(el=>el.classList.toggle('active',el.dataset.panel===panelName));
+  document.querySelectorAll('#'+role+' .content .panel').forEach(el=>el.classList.toggle('hidden',el.dataset.panel!==panelName));
+  renderPanel(role,panelName);
+}
+function renderPanel(role,panelName){
+  const d=lastDashboard[role]; if(!d)return;
+  if(role==='homeowner'){
+    if(panelName==='requests')renderHoRequests(d);
+    else if(panelName==='messages')renderMessages('homeowner',d);
+    else if(panelName==='jobs')renderHoJobs(d);
+    else if(panelName==='profile')renderHoProfile(d);
+  }else{
+    if(panelName==='leads')renderPrLeads(d);
+    else if(panelName==='messages')renderMessages('provider',d);
+    else if(panelName==='activejobs')renderPrJobs(d,['scheduled','in_progress'],'pr-activejobs-list');
+    else if(panelName==='completedjobs')renderPrJobs(d,['completed'],'pr-completedjobs-list');
+    else if(panelName==='profile')renderPrProfile(d);
+  }
+}
+
+function renderHoRequests(d){
+  const el=document.getElementById('ho-requests-list'); if(!el)return;
+  if(!d.requests.length){el.innerHTML='<div class="notice">You haven\'t submitted any requests yet.</div>';return}
+  el.innerHTML=d.requests.map(r=>`<div class="request"><div class="requestrow"><div><span class="tag">${esc(r.serviceType.toUpperCase())}</span><span class="tag">${esc(r.status.toUpperCase())}</span><h3>${esc(r.title)}</h3><p>${esc(r.description||'')}</p><div class="statusline"><span class="dot"></span> ${r.quotes.length} provider${r.quotes.length===1?'':'s'} responded</div></div><button class="primary" onclick="document.getElementById('quotesModal').classList.add('show');loadQuotes('${esc(r.id)}')">View ${r.quotes.length} Response${r.quotes.length===1?'':'s'}</button></div></div>`).join('');
+}
+function renderHoJobs(d){
+  const el=document.getElementById('ho-jobs-list'); if(!el)return;
+  const jobs=d.jobs||[];
+  if(!jobs.length){el.innerHTML='<div class="notice">No scheduled services yet. Accept a quote from My Requests to schedule one.</div>';return}
+  el.innerHTML=jobs.map(j=>`<div class="request"><div class="requestrow"><div><span class="tag">${esc((j.serviceType||'SERVICE').toUpperCase())}</span><span class="tag">${esc(j.status.toUpperCase())}</span><h3>${esc(j.title||'Service job')}</h3><p>Scheduled: ${esc(j.scheduledFor||'')}</p></div>${j.status==='completed'?'<span class="tag">Completed</span>':`<button class="secondary" onclick="markJobStatus('${esc(j.id)}','completed')">Mark Completed</button>`}</div></div>`).join('');
+}
+function renderHoProfile(d){
+  const el=document.getElementById('ho-profile-view'); if(!el)return; const u=d.user;
+  el.innerHTML=`<div class="request"><div class="profilebar"><div class="avatar">${initials(u.name)}</div><div><b>${esc(u.name)}</b><div class="statusline">${esc(u.community||'')}</div></div></div><p style="margin-top:14px;color:var(--muted);font-size:14px">Email: ${esc(u.email)}<br>Phone: ${esc(u.phone||'—')}<br>Plan: ${esc(u.subscription)}</p></div>`;
+}
+function renderPrFeed(d){
+  const el=document.getElementById('pr-feed-list'); if(!el)return;
+  const open=(d.requests||[]).filter(r=>!r.quote);
+  if(!open.length){el.innerHTML='<div class="notice">No new opportunities right now — check back soon.</div>';return}
+  el.innerHTML=open.map(r=>`<div class="request"><div class="provider"><div><span class="tag">${esc(r.serviceType.toUpperCase())}</span><h3>${esc(r.title)}</h3><p>${esc(r.description||'')}</p><small>📍 ${esc(d.user.community||'Local area')} · ${esc(r.urgency||'Flexible')}</small></div><div class="mini-actions"><button class="secondary" onclick="messageHomeowner('${esc(r.homeownerId)}')">Message</button><button class="primary" onclick="openQuoteSubmit('${esc(r.id)}')">I Can Help</button></div></div></div>`).join('');
+}
+function openQuoteSubmit(rid){
+  if(!authToken){openLogin('provider');return}
+  quoteTargetRequestId=rid;
+  document.getElementById('quoteMin').value=185;document.getElementById('quoteMax').value=250;document.getElementById('quoteAvailability').value='';document.getElementById('quoteMessage').value='';
+  document.getElementById('quoteSubmitModal').classList.add('show');
+}
+function messageHomeowner(homeownerId){
+  switchPanel('provider','messages');
+  openThread('provider',homeownerId);
+}
+function renderPrLeads(d){
+  const el=document.getElementById('pr-leads-list'); if(!el)return;
+  const leads=(d.requests||[]).filter(r=>r.quote);
+  if(!leads.length){el.innerHTML='<div class="notice">You haven\'t sent any quotes yet. Respond to requests in the feed to see them here.</div>';return}
+  el.innerHTML=leads.map(r=>`<div class="request"><div class="requestrow"><div><span class="tag">${esc(r.serviceType.toUpperCase())}</span><span class="tag">${esc(r.quote.status.toUpperCase())}</span><h3>${esc(r.title)}</h3><p>Your quote: $${Number(r.quote.amountMin)}–$${Number(r.quote.amountMax)} · ${esc(r.quote.availability)}</p></div></div></div>`).join('');
+}
+function renderPrJobs(d,statuses,elId){
+  const el=document.getElementById(elId); if(!el)return;
+  const jobs=(d.jobs||[]).filter(j=>statuses.includes(j.status));
+  if(!jobs.length){el.innerHTML=`<div class="notice">No ${statuses.includes('completed')?'completed':'active'} jobs yet.</div>`;return}
+  el.innerHTML=jobs.map(j=>`<div class="request"><div class="requestrow"><div><span class="tag">${esc((j.serviceType||'SERVICE').toUpperCase())}</span><span class="tag">${esc(j.status.toUpperCase())}</span><h3>${esc(j.title||'Service job')}</h3><p>Scheduled: ${esc(j.scheduledFor||'')}</p></div>${j.status!=='completed'?`<button class="secondary" onclick="markJobStatus('${esc(j.id)}','completed')">Mark Completed</button>`:''}</div></div>`).join('');
+}
+function renderPrProfile(d){
+  const el=document.getElementById('pr-profile-view'); if(!el)return; const u=d.user;
+  el.innerHTML=`<div class="request"><div class="profilebar"><div class="avatar">${initials(u.name)}</div><div><b>${esc(u.name)}</b><div class="statusline">★ ${esc(u.rating||'New')} · ${esc(u.reviewCount||0)} jobs${u.verified?' · Verified':''}</div></div></div><p style="margin-top:14px;color:var(--muted);font-size:14px">${esc(u.businessDescription||'')}</p><p style="color:var(--muted);font-size:14px">Services: ${esc((u.serviceTypes||[]).join(', '))}<br>Phone: ${esc(u.phone||'—')}<br>Plan: ${esc(u.subscription)}</p></div>`;
+}
+async function renderMessages(role,d){
+  const el=document.getElementById(role==='homeowner'?'ho-messages-view':'pr-messages-view'); if(!el)return;
+  const msgs=(d.messages||[]).slice().sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt));
+  const groups={};
+  msgs.forEach(m=>{const other=m.senderId===d.user.id?m.recipientId:m.senderId;(groups[other]=groups[other]||[]).push(m)});
+  const pending=activeThreadWith[role];
+  if(pending&&!groups[pending])groups[pending]=[]; // starting a brand-new conversation with no messages yet
+  const otherIds=Object.keys(groups);
+  if(!otherIds.length){el.innerHTML='<div class="notice">No messages yet. Message a provider from a request, or a homeowner from the request feed.</div>';return}
+  let nameOf={};
+  if(role==='homeowner'){const provs=await getProviders();provs.forEach(p=>nameOf[p.id]=p.name)}
+  const label=oid=>nameOf[oid]||((role==='homeowner'?'Provider':'Homeowner')+' · '+oid.slice(-4));
+  const active=(activeThreadWith[role]&&groups[activeThreadWith[role]])?activeThreadWith[role]:otherIds[otherIds.length-1];
+  activeThreadWith[role]=active;
+  el.innerHTML=`<div class="quotegrid">
+    <div>${otherIds.map(oid=>`<div class="quoteCard ${oid===active?'selected':''}" style="cursor:pointer;margin-bottom:8px" onclick="openThread('${role}','${esc(oid)}')"><b>${esc(label(oid))}</b><div class="statusline">${groups[oid].length} message${groups[oid].length===1?'':'s'}</div></div>`).join('')}</div>
+    <div><div style="max-height:280px;overflow:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:12px">${groups[active].length?groups[active].map(m=>`<div style="align-self:${m.senderId===d.user.id?'flex-end':'flex-start'};background:${m.senderId===d.user.id?'var(--mint)':'#f0f4f2'};padding:10px 12px;border-radius:10px;max-width:90%"><div style="font-size:13px">${esc(m.body)}</div><div class="statusline" style="margin-top:4px">${esc(new Date(m.createdAt).toLocaleString())}</div></div>`).join(''):'<div class="statusline">Say hello to start the conversation.</div>'}</div>
+    <div class="field"><textarea id="threadReply-${role}" placeholder="Write a reply..."></textarea></div>
+    <button class="primary" onclick="replyThread('${role}','${esc(active)}')">Send</button></div>
+  </div>`;
+}
+function openThread(role,oid){activeThreadWith[role]=oid;renderMessages(role,lastDashboard[role])}
+async function replyThread(role,oid){
+  const ta=document.getElementById('threadReply-'+role); const text=(ta?.value||'').trim(); if(!text)return;
+  try{await api('/messages',{method:'POST',body:JSON.stringify({recipientId:oid,body:text})});await loadDashboard()}catch(e){toast(e.message)}
+}
+async function markJobStatus(jobId,status){
+  try{await api('/jobs/'+jobId,{method:'PATCH',body:JSON.stringify({status})});toast('Job updated');await loadDashboard()}catch(e){toast(e.message)}
+}
+
+function show(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById(id).classList.add('active');window.scrollTo({top:0,behavior:'smooth'});
+  if(id==='homeowner'||id==='provider') loadDashboard();
+}
+// Turn the prototype's navigation actions into authenticated flows.
+document.querySelector('.nav button').onclick=()=>openLogin();
+document.querySelectorAll('.hero .actions button')[0].onclick=()=>openApp('homeowner');
+document.querySelectorAll('.hero .actions button')[1].onclick=()=>openApp('provider');
+
+// Add authenticated account controls to both dashboards.
+for(const role of ['homeowner','provider']){
+  const head=document.querySelector('#'+role+' .apphead');
+  if(head&&!head.querySelector('.account-actions')){const wrap=document.createElement('div');wrap.className='account-actions';wrap.innerHTML='<button class="secondary" onclick="logout()">Sign Out</button>';head.appendChild(wrap)}
+}
+if(authToken) ensureAuth().then(()=>loadDashboard());
+</script>
+
+<div id="quoteSubmitModal" class="modal"><div class="modalbox">
+ <div class="modalhead"><div><div class="eyebrow">Provider response</div><h2>Send a quote</h2></div><button class="close" onclick="closeModal()">×</button></div>
+ <div class="field"><label>ESTIMATED MINIMUM</label><input id="quoteMin" type="number" value="185"></div>
+ <div class="field"><label>ESTIMATED MAXIMUM</label><input id="quoteMax" type="number" value="250"></div>
+ <div class="field"><label>AVAILABILITY</label><input id="quoteAvailability" value="Thursday · 2–4 PM"></div>
+ <div class="field"><label>MESSAGE</label><textarea id="quoteMessage" placeholder="Explain how you can help..."></textarea></div>
+ <div class="mini-actions"><button class="secondary" onclick="closeModal()">Cancel</button><button class="primary" onclick="submitProviderQuote()">Send Quote</button></div>
+</div></div>
+</body>
+</html>

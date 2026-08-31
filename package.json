@@ -1,0 +1,11 @@
+{
+  "name": "living-communities",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Living Communities — home services marketplace connecting homeowners and local providers.",
+  "main": "server.js",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "start": "node server.js"
+  }
+}
