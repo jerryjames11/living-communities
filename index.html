@@ -95,11 +95,31 @@ button{font:inherit;cursor:pointer}.nav{height:72px;padding:0 6%;display:flex;al
 
 <div id="loginModal" class="modal"><div class="modalbox loginbox">
  <div class="modalhead"><div><div class="eyebrow">Secure sign in</div><h2>Welcome back</h2></div><button class="close" onclick="closeLogin()">×</button></div>
- <div class="demoCreds"><b>Demo accounts</b><br>Homeowner: <code>homeowner@livingcommunities.test</code> / <code>Homeowner123!</code><br>Provider: <code>provider@livingcommunities.test</code> / <code>Provider123!</code></div>
  <div class="field"><label>EMAIL</label><input id="loginEmail" type="email" placeholder="you@example.com"></div>
  <div class="field"><label>PASSWORD</label><input id="loginPassword" type="password" placeholder="Password"></div>
  <div id="loginError" class="notice hidden"></div>
  <div class="mini-actions"><button class="secondary" onclick="closeLogin()">Cancel</button><button class="primary" onclick="login()">Sign In</button></div>
+ <p class="authhint">New here? <a href="#" onclick="closeLogin();openSignup();return false" style="color:var(--green);font-weight:800">Create an account</a></p>
+</div></div>
+
+<div id="signupModal" class="modal"><div class="modalbox loginbox">
+ <div class="modalhead"><div><div class="eyebrow">Create your account</div><h2 id="signupHeading">Join as a homeowner</h2></div><button class="close" onclick="closeSignup()">×</button></div>
+ <div class="mini-actions" style="margin-bottom:2px">
+   <button type="button" class="secondary" id="signupRoleHomeowner" style="flex:1" onclick="setSignupRole('homeowner')">Homeowner</button>
+   <button type="button" class="secondary" id="signupRoleProvider" style="flex:1" onclick="setSignupRole('provider')">Service Provider</button>
+ </div>
+ <div class="field"><label>FULL NAME</label><input id="signupName" placeholder="Jane Doe"></div>
+ <div class="field"><label>EMAIL</label><input id="signupEmail" type="email" placeholder="you@example.com"></div>
+ <div class="field"><label>PASSWORD</label><input id="signupPassword" type="password" placeholder="At least 8 characters"></div>
+ <div class="field"><label>PHONE</label><input id="signupPhone" placeholder="(214) 555-0100"></div>
+ <div id="signupHomeownerFields"><div class="field"><label>COMMUNITY / CITY</label><input id="signupCommunity" placeholder="Richardson Community"></div></div>
+ <div id="signupProviderFields" class="hidden">
+   <div class="field"><label>SERVICES OFFERED</label><input id="signupServiceTypes" placeholder="Plumbing, Handyman"></div>
+   <div class="field"><label>BUSINESS DESCRIPTION</label><textarea id="signupBusinessDescription" placeholder="Tell homeowners what you do..."></textarea></div>
+ </div>
+ <div id="signupError" class="notice hidden"></div>
+ <div class="mini-actions"><button class="secondary" onclick="closeSignup()">Cancel</button><button class="primary" onclick="signup()">Create Account</button></div>
+ <p class="authhint">Already have an account? <a href="#" onclick="closeSignup();openLogin();return false" style="color:var(--green);font-weight:800">Sign in</a></p>
 </div></div>
 <div id="toast" class="toast"></div>
 
@@ -154,8 +174,6 @@ function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function initials(name){return esc(String(name||'?').split(' ').map(x=>x[0]).slice(0,2).join(''))}
 function openLogin(role){
-  if(role==='homeowner') document.getElementById('loginEmail').value='homeowner@livingcommunities.test';
-  if(role==='provider') document.getElementById('loginEmail').value='provider@livingcommunities.test';
   document.getElementById('loginModal').classList.add('show');
 }
 function closeLogin(){document.getElementById('loginModal').classList.remove('show')}
@@ -163,6 +181,30 @@ async function login(){
   const err=document.getElementById('loginError');err.classList.add('hidden');
   try{const d=await api('/auth/login',{method:'POST',body:JSON.stringify({email:document.getElementById('loginEmail').value,password:document.getElementById('loginPassword').value})});authToken=d.token;localStorage.setItem('lc_token',authToken);currentUser=d.user;closeLogin();show(currentUser.role==='homeowner'?'homeowner':'provider');await loadDashboard();toast('Signed in as '+currentUser.name)}catch(e){err.textContent=e.message;err.classList.remove('hidden')}
 }
+let signupRole='homeowner';
+function openSignup(role){signupRole=role||'homeowner';updateSignupRoleUI();document.getElementById('signupModal').classList.add('show')}
+function closeSignup(){document.getElementById('signupModal').classList.remove('show')}
+function setSignupRole(role){signupRole=role;updateSignupRoleUI()}
+function updateSignupRoleUI(){
+  document.getElementById('signupHeading').textContent=signupRole==='homeowner'?'Join as a homeowner':'Join as a service provider';
+  document.getElementById('signupRoleHomeowner').className=signupRole==='homeowner'?'primary':'secondary';
+  document.getElementById('signupRoleProvider').className=signupRole==='provider'?'primary':'secondary';
+  document.getElementById('signupHomeownerFields').classList.toggle('hidden',signupRole!=='homeowner');
+  document.getElementById('signupProviderFields').classList.toggle('hidden',signupRole!=='provider');
+}
+async function signup(){
+  const err=document.getElementById('signupError');err.classList.add('hidden');
+  const payload={role:signupRole,name:document.getElementById('signupName').value.trim(),email:document.getElementById('signupEmail').value.trim(),password:document.getElementById('signupPassword').value,phone:document.getElementById('signupPhone').value.trim()};
+  if(signupRole==='homeowner'){payload.community=document.getElementById('signupCommunity').value.trim()}
+  else{payload.serviceTypes=document.getElementById('signupServiceTypes').value.split(',').map(s=>s.trim()).filter(Boolean);payload.businessDescription=document.getElementById('signupBusinessDescription').value.trim()}
+  try{
+    const d=await api('/auth/register',{method:'POST',body:JSON.stringify(payload)});
+    authToken=d.token;localStorage.setItem('lc_token',authToken);currentUser=d.user;
+    closeSignup();show(currentUser.role==='homeowner'?'homeowner':'provider');await loadDashboard();
+    toast('Welcome, '+currentUser.name.split(' ')[0]+'!');
+  }catch(e){err.textContent=e.message;err.classList.remove('hidden')}
+}
+function enterApp(role){ if(authToken){ openApp(role); } else { openSignup(role); } }
 async function ensureAuth(role){
   if(!authToken){openLogin(role);return false}
   try{if(!currentUser) currentUser=(await api('/auth/me')).user;if(role&&currentUser.role!==role){toast('Please sign in with a '+role+' account.');return false}return true}catch(e){authToken=null;localStorage.removeItem('lc_token');openLogin(role);return false}
@@ -321,8 +363,8 @@ function show(id){
 }
 // Turn the prototype's navigation actions into authenticated flows.
 document.querySelector('.nav button').onclick=()=>openLogin();
-document.querySelectorAll('.hero .actions button')[0].onclick=()=>openApp('homeowner');
-document.querySelectorAll('.hero .actions button')[1].onclick=()=>openApp('provider');
+document.querySelectorAll('.hero .actions button')[0].onclick=()=>enterApp('homeowner');
+document.querySelectorAll('.hero .actions button')[1].onclick=()=>enterApp('provider');
 
 // Add authenticated account controls to both dashboards.
 for(const role of ['homeowner','provider']){

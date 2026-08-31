@@ -229,6 +229,35 @@ const server=http.createServer(async (req,res)=>{
       if(!u || u.passwordHash!==hash(String(b.password||''),u.salt)) return send(res,401,{error:'Invalid email or password'});
       const token=crypto.randomBytes(24).toString('hex'); sessions.set(token,u.id); return send(res,200,{token,user:safeUser(u)});
     }
+    if(p==='/api/auth/register' && req.method==='POST'){
+      const ip=req.socket.remoteAddress||'unknown';
+      if(tooManyAttempts(ip+':register')) return send(res,429,{error:'Too many attempts. Try again later.'});
+      const b=await body(req);
+      const role=b.role==='provider'?'provider':'homeowner';
+      const name=String(b.name||'').trim().slice(0,120);
+      const email=String(b.email||'').trim().toLowerCase().slice(0,200);
+      const password=String(b.password||'');
+      if(!name) return send(res,400,{error:'Name is required'});
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return send(res,400,{error:'A valid email is required'});
+      if(password.length<8) return send(res,400,{error:'Password must be at least 8 characters'});
+      const existing=await q1('SELECT id FROM users WHERE lower(email)=lower($1)',[email]);
+      if(existing) return send(res,409,{error:'An account with this email already exists'});
+      const salt=newSalt();
+      const phone=String(b.phone||'').trim().slice(0,40);
+      const uid=id('usr');
+      let row;
+      if(role==='homeowner'){
+        row=await q1('INSERT INTO users (id,role,name,email,password_hash,salt,phone,address,community,subscription) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *',
+          [uid,'homeowner',name,email,hash(password,salt),salt,phone,String(b.address||'').trim().slice(0,200),String(b.community||'').trim().slice(0,120),'free']);
+      }else{
+        const serviceTypes=Array.isArray(b.serviceTypes)?b.serviceTypes.map(s=>String(s).trim()).filter(Boolean).slice(0,10):[];
+        row=await q1('INSERT INTO users (id,role,name,email,password_hash,salt,phone,service_types,rating,review_count,verified,subscription,business_description) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *',
+          [uid,'provider',name,email,hash(password,salt),salt,phone,serviceTypes,null,0,false,'free',String(b.businessDescription||'').trim().slice(0,1000)]);
+      }
+      const u=mapUser(row);
+      const token=crypto.randomBytes(24).toString('hex'); sessions.set(token,u.id);
+      return send(res,201,{token,user:safeUser(u)});
+    }
     if(p==='/api/auth/me' && req.method==='GET'){
       const u=await requireAuth(req,res); if(!u)return; return send(res,200,{user:safeUser(u)});
     }
