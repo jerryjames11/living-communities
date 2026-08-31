@@ -5,93 +5,367 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Living Communities</title>
 <style>
-:root{--ink:#17352f;--green:#286b58;--mint:#eaf4ef;--cream:#faf9f5;--gold:#d9a84e;--muted:#6d7b77;--white:#fff;--line:#dfe8e3}
-*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink);background:var(--cream)}
-button{font:inherit;cursor:pointer}.nav{height:72px;padding:0 6%;display:flex;align-items:center;justify-content:space-between;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10}.logo{font-weight:800;font-size:22px;letter-spacing:-.5px}.logo span{color:var(--green)}.navlinks{display:flex;gap:28px;color:#51635e;font-size:14px}.nav button,.primary{border:0;border-radius:10px;padding:12px 18px;background:var(--green);color:#fff;font-weight:700}.secondary{border:1px solid #bdd0c8;background:#fff;color:var(--ink);border-radius:10px;padding:12px 18px;font-weight:700}
-.page{display:none}.page.active{display:block}.hero{padding:80px 6% 90px;display:grid;grid-template-columns:1.05fr .95fr;gap:60px;align-items:center;max-width:1300px;margin:auto}.eyebrow{color:var(--green);font-weight:800;font-size:13px;text-transform:uppercase;letter-spacing:1.3px}.hero h1{font-size:clamp(42px,5vw,70px);line-height:1.02;letter-spacing:-3px;margin:15px 0 22px}.hero p{font-size:19px;line-height:1.6;color:var(--muted);max-width:650px}.actions{display:flex;gap:12px;margin-top:30px;flex-wrap:wrap}.visual{background:var(--mint);border-radius:30px;padding:24px;min-height:430px;position:relative}.house{height:100%;min-height:380px;background:linear-gradient(135deg,#dcebe3,#f6eee0);border-radius:22px;display:flex;align-items:center;justify-content:center;font-size:120px;box-shadow:inset 0 0 0 1px #d1dfd9}.float{position:absolute;background:#fff;border:1px solid var(--line);border-radius:15px;padding:14px 16px;box-shadow:0 12px 30px #17352f16;font-size:13px}.f1{top:45px;left:0}.f2{bottom:55px;right:0}.section{padding:75px 6%;max-width:1300px;margin:auto}.center{text-align:center}.section h2{font-size:40px;letter-spacing:-1.5px;margin:8px 0 12px}.section>p{color:var(--muted);max-width:700px;margin:0 auto 38px;line-height:1.6}.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}.card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:25px}.icon{font-size:28px}.card h3{margin:12px 0 8px}.card p{color:var(--muted);line-height:1.5;font-size:14px}.band{background:var(--ink);color:#fff;padding:60px 6%;text-align:center}.band p{color:#c9d8d3}.footer{padding:35px 6%;background:#fff;border-top:1px solid var(--line);display:flex;justify-content:space-between;color:var(--muted);font-size:13px}
-.app{max-width:1250px;margin:auto;padding:35px 5%}.apphead{display:flex;justify-content:space-between;align-items:center;margin-bottom:25px}.apphead h1{margin:0;font-size:32px}.pill{background:var(--mint);color:var(--green);padding:8px 12px;border-radius:20px;font-size:12px;font-weight:700}.grid{display:grid;grid-template-columns:240px 1fr;gap:24px}.sidebar{background:#fff;border:1px solid var(--line);border-radius:18px;padding:15px;height:max-content}.sideitem{padding:12px;border-radius:10px;margin:3px 0;color:#60706b;font-size:14px}.sideitem.active{background:var(--mint);color:var(--green);font-weight:800}.content{min-width:0}.welcome{background:var(--ink);color:#fff;border-radius:20px;padding:28px;margin-bottom:20px}.welcome p{color:#c9d8d3;margin-bottom:0}.servicegrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.service{background:#fff;border:1px solid var(--line);border-radius:15px;padding:18px;text-align:left}.service:hover{border-color:#9bbbae}.service b{display:block;margin-top:8px;font-size:13px}.service small{color:var(--muted)}.request{background:#fff;border:1px solid var(--line);border-radius:17px;padding:20px;margin-top:20px}.requestrow{display:flex;justify-content:space-between;gap:15px;align-items:center}.request p{color:var(--muted);font-size:14px;line-height:1.5}.tag{display:inline-block;background:#f0f4f2;padding:6px 9px;border-radius:8px;font-size:11px;margin-right:5px}.provider{display:flex;justify-content:space-between;gap:15px;align-items:center}.quote{font-weight:800;color:var(--green)}.pricing{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}.price{background:#fff;border:1px solid var(--line);border-radius:20px;padding:28px}.price.featured{border:2px solid var(--green);transform:translateY(-6px)}.price h3{font-size:20px}.price .amount{font-size:36px;font-weight:800;margin:15px 0}.price li{margin:12px 0;color:var(--muted);font-size:14px;list-style:none}.price ul{padding:0}.back{border:0;background:none;color:var(--green);font-weight:800;margin-bottom:20px;padding:0}
-@media(max-width:800px){.navlinks{display:none}.hero{grid-template-columns:1fr;padding-top:50px}.cards,.pricing{grid-template-columns:1fr}.grid{grid-template-columns:1fr}.sidebar{display:none}.servicegrid{grid-template-columns:repeat(2,1fr)}.footer{flex-direction:column;gap:10px}.hero h1{letter-spacing:-2px}}
+:root{--ink:#17352f;--green:#286b58;--green-dark:#1f5546;--mint:#eaf4ef;--cream:#faf9f5;--gold:#d9a84e;--muted:#6d7b77;--white:#fff;--line:#e4e9e6;--radius:16px}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink);background:var(--cream)}
+button{font:inherit;cursor:pointer}
+.primary{border:0;border-radius:10px;padding:13px 22px;background:var(--green);color:#fff;font-weight:700}
+.primary:hover{background:var(--green-dark)}
+.secondary{border:1.5px solid #c7d6cf;background:#fff;color:var(--ink);border-radius:10px;padding:12px 20px;font-weight:700}
+.secondary:hover{border-color:var(--green)}
+.page{display:none}.page.active{display:block}
 
-.modal{position:fixed;inset:0;background:#17352f88;display:none;align-items:center;justify-content:center;padding:20px;z-index:50}.modal.show{display:flex}.modalbox{background:#fff;border-radius:22px;width:min(680px,100%);max-height:90vh;overflow:auto;padding:28px}.modalhead{display:flex;justify-content:space-between;align-items:center}.close{border:0;background:#eef4f1;border-radius:50%;width:36px;height:36px;font-size:20px}.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:15px}.field{display:flex;flex-direction:column;gap:7px;margin:12px 0}.field.full{grid-column:1/-1}.field label{font-size:12px;font-weight:800;color:#52645e}.field input,.field select,.field textarea{border:1px solid #cbd9d3;border-radius:10px;padding:12px;font:inherit;background:#fff}.field textarea{min-height:110px;resize:vertical}.steps{display:flex;gap:7px;margin:20px 0}.step{height:5px;flex:1;background:#dfe8e3;border-radius:5px}.step.on{background:var(--green)}.notice{background:var(--mint);border-radius:12px;padding:13px;font-size:13px;color:#36584d}.quotegrid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.quoteCard{border:1px solid var(--line);border-radius:14px;padding:16px}.quoteCard.selected{border:2px solid var(--green)}.profilebar{display:flex;align-items:center;gap:12px}.avatar{width:42px;height:42px;border-radius:50%;background:var(--mint);display:grid;place-items:center;font-weight:800;color:var(--green)}.statusline{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}.dot{width:8px;height:8px;border-radius:50%;background:#48a477}.mini-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:15px}@media(max-width:650px){.formgrid,.quotegrid{grid-template-columns:1fr}.field.full{grid-column:auto}.modalbox{padding:20px}}
+/* ---------- marketing nav ---------- */
+.nav{height:76px;padding:0 6%;display:flex;align-items:center;justify-content:space-between;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
+.logo{font-weight:800;font-size:21px;letter-spacing:-.5px}
+.logo span{color:var(--green)}
+.navlinks{display:flex;gap:30px;color:#3f4f4a;font-size:14.5px;font-weight:500}
+.navlinks a{cursor:pointer}
+.navlinks a:hover{color:var(--green)}
+.navcta{display:flex;gap:10px;align-items:center}
 
-.authhint{font-size:12px;color:var(--muted);margin-top:8px}.loginbox{width:min(460px,100%)}.demoCreds{background:var(--mint);border-radius:12px;padding:14px;margin:14px 0;font-size:13px}.demoCreds code{background:#fff;padding:2px 5px;border-radius:5px}.toast{position:fixed;right:20px;bottom:20px;background:var(--ink);color:#fff;padding:14px 18px;border-radius:12px;box-shadow:0 10px 30px #17352f33;z-index:100;display:none}.toast.show{display:block}.hidden{display:none!important}
+/* ---------- hero ---------- */
+.hero{padding:70px 6% 90px;display:grid;grid-template-columns:1fr 1.05fr;gap:56px;align-items:center;max-width:1300px;margin:auto}
+.eyebrow{color:var(--green);font-weight:800;font-size:12.5px;text-transform:uppercase;letter-spacing:1.4px}
+.hero h1{font-size:clamp(38px,4.6vw,58px);line-height:1.06;letter-spacing:-1.8px;margin:14px 0 18px}
+.hero h1 em{font-style:normal;color:var(--green)}
+.hero p{font-size:18px;line-height:1.65;color:var(--muted);max-width:520px}
+.actions{display:flex;gap:12px;margin-top:28px;flex-wrap:wrap}
+.hero-visual{position:relative}
+.hero-photo{border-radius:26px;overflow:hidden;box-shadow:0 30px 60px -20px #17352f2e}
+.floatcard{position:absolute;background:#fff;border-radius:16px;padding:12px 16px;box-shadow:0 16px 34px #17352f22;display:flex;align-items:center;gap:11px;font-size:13px;max-width:210px}
+.floatcard b{display:block;font-size:13.5px}
+.floatcard small{color:var(--muted);font-size:11.5px}
+.float-1{top:8%;left:-6%}
+.float-2{bottom:8%;right:-6%}
+.float-icon{width:38px;height:38px;border-radius:50%;flex:0 0 auto;background:var(--mint);display:grid;place-items:center;overflow:hidden}
+.float-icon.shield{background:var(--mint);color:var(--green)}
+
+/* ---------- generic sections ---------- */
+.section{padding:70px 6%;max-width:1300px;margin:auto}
+.center{text-align:center}
+.section h2{font-size:36px;letter-spacing:-1.2px;margin:8px 0 12px}
+.section>p.lead{color:var(--muted);max-width:640px;margin:0 auto 42px;line-height:1.6}
+.section-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:18px}
+.section-row a{color:var(--green);font-weight:700;font-size:13.5px;text-decoration:none;cursor:pointer}
+
+/* how it works */
+.steps3{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+.step-card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.step-photo{aspect-ratio:4/3}
+.step-body{padding:20px 22px 24px}
+.step-num{color:var(--green);font-weight:800;font-size:13px}
+.step-card h3{margin:6px 0 6px;font-size:18px}
+.step-card p{color:var(--muted);font-size:14px;line-height:1.55;margin:0}
+
+/* services teaser + popular services */
+.servicetiles{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.servicetile{background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden;text-align:left;padding:0}
+.servicetile .photo-slot{aspect-ratio:4/3}
+.servicetile-body{padding:14px 16px 16px}
+.servicetile b{display:block;font-size:14px}
+.servicetile small{color:var(--muted);font-size:12.5px}
+
+/* pricing */
+.pricing3{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:10px}
+.price{background:#fff;border:1px solid var(--line);border-radius:20px;padding:28px;position:relative}
+.price.featured{border:2px solid var(--green)}
+.price-badge{position:absolute;top:-1px;left:-2px;right:-2px;background:var(--green);color:#fff;text-align:center;font-size:11px;font-weight:800;letter-spacing:.5px;padding:7px;border-radius:19px 19px 0 0;text-transform:uppercase}
+.price.featured .price-body{margin-top:26px}
+.price h3{font-size:19px;margin:0 0 3px}
+.price .sub{color:var(--muted);font-size:13px;margin-bottom:14px}
+.price .amount{font-size:34px;font-weight:800}
+.price .amount small{font-size:14px;font-weight:600;color:var(--muted)}
+.price ul{padding:0;margin:18px 0 22px}
+.price li{list-style:none;margin:11px 0;color:#3f4f4a;font-size:14px;display:flex;gap:8px}
+.price li:before{content:"✓";color:var(--green);font-weight:800}
+
+.band{background:var(--ink);color:#fff;padding:60px 6%;text-align:center}
+.band h2{font-size:32px}
+.band p{color:#c9d8d3}
+.footer{padding:35px 6%;background:#fff;border-top:1px solid var(--line);display:flex;justify-content:space-between;color:var(--muted);font-size:13px;flex-wrap:wrap;gap:10px}
+
+@media(max-width:900px){.navlinks{display:none}.hero{grid-template-columns:1fr;padding-top:40px}.steps3,.pricing3{grid-template-columns:1fr}.servicetiles{grid-template-columns:repeat(2,1fr)}.float-1,.float-2{position:static;margin-top:12px;max-width:none}}
+
+/* ---------- image placeholder system ---------- */
+.photo-slot{position:relative;overflow:hidden;background:linear-gradient(135deg,#dfe9e3,#eef2ee);border-radius:inherit}
+.photo-slot img{width:100%;height:100%;object-fit:cover;display:block}
+.photo-slot.missing img{display:none}
+.photo-slot::after{content:attr(data-label);position:absolute;inset:0;display:none;align-items:center;justify-content:center;text-align:center;font-size:11px;line-height:1.4;color:#5c6f68;padding:10px;font-weight:600}
+.photo-slot.missing::after{display:flex}
+.avatar-slot{position:relative;border-radius:50%;overflow:hidden;background:var(--mint);display:grid;place-items:center;flex:0 0 auto}
+.avatar-slot img{width:100%;height:100%;object-fit:cover;display:block;position:absolute;inset:0}
+.avatar-slot .avatar-fallback{font-weight:800;color:var(--green);font-size:14px}
+.avatar-slot.missing img{display:none}
+.avatar-slot:not(.missing) .avatar-fallback{display:none}
+
+/* ---------- dashboard shell ---------- */
+.promo-bar{background:var(--ink);color:#fff;padding:12px 6%;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.promo-bar .promo-text b{font-size:14px;display:block}
+.promo-bar .promo-text span{color:#bcd0c9;font-size:12.5px}
+.promo-bar button{background:#fff;color:var(--ink);border:0;border-radius:9px;padding:9px 16px;font-weight:700;font-size:13px;white-space:nowrap}
+.dash-header{background:#fff;border-bottom:1px solid var(--line);padding:14px 6%;display:flex;align-items:center;justify-content:space-between}
+.dash-header .logo{font-size:19px}
+.dash-header-right{display:flex;align-items:center;gap:16px}
+.icon-btn{border:1px solid var(--line);background:#fff;border-radius:10px;width:38px;height:38px;display:grid;place-items:center;color:#51635e}
+.dash-user{display:flex;align-items:center;gap:10px}
+.dash-user .avatar-slot{width:38px;height:38px}
+.dash-user b{display:block;font-size:13.5px;line-height:1.2}
+.dash-user small{color:var(--muted);font-size:11.5px}
+.exit-link{border:0;background:none;color:var(--muted);font-size:13px;font-weight:600;padding:6px 4px}
+.exit-link:hover{color:var(--green)}
+
+.app{max-width:1300px;margin:auto;padding:30px 5% 60px}
+.dash-titlebar{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:22px;flex-wrap:wrap;gap:12px}
+.dash-titlebar h1{margin:0;font-size:28px}
+.dash-titlebar .subtle{color:var(--muted);margin:4px 0 0;font-size:14px}
+.pill-select{background:#fff;border:1px solid var(--line);color:#3f4f4a;padding:9px 14px;border-radius:20px;font-size:13px;font-weight:600}
+
+.grid{display:grid;grid-template-columns:230px 1fr;gap:22px}
+.sidebar{background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px;height:max-content;display:flex;flex-direction:column}
+.sideitem{padding:11px 12px;border-radius:10px;margin:2px 0;color:#54655f;font-size:14px;display:flex;align-items:center;gap:11px;cursor:pointer}
+.sideitem svg{flex:0 0 auto;opacity:.85}
+.sideitem:hover{background:#f4f7f5}
+.sideitem.active{background:var(--mint);color:var(--green);font-weight:700}
+.sideitem.active svg{opacity:1}
+.sidedivider{height:1px;background:var(--line);margin:10px 4px}
+.content{min-width:0}
+
+.welcome{background:linear-gradient(120deg,var(--ink),#20493d);color:#fff;border-radius:20px;padding:0;margin-bottom:24px;overflow:hidden;display:grid;grid-template-columns:1.3fr 1fr;align-items:stretch}
+.welcome-text{padding:30px 32px}
+.welcome-text h2{margin:0 0 8px;font-size:24px}
+.welcome-text p{color:#c9d8d3;margin:0}
+.welcome-photo{min-height:150px}
+@media(max-width:700px){.welcome{grid-template-columns:1fr}.welcome-photo{display:none}}
+
+.servicegrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:16px}
+.service{background:#fff;border:1px solid var(--line);border-radius:15px;padding:16px;text-align:left}
+.service:hover{border-color:#9bbbae}
+.service b{display:block;margin-top:8px;font-size:13px}
+.service small{color:var(--muted)}
+
+.request{background:#fff;border:1px solid var(--line);border-radius:17px;padding:18px;margin-top:14px;display:flex;gap:16px;align-items:flex-start}
+.request .req-thumb{width:76px;height:76px;border-radius:12px;flex:0 0 auto}
+.req-thumb::after{content:'';font-size:0}
+.requestrow{display:flex;justify-content:space-between;gap:15px;align-items:center;flex:1;min-width:0}
+.request p{color:var(--muted);font-size:14px;line-height:1.5;margin:6px 0}
+.tag{display:inline-block;background:#f0f4f2;padding:6px 9px;border-radius:8px;font-size:11px;margin-right:5px;font-weight:600}
+.tag.status-open,.tag.status-pending{background:#fdf3e2;color:#96701c}
+.tag.status-scheduled,.tag.status-accepted{background:var(--mint);color:var(--green)}
+.tag.status-completed{background:#e8effc;color:#2c4f8c}
+.provider{display:flex;justify-content:space-between;gap:15px;align-items:center}
+.stub-notice{background:#fff;border:1px solid var(--line);border-radius:17px;padding:26px;text-align:center;color:var(--muted);line-height:1.6}
+.stub-notice .icon{font-size:30px;margin-bottom:10px}
+
+@media(max-width:900px){.grid{grid-template-columns:1fr}.sidebar{display:none}.servicegrid{grid-template-columns:repeat(2,1fr)}.footer{flex-direction:column}}
+
+/* ---------- modals (unchanged behavior, refreshed look) ---------- */
+.modal{position:fixed;inset:0;background:#17352f88;display:none;align-items:center;justify-content:center;padding:20px;z-index:50}
+.modal.show{display:flex}
+.modalbox{background:#fff;border-radius:22px;width:min(680px,100%);max-height:90vh;overflow:auto;padding:28px}
+.modalhead{display:flex;justify-content:space-between;align-items:center}
+.close{border:0;background:#eef4f1;border-radius:50%;width:36px;height:36px;font-size:20px}
+.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:15px}
+.field{display:flex;flex-direction:column;gap:7px;margin:12px 0}
+.field.full{grid-column:1/-1}
+.field label{font-size:12px;font-weight:800;color:#52645e}
+.field input,.field select,.field textarea{border:1px solid #cbd9d3;border-radius:10px;padding:12px;font:inherit;background:#fff}
+.field textarea{min-height:110px;resize:vertical}
+.steps{display:flex;gap:7px;margin:20px 0}
+.step{height:5px;flex:1;background:#dfe8e3;border-radius:5px}
+.step.on{background:var(--green)}
+.notice{background:var(--mint);border-radius:12px;padding:13px;font-size:13px;color:#36584d}
+.quotegrid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.quoteCard{border:1px solid var(--line);border-radius:14px;padding:16px}
+.quoteCard.selected{border:2px solid var(--green)}
+.profilebar{display:flex;align-items:center;gap:12px}
+.avatar{width:42px;height:42px;border-radius:50%;background:var(--mint);display:grid;place-items:center;font-weight:800;color:var(--green);flex:0 0 auto}
+.statusline{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+.dot{width:8px;height:8px;border-radius:50%;background:#48a477}
+.mini-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:15px}
+@media(max-width:650px){.formgrid,.quotegrid{grid-template-columns:1fr}.field.full{grid-column:auto}.modalbox{padding:20px}}
+
+.authhint{font-size:12px;color:var(--muted);margin-top:8px}
+.loginbox{width:min(460px,100%)}
+.toast{position:fixed;right:20px;bottom:20px;background:var(--ink);color:#fff;padding:14px 18px;border-radius:12px;box-shadow:0 10px 30px #17352f33;z-index:100;display:none}
+.toast.show{display:block}
+.hidden{display:none!important}
 </style>
 </head>
 <body>
 <nav class="nav">
-  <div class="logo">living <span>communities</span></div>
-  <div class="navlinks"><a onclick="show('home')">How It Works</a><a onclick="show('membership')">Membership</a><a onclick="show('home')">For Communities</a></div>
-  <button onclick="show('homeowner')">Sign In</button>
+  <div class="logo">Living <span>Communities</span></div>
+  <div class="navlinks">
+    <a onclick="scrollToSection('how-it-works')">How It Works</a>
+    <a onclick="scrollToSection('services')">Services</a>
+    <a onclick="scrollToSection('pricing')">Pricing</a>
+    <a onclick="scrollToSection('about')">About Us</a>
+    <a onclick="scrollToSection('contact')">Contact</a>
+  </div>
+  <div class="navcta">
+    <button class="secondary" onclick="openLogin()">Log In</button>
+    <button class="primary" onclick="openSignup('homeowner')">Get Started</button>
+  </div>
 </nav>
 
 <main id="home" class="page active">
 <section class="hero">
-<div><div class="eyebrow">The home-services layer for communities</div><h1>Better homes.<br>Stronger communities.</h1><p>Living Communities connects homeowners with local service providers for the everyday work that keeps a home looking, working and feeling its best.</p><div class="actions"><button class="primary" onclick="show('homeowner')">I’m a Homeowner</button><button class="secondary" onclick="show('provider')">I’m a Service Provider</button></div></div>
-<div class="visual"><div class="house">🏡</div><div class="float f1">✓ Lawn service requested</div><div class="float f2">💬 3 providers responded</div></div>
+<div>
+  <div class="eyebrow">Your home. Our care.</div>
+  <h1>Property care made <em>simple.</em></h1>
+  <p>Living Communities connects homeowners with trusted local providers for every home service need. Quality work. Transparent pricing. Peace of mind.</p>
+  <div class="actions"><button class="primary" onclick="openSignup('homeowner')">Get Started</button><button class="secondary" onclick="scrollToSection('how-it-works')">How It Works</button></div>
+</div>
+<div class="hero-visual">
+  <div class="photo-slot hero-photo" data-label="images/hero-house.jpg — a bright home exterior" style="aspect-ratio:5/4"><img src="images/hero-house.jpg" alt="Home exterior" onerror="this.closest('.photo-slot').classList.add('missing')"></div>
+  <div class="floatcard float-1"><div class="float-icon"><div class="avatar-slot" data-label="" style="width:38px;height:38px"><img src="images/badge-pro.jpg" alt="" onerror="this.closest('.avatar-slot').classList.add('missing')"><span class="avatar-fallback">✓</span></div></div><div><b>Trusted Professionals</b><small>Background-checked and reviewed</small></div></div>
+  <div class="floatcard float-2"><div class="float-icon shield">🛡️</div><div><b>Quality You Can Count On</b><small>Satisfaction guaranteed</small></div></div>
+</div>
 </section>
-<section class="section center"><div class="eyebrow">How it works</div><h2>One place for the life of your home.</h2><p>Request help, connect with qualified providers and keep your home's services organized—all while your community stays connected.</p>
-<div class="cards"><div class="card"><div class="icon">🏠</div><h3>Request</h3><p>Tell us what your home needs. Add photos, timing and details without broadcasting your personal information.</p></div><div class="card"><div class="icon">🤝</div><h3>Connect</h3><p>Local providers review anonymous requests and reach out when they can help.</p></div><div class="card"><div class="icon">✨</div><h3>Get it done</h3><p>Compare responses, agree on the work and build your trusted home-service network.</p></div></div></section>
-<section class="band"><h2>Your HOA manages the community.<br>We help you manage your home.</h2><p>Living Communities is designed to complement—not replace—your HOA.</p></section>
-<section class="section center"><div class="eyebrow">For communities</div><h2>A better resident experience.</h2><p>Give homeowners a convenient service marketplace while creating a stronger network of local providers for the neighborhood.</p><button class="primary" onclick="show('membership')">Explore Membership</button></section>
-<footer class="footer"><b>living communities</b><span>© 2026 Living Communities · Better homes. Stronger communities.</span></footer>
+
+<section class="section center" id="how-it-works">
+<div class="eyebrow">How it works</div>
+<h2>Home services, simplified.</h2>
+<p class="lead">From small fixes to big projects, we make it easy to get the help you need.</p>
+<div class="steps3">
+  <div class="step-card"><div class="photo-slot step-photo" data-label="images/step-describe.jpg"><img src="images/step-describe.jpg" alt="" onerror="this.closest('.photo-slot').classList.add('missing')"></div><div class="step-body"><div class="step-num">1. Describe Your Need</div><h3>Tell us what's going on</h3><p>Tell us what you need done in just a few steps — no broadcasting your personal details.</p></div></div>
+  <div class="step-card"><div class="photo-slot step-photo" data-label="images/step-matched.jpg"><img src="images/step-matched.jpg" alt="" onerror="this.closest('.photo-slot').classList.add('missing')"></div><div class="step-body"><div class="step-num">2. Get Matched</div><h3>Compare local pros</h3><p>We connect you with trusted, local professionals who respond with real quotes.</p></div></div>
+  <div class="step-card"><div class="photo-slot step-photo" data-label="images/step-relax.jpg"><img src="images/step-relax.jpg" alt="" onerror="this.closest('.photo-slot').classList.add('missing')"></div><div class="step-body"><div class="step-num">3. Relax & Enjoy</div><h3>Sit back</h3><p>Sit back while we handle the rest with care and quality.</p></div></div>
+</div>
+</section>
+
+<section class="section" id="services">
+<div class="section-row"><div><div class="eyebrow">Services</div><h2 style="margin:6px 0 0">Everything your home needs</h2></div></div>
+<div class="servicetiles">
+  <button class="servicetile" onclick="enterApp('homeowner')"><div class="photo-slot" data-label="images/service-plumbing.jpg"><img src="images/service-plumbing.jpg" alt="" onerror="this.closest('.photo-slot').classList.add('missing')"></div><div class="servicetile-body"><b>Plumbing</b><small>Faucets, leaks, pipes & more</small></div></button>
+  <button class="servicetile" onclick="enterApp('homeowner')"><div class="photo-slot" data-label="images/service-electrical.jpg"><img src="images/service-electrical.jpg" alt="" onerror="this.closest('.photo-slot').classList.add('missing')"></div><div class="servicetile-body"><b>Electrical</b><small>Outlets, lighting, panels & more</small></div></button>
+  <button class="servicetile" onclick="enterApp('homeowner')"><div class="photo-slot" data-label="images/service-hvac.jpg"><img src="images/service-hvac.jpg" alt="" onerror="this.closest('.photo-slot').classList.add('missing')"></div><div class="servicetile-body"><b>HVAC</b><small>Heating, cooling, AC & more</small></div></button>
+  <button class="servicetile" onclick="enterApp('homeowner')"><div class="photo-slot" data-label="images/service-cleaning.jpg"><img src="images/service-cleaning.jpg" alt="" onerror="this.closest('.photo-slot').classList.add('missing')"></div><div class="servicetile-body"><b>House Cleaning</b><small>Recurring or one-time deep clean</small></div></button>
+</div>
+</section>
+
+<section class="section center" id="pricing">
+<div class="eyebrow">Pricing</div>
+<h2>Simple, transparent pricing</h2>
+<p class="lead">Choose the plan that works best for your home.</p>
+<div class="pricing3">
+  <div class="price"><h3>Basic</h3><div class="sub">For small jobs and quick fixes</div><div class="amount">$0<small>/month</small></div><div style="color:var(--muted);font-size:12.5px;margin-top:-8px">Pay per service</div><ul><li>Access to trusted providers</li><li>Compare & message providers</li><li>Customer support</li></ul><button class="secondary" style="width:100%" onclick="choosePlan('free')">Get Started</button></div>
+  <div class="price featured"><div class="price-badge">Most Popular</div><div class="price-body"><h3>Plus</h3><div class="sub">For homeowners who need more</div><div class="amount">$9.99<small>/month</small></div><ul><li>Everything in Basic, plus:</li><li>Priority matching</li><li>Exclusive discounts</li><li>Extended support</li></ul><button class="primary" style="width:100%" onclick="choosePlan('plus')">Get Started</button></div></div>
+  <div class="price"><h3>Premium</h3><div class="sub">For ongoing home care</div><div class="amount">$24.99<small>/month</small></div><ul><li>Everything in Plus, plus:</li><li>Annual home check-up</li><li>VIP support</li><li>Priority scheduling</li></ul><button class="secondary" style="width:100%" onclick="choosePlan('pro')">Get Started</button></div>
+</div>
+</section>
+
+<section class="band" id="about">
+<h2>Your HOA manages the community.<br>We help you manage your home.</h2>
+<p>Living Communities is designed to complement — not replace — your HOA, giving every resident a simple way to find trusted local help.</p>
+</section>
+
+<section class="section center" id="contact">
+<div class="eyebrow">Contact</div>
+<h2>We'd love to hear from you.</h2>
+<p class="lead">Questions about Living Communities, partnering with us, or bringing this to your community? Reach out any time.</p>
+<p style="font-weight:700"><a href="mailto:hello@livingcommunities.example" style="color:var(--green);text-decoration:none">hello@livingcommunities.example</a></p>
+</section>
+
+<footer class="footer"><b>Living Communities</b><span>© 2026 Living Communities · Property care made simple.</span></footer>
 </main>
 
 <main id="homeowner" class="page">
-<div class="app"><button class="back" onclick="show('home')">← Back to Living Communities</button><div class="apphead"><h1>Homeowner Dashboard</h1><span class="pill">Richardson Community</span></div>
+<div class="promo-bar">
+  <div class="promo-text"><b>Your home. Our priority.</b><span>Reliable service. Transparent pricing. Guaranteed satisfaction.</span></div>
+  <button onclick="show('home');scrollToSection('pricing')">View Plans</button>
+</div>
+<div class="dash-header">
+  <div class="logo">Living <span>Communities</span></div>
+  <div class="dash-header-right">
+    <button class="icon-btn" title="Notifications" type="button"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8a5 5 0 0 1 10 0c0 4 1.5 5 1.5 5h-13S5 12 5 8Z"/><path d="M8.2 16a1.8 1.8 0 0 0 3.6 0"/></svg></button>
+    <div class="dash-user"><div class="avatar-slot" id="ho-header-avatar" data-label=""><img src="images/avatar-homeowner.jpg" alt="" onerror="this.closest('.avatar-slot').classList.add('missing')"><span class="avatar-fallback" id="ho-header-initials">JC</span></div><div><b id="ho-header-name">Jamie Carter</b><small>Homeowner</small></div></div>
+    <button class="exit-link" onclick="show('home')">Exit</button>
+  </div>
+</div>
+<div class="app">
+<div class="dash-titlebar"><div><h1>My Dashboard</h1><p class="subtle" id="ho-welcome-sub">Welcome back!</p></div><div class="pill-select" id="ho-location-pill">📍 Richardson Community</div></div>
 <div class="grid"><aside class="sidebar">
-<div class="sideitem active" data-panel="dashboard" onclick="switchPanel('homeowner','dashboard')">Dashboard</div>
-<div class="sideitem" data-panel="requests" onclick="switchPanel('homeowner','requests')">My Requests</div>
-<div class="sideitem" data-panel="messages" onclick="switchPanel('homeowner','messages')">Messages</div>
-<div class="sideitem" data-panel="jobs" onclick="switchPanel('homeowner','jobs')">Scheduled Services</div>
-<div class="sideitem" data-panel="maintenance" onclick="switchPanel('homeowner','maintenance')">Home Maintenance</div>
-<div class="sideitem" data-panel="profile" onclick="switchPanel('homeowner','profile')">Profile</div>
+<div class="sideitem active" data-panel="dashboard" onclick="switchPanel('homeowner','dashboard')"><svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor"><rect x="2" y="2" width="7" height="7" rx="1.5"/><rect x="11" y="2" width="7" height="7" rx="1.5"/><rect x="2" y="11" width="7" height="7" rx="1.5"/><rect x="11" y="11" width="7" height="7" rx="1.5"/></svg>Dashboard</div>
+<div class="sideitem" data-panel="requests" onclick="switchPanel('homeowner','requests')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="12" height="15" rx="2"/><path d="M7.5 3h5v2h-5z"/><path d="M7 9h6M7 12h6M7 15h3.5"/></svg>My Requests</div>
+<div class="sideitem" data-panel="quotes" onclick="switchPanel('homeowner','quotes')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h9l3 3v9H4z"/><path d="M7.5 9.5h5M7.5 12.5h3"/></svg>My Quotes</div>
+<div class="sideitem" data-panel="jobs" onclick="switchPanel('homeowner','jobs')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8h14M7 2v4M13 2v4"/></svg>Appointments</div>
+<div class="sideitem" data-panel="payments" onclick="switchPanel('homeowner','payments')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="16" height="11" rx="2"/><path d="M2 9h16"/></svg>Payments</div>
+<div class="sideitem" data-panel="messages" onclick="switchPanel('homeowner','messages')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h14v10H8l-4 3v-3H3z"/></svg>Messages</div>
+<div class="sideitem" data-panel="maintenance" onclick="switchPanel('homeowner','maintenance')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l7-6 7 6"/><path d="M5 8v9h10V8"/></svg>My Home</div>
+<div class="sideitem" data-panel="profile" onclick="switchPanel('homeowner','profile')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="2.6"/><path d="M10 2.5v2.2M10 15.3v2.2M3.4 5.6l1.9 1.1M14.7 13.3l1.9 1.1M2.5 10h2.2M15.3 10h2.2M3.4 14.4l1.9-1.1M14.7 6.7l1.9-1.1"/></svg>Settings</div>
+<div class="sideitem" data-panel="help" onclick="switchPanel('homeowner','help')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7.5"/><path d="M7.6 7.7a2.4 2.4 0 1 1 3.3 2.2c-.7.3-1.1.9-1.1 1.5v.3"/><circle cx="9.9" cy="14" r=".5" fill="currentColor" stroke="none"/></svg>Help & Support</div>
+<div class="sidedivider"></div>
+<div class="sideitem" onclick="logout()"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4H4v12h4"/><path d="M11.5 10H17M17 10l-2.5-2.5M17 10l-2.5 2.5"/></svg>Log Out</div>
 </aside>
 <section class="content">
-<div class="panel" data-panel="dashboard"><div class="welcome"><h2>What does your home need?</h2><p>Choose a service to create a request. Your identity and exact address remain private while providers review your request.</p></div>
-<div class="servicegrid">
-<div class="service" onclick="openRequest(this.querySelector('b').textContent)">🌱<b>Lawn & Landscaping</b><small>Yards, trees, cleanup</small></div><div class="service" onclick="openRequest(this.querySelector('b').textContent)">🧹<b>House Cleaning</b><small>Recurring or one-time</small></div><div class="service" onclick="openRequest(this.querySelector('b').textContent)">🏊<b>Pool Service</b><small>Cleaning & maintenance</small></div><div class="service" onclick="openRequest(this.querySelector('b').textContent)">🔧<b>Handyman</b><small>Repairs & projects</small></div><div class="service" onclick="openRequest(this.querySelector('b').textContent)">🚰<b>Plumbing</b><small>Leaks, fixtures, drains</small></div><div class="service" onclick="openRequest(this.querySelector('b').textContent)">⚡<b>Electrical</b><small>Lights, outlets, wiring</small></div><div class="service" onclick="openRequest(this.querySelector('b').textContent)">❄️<b>HVAC</b><small>Heating & cooling</small></div><div class="service" onclick="openRequest(this.querySelector('b').textContent)">🐜<b>Pest Control</b><small>Interior & exterior</small></div>
+<div class="panel" data-panel="dashboard">
+<div class="welcome"><div class="welcome-text"><h2>Welcome back!</h2><p>How can we help with your home today?</p></div><div class="photo-slot welcome-photo" data-label="images/dashboard-welcome.jpg"><img src="images/dashboard-welcome.jpg" alt="" onerror="this.closest('.photo-slot').classList.add('missing')"></div></div>
+<div class="section-row"><h3 style="margin:0">Popular Services</h3><a onclick="toggleAllServices('homeowner')" id="ho-viewall-link">View all services</a></div>
+<div class="servicetiles" style="margin-bottom:8px">
+  <button class="servicetile" onclick="openRequest('Plumbing')"><div class="photo-slot" data-label="images/service-plumbing.jpg"><img src="images/service-plumbing.jpg" alt="" onerror="this.closest('.photo-slot').classList.add('missing')"></div><div class="servicetile-body"><b>Plumbing</b><small>Faucets, leaks, pipes & more</small></div></button>
+  <button class="servicetile" onclick="openRequest('Electrical')"><div class="photo-slot" data-label="images/service-electrical.jpg"><img src="images/service-electrical.jpg" alt="" onerror="this.closest('.photo-slot').classList.add('missing')"></div><div class="servicetile-body"><b>Electrical</b><small>Outlets, lighting, panels & more</small></div></button>
+  <button class="servicetile" onclick="openRequest('HVAC')"><div class="photo-slot" data-label="images/service-hvac.jpg"><img src="images/service-hvac.jpg" alt="" onerror="this.closest('.photo-slot').classList.add('missing')"></div><div class="servicetile-body"><b>HVAC</b><small>Heating, cooling, AC & more</small></div></button>
+  <button class="servicetile" onclick="openRequest('House Cleaning')"><div class="photo-slot" data-label="images/service-cleaning.jpg"><img src="images/service-cleaning.jpg" alt="" onerror="this.closest('.photo-slot').classList.add('missing')"></div><div class="servicetile-body"><b>House Cleaning</b><small>Recurring or one-time deep clean</small></div></button>
 </div>
-<div class="request"><div class="requestrow"><div><span class="tag">PLUMBING</span><span class="tag">THIS WEEK</span><h3>Kitchen sink leak</h3><p>Submitted yesterday · 3 providers have responded</p><div class="statusline"><span class="dot"></span> 3 providers are interested</div></div><button class="primary" onclick="openQuotes()">View 3 Responses</button></div></div>
+<div class="servicegrid hidden" id="ho-allservices">
+<div class="service" onclick="openRequest(this.querySelector('b').textContent)">🌱<b>Lawn & Landscaping</b><small>Yards, trees, cleanup</small></div><div class="service" onclick="openRequest(this.querySelector('b').textContent)">🏊<b>Pool Service</b><small>Cleaning & maintenance</small></div><div class="service" onclick="openRequest(this.querySelector('b').textContent)">🔧<b>Handyman</b><small>Repairs & projects</small></div><div class="service" onclick="openRequest(this.querySelector('b').textContent)">🐜<b>Pest Control</b><small>Interior & exterior</small></div>
+</div>
+<div class="section-row" style="margin-top:22px"><h3 style="margin:0">Recent Requests</h3></div>
+<div class="request"><div class="photo-slot req-thumb" data-label="" data-service-img="1"><img src="" alt="" onerror="this.closest('.photo-slot').classList.add('missing')"></div><div class="requestrow"><div><span class="tag">PLUMBING</span><span class="tag">THIS WEEK</span><h3>Kitchen sink leak</h3><p>Submitted yesterday · 3 providers have responded</p><div class="statusline"><span class="dot"></span> 3 providers are interested</div></div><button class="primary" onclick="openQuotes()">View 3 Responses</button></div></div>
 </div>
 <div class="panel hidden" data-panel="requests"><div id="ho-requests-list"></div></div>
-<div class="panel hidden" data-panel="messages"><div id="ho-messages-view"></div></div>
+<div class="panel hidden" data-panel="quotes"><div id="ho-quotes-list"></div></div>
 <div class="panel hidden" data-panel="jobs"><div id="ho-jobs-list"></div></div>
-<div class="panel hidden" data-panel="maintenance"><div class="notice">Home maintenance reminders and seasonal checklists are part of the upcoming Home Manager plan. <a href="#" onclick="show('membership');return false" style="color:var(--green);font-weight:800">See Membership →</a></div></div>
+<div class="panel hidden" data-panel="payments"><div class="stub-notice"><div class="icon">💳</div>Payments aren't live yet. Once providers accept jobs through Living Communities, your payment history and receipts will show up here.</div></div>
+<div class="panel hidden" data-panel="messages"><div id="ho-messages-view"></div></div>
+<div class="panel hidden" data-panel="maintenance"><div class="stub-notice"><div class="icon">🏡</div>Home maintenance reminders and seasonal checklists are part of the upcoming Home Manager plan. <a href="#" onclick="show('home');scrollToSection('pricing');return false" style="color:var(--green);font-weight:800">See Plans →</a></div></div>
 <div class="panel hidden" data-panel="profile"><div id="ho-profile-view"></div></div>
+<div class="panel hidden" data-panel="help"><div class="stub-notice"><div class="icon">💬</div>Need a hand? Email us at <a href="mailto:hello@livingcommunities.example" style="color:var(--green);font-weight:800">hello@livingcommunities.example</a> and we'll get back to you.</div></div>
 </section></div></div>
 </main>
 
 <main id="provider" class="page">
-<div class="app"><button class="back" onclick="show('home')">← Back to Living Communities</button><div class="apphead"><h1>Provider Dashboard</h1><span class="pill">12 new opportunities</span></div>
+<div class="promo-bar">
+  <div class="promo-text"><b>Grow your business.</b><span>Reach local homeowners looking for trusted help.</span></div>
+  <button onclick="switchPanel('provider','profile')">View Business Profile</button>
+</div>
+<div class="dash-header">
+  <div class="logo">Living <span>Communities</span></div>
+  <div class="dash-header-right">
+    <button class="icon-btn" title="Notifications" type="button"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8a5 5 0 0 1 10 0c0 4 1.5 5 1.5 5h-13S5 12 5 8Z"/><path d="M8.2 16a1.8 1.8 0 0 0 3.6 0"/></svg></button>
+    <div class="dash-user"><div class="avatar-slot" id="pr-header-avatar" data-label=""><img src="images/avatar-provider.jpg" alt="" onerror="this.closest('.avatar-slot').classList.add('missing')"><span class="avatar-fallback" id="pr-header-initials">RP</span></div><div><b id="pr-header-name">Richardson Pro Plumbing</b><small>Provider</small></div></div>
+    <button class="exit-link" onclick="show('home')">Exit</button>
+  </div>
+</div>
+<div class="app">
+<div class="dash-titlebar"><div><h1>Provider Dashboard</h1><p class="subtle">Find your next customer.</p></div><div class="pill-select" id="pr-opportunity-pill">12 new opportunities</div></div>
 <div class="grid"><aside class="sidebar">
-<div class="sideitem active" data-panel="dashboard" onclick="switchPanel('provider','dashboard')">Request Feed</div>
-<div class="sideitem" data-panel="leads" onclick="switchPanel('provider','leads')">My Leads</div>
-<div class="sideitem" data-panel="messages" onclick="switchPanel('provider','messages')">Messages</div>
-<div class="sideitem" data-panel="leads" onclick="switchPanel('provider','leads')">Quotes</div>
-<div class="sideitem" data-panel="activejobs" onclick="switchPanel('provider','activejobs')">Active Jobs</div>
-<div class="sideitem" data-panel="completedjobs" onclick="switchPanel('provider','completedjobs')">Completed Jobs</div>
-<div class="sideitem" data-panel="profile" onclick="switchPanel('provider','profile')">Business Profile</div>
+<div class="sideitem active" data-panel="dashboard" onclick="switchPanel('provider','dashboard')"><svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor"><rect x="2" y="2" width="7" height="7" rx="1.5"/><rect x="11" y="2" width="7" height="7" rx="1.5"/><rect x="2" y="11" width="7" height="7" rx="1.5"/><rect x="11" y="11" width="7" height="7" rx="1.5"/></svg>Request Feed</div>
+<div class="sideitem" data-panel="leads" onclick="switchPanel('provider','leads')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h9l3 3v9H4z"/><path d="M7.5 9.5h5M7.5 12.5h3"/></svg>My Leads</div>
+<div class="sideitem" data-panel="messages" onclick="switchPanel('provider','messages')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h14v10H8l-4 3v-3H3z"/></svg>Messages</div>
+<div class="sideitem" data-panel="activejobs" onclick="switchPanel('provider','activejobs')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8h14M7 2v4M13 2v4"/></svg>Active Jobs</div>
+<div class="sideitem" data-panel="completedjobs" onclick="switchPanel('provider','completedjobs')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7.5"/><path d="M6.5 10.2l2.3 2.3 4.7-5"/></svg>Completed Jobs</div>
+<div class="sideitem" data-panel="payments" onclick="switchPanel('provider','payments')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="16" height="11" rx="2"/><path d="M2 9h16"/></svg>Payments</div>
+<div class="sideitem" data-panel="profile" onclick="switchPanel('provider','profile')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l7-6 7 6"/><path d="M5 8v9h10V8"/></svg>Business Profile</div>
+<div class="sideitem" data-panel="help" onclick="switchPanel('provider','help')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7.5"/><path d="M7.6 7.7a2.4 2.4 0 1 1 3.3 2.2c-.7.3-1.1.9-1.1 1.5v.3"/><circle cx="9.9" cy="14" r=".5" fill="currentColor" stroke="none"/></svg>Help & Support</div>
+<div class="sidedivider"></div>
+<div class="sideitem" onclick="logout()"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4H4v12h4"/><path d="M11.5 10H17M17 10l-2.5-2.5M17 10l-2.5 2.5"/></svg>Log Out</div>
 </aside>
 <section class="content">
-<div class="panel" data-panel="dashboard"><div class="welcome"><h2>Find your next customer.</h2><p>Review nearby homeowner requests. Exact addresses and personal details stay private until the homeowner chooses to connect.</p></div>
+<div class="panel" data-panel="dashboard">
+<div class="welcome"><div class="welcome-text"><h2>Find your next customer.</h2><p>Review nearby homeowner requests. Exact addresses and personal details stay private until the homeowner chooses to connect.</p></div><div class="photo-slot welcome-photo" data-label="images/dashboard-welcome.jpg"><img src="images/dashboard-welcome.jpg" alt="" onerror="this.closest('.photo-slot').classList.add('missing')"></div></div>
 <div id="pr-feed-list"></div>
 </div>
 <div class="panel hidden" data-panel="leads"><div id="pr-leads-list"></div></div>
 <div class="panel hidden" data-panel="messages"><div id="pr-messages-view"></div></div>
 <div class="panel hidden" data-panel="activejobs"><div id="pr-activejobs-list"></div></div>
 <div class="panel hidden" data-panel="completedjobs"><div id="pr-completedjobs-list"></div></div>
+<div class="panel hidden" data-panel="payments"><div class="stub-notice"><div class="icon">💳</div>Payouts aren't live yet. Once payments launch, your earnings and payout history will show up here.</div></div>
 <div class="panel hidden" data-panel="profile"><div id="pr-profile-view"></div></div>
+<div class="panel hidden" data-panel="help"><div class="stub-notice"><div class="icon">💬</div>Need a hand? Email us at <a href="mailto:hello@livingcommunities.example" style="color:var(--green);font-weight:800">hello@livingcommunities.example</a> and we'll get back to you.</div></div>
 </section></div></div>
 </main>
-
-<main id="membership" class="page">
-<div class="app"><button class="back" onclick="show('home')">← Back to Living Communities</button><div class="center"><div class="eyebrow">Membership</div><h1>Choose the way you want to care for your home.</h1><p style="color:var(--muted)">Start simple. Add more support as Living Communities becomes your home's service hub.</p></div>
-<div class="pricing" style="margin-top:40px"><div class="price"><span class="pill">Homeowner</span><h3>Free</h3><div class="amount">$0</div><ul><li>✓ Submit service requests</li><li>✓ Receive provider responses</li><li>✓ Compare providers</li><li>✓ Message providers</li><li>✓ Manage active requests</li></ul><button class="secondary" style="width:100%">Get Started</button></div>
-<div class="price featured"><span class="pill">Most Popular</span><h3>Living Communities Plus</h3><div class="amount">$X<small>/mo</small></div><ul><li>✓ Everything in Free</li><li>✓ Priority service matching</li><li>✓ Preferred provider network</li><li>✓ Member discounts</li><li>✓ Home maintenance reminders</li><li>✓ Digital service history</li><li>✓ Priority support</li></ul><button class="primary" style="width:100%">Join Plus</button></div>
-<div class="price"><span class="pill">Future</span><h3>Home Manager</h3><div class="amount">$XX<small>/mo</small></div><ul><li>✓ Everything in Plus</li><li>✓ Proactive maintenance planning</li><li>✓ Seasonal home checklist</li><li>✓ Recurring service coordination</li><li>✓ Complete home service record</li></ul><button class="secondary" style="width:100%">Coming Soon</button></div></div></div>
-</main>
-
-
 
 <div id="loginModal" class="modal"><div class="modalbox loginbox">
  <div class="modalhead"><div><div class="eyebrow">Secure sign in</div><h2>Welcome back</h2></div><button class="close" onclick="closeLogin()">×</button></div>
@@ -141,7 +415,7 @@ button{font:inherit;cursor:pointer}.nav{height:72px;padding:0 6%;display:flex;al
 <div id="quoteModal" class="modal"><div class="modalbox">
  <div class="modalhead"><div><div class="eyebrow">Provider response</div><h2>Kitchen sink leak</h2></div><button class="close" onclick="closeModal()">×</button></div>
  <div class="profilebar"><div class="avatar">RM</div><div><b>Richardson Pro Plumbing</b><div class="statusline"><span class="dot"></span>Verified provider · 4.9 ★</div></div></div>
- <p style="color:var(--muted);line-height:1.5">“I can take a look Thursday afternoon. I’ve handled similar sink leaks and can provide the final price after inspection.”</p>
+ <p style="color:var(--muted);line-height:1.5">"I can take a look Thursday afternoon. I've handled similar sink leaks and can provide the final price after inspection."</p>
  <div class="quoteCard selected"><small>ESTIMATED QUOTE</small><h2 style="margin:7px 0">$185–$250</h2><span class="tag">Thursday · 2–4 PM</span></div>
  <div class="mini-actions"><button class="secondary" onclick="closeModal()">Message Provider</button><button class="primary" onclick="acceptQuote()">Accept & Schedule</button></div>
 </div></div>
@@ -150,8 +424,6 @@ button{font:inherit;cursor:pointer}.nav{height:72px;padding:0 6%;display:flex;al
  <div class="modalhead"><div><div class="eyebrow">Compare providers</div><h2>3 responses</h2></div><button class="close" onclick="closeModal()">×</button></div>
  <div class="quotegrid">
   <div class="quoteCard selected"><div class="profilebar"><div class="avatar">RM</div><div><b>Richardson Pro Plumbing</b><div class="statusline">★ 4.9 · 86 jobs</div></div></div><h3>$185–$250</h3><p style="color:var(--muted);font-size:13px">Thursday, 2–4 PM</p><button class="primary" style="width:100%" onclick="openQuote()">View Response</button></div>
-  <div class="quoteCard"><div class="profilebar"><div class="avatar">AP</div><div><b>Allen Plumbing Co.</b><div class="statusline">★ 4.8 · 142 jobs</div></div></div><h3>$210–$275</h3><p style="color:var(--muted);font-size:13px">Friday, 9–11 AM</p><button class="secondary" style="width:100%">View Response</button></div>
-  <div class="quoteCard"><div class="profilebar"><div class="avatar">NT</div><div><b>North Texas Home Pro</b><div class="statusline">★ 4.7 · 54 jobs</div></div></div><h3>$175–$300</h3><p style="color:var(--muted);font-size:13px">This week · Flexible</p><button class="secondary" style="width:100%">View Response</button></div>
  </div>
 </div></div>
 
@@ -173,6 +445,17 @@ function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t
 // provider names, quote messages, request text, etc. are all user-entered.
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function initials(name){return esc(String(name||'?').split(' ').map(x=>x[0]).slice(0,2).join(''))}
+
+// Maps a service type to one of the shared placeholder photo files (see images/README.md).
+const SERVICE_IMAGES={'Plumbing':'service-plumbing.jpg','Electrical':'service-electrical.jpg','HVAC':'service-hvac.jpg','House Cleaning':'service-cleaning.jpg','Lawn & Landscaping':'service-lawn.jpg','Handyman':'service-handyman.jpg','Pool Service':'service-pool.jpg','Pest Control':'service-pest.jpg'};
+function serviceImage(serviceType){return SERVICE_IMAGES[serviceType]||'service-generic.jpg'}
+function photoSlotHTML(filename,label,cls){return `<div class="photo-slot ${cls||''}" data-label="${esc(label||('images/'+filename))}"><img src="images/${esc(filename)}" alt="" onerror="this.closest('.photo-slot').classList.add('missing')"></div>`}
+
+function scrollToSection(id){
+  const go=()=>{const el=document.getElementById(id); if(el) el.scrollIntoView({behavior:'smooth',block:'start'})};
+  if(!document.getElementById('home').classList.contains('active')){ show('home'); setTimeout(go,60); } else { go(); }
+}
+
 function openLogin(role){
   document.getElementById('loginModal').classList.add('show');
 }
@@ -182,6 +465,7 @@ async function login(){
   try{const d=await api('/auth/login',{method:'POST',body:JSON.stringify({email:document.getElementById('loginEmail').value,password:document.getElementById('loginPassword').value})});authToken=d.token;localStorage.setItem('lc_token',authToken);currentUser=d.user;closeLogin();show(currentUser.role==='homeowner'?'homeowner':'provider');await loadDashboard();toast('Signed in as '+currentUser.name)}catch(e){err.textContent=e.message;err.classList.remove('hidden')}
 }
 let signupRole='homeowner';
+let pendingPlan=null;
 function openSignup(role){signupRole=role||'homeowner';updateSignupRoleUI();document.getElementById('signupModal').classList.add('show')}
 function closeSignup(){document.getElementById('signupModal').classList.remove('show')}
 function setSignupRole(role){signupRole=role;updateSignupRoleUI()}
@@ -200,9 +484,18 @@ async function signup(){
   try{
     const d=await api('/auth/register',{method:'POST',body:JSON.stringify(payload)});
     authToken=d.token;localStorage.setItem('lc_token',authToken);currentUser=d.user;
+    if(pendingPlan){try{await api('/subscription',{method:'POST',body:JSON.stringify({plan:pendingPlan})});currentUser.subscription=pendingPlan}catch(e){} pendingPlan=null}
     closeSignup();show(currentUser.role==='homeowner'?'homeowner':'provider');await loadDashboard();
     toast('Welcome, '+currentUser.name.split(' ')[0]+'!');
   }catch(e){err.textContent=e.message;err.classList.remove('hidden')}
+}
+function choosePlan(plan){
+  if(authToken && currentUser && currentUser.role==='homeowner'){
+    api('/subscription',{method:'POST',body:JSON.stringify({plan})}).then(()=>{toast('Plan updated');loadDashboard()}).catch(e=>toast(e.message));
+    return;
+  }
+  pendingPlan=plan;
+  openSignup('homeowner');
 }
 function enterApp(role){ if(authToken){ openApp(role); } else { openSignup(role); } }
 async function ensureAuth(role){
@@ -212,9 +505,9 @@ async function ensureAuth(role){
 async function openApp(role){if(await ensureAuth(role)){show(role);loadDashboard()}}
 function logout(){api('/auth/logout',{method:'POST'}).catch(()=>{});authToken=null;currentUser=null;localStorage.removeItem('lc_token');show('home');toast('Signed out')}
 
-let quoteTargetRequestId='req_demo_sink';
+let quoteTargetRequestId=null;
 function openRequest(service){if(!authToken){openLogin('homeowner');return}document.getElementById('serviceType').value=service;document.getElementById('requestModal').classList.add('show')}
-function openQuotes(){document.getElementById('quotesModal').classList.add('show');loadQuotes('req_demo_sink')}
+function openQuotes(){document.getElementById('quotesModal').classList.add('show');const first=lastDashboard.homeowner&&lastDashboard.homeowner.requests[0];if(first)loadQuotes(first.id)}
 function openQuote(){document.getElementById('quotesModal').classList.remove('show');document.getElementById('quoteModal').classList.add('show')}
 function closeModal(){document.querySelectorAll('.modal').forEach(m=>m.classList.remove('show'))}
 async function submitRequest(){
@@ -225,12 +518,12 @@ async function submitRequest(){
   }catch(e){toast(e.message)}
 }
 async function acceptQuote(){
-  try{const qs=await api('/requests/req_demo_sink/quotes');const q=qs.quotes[0];await api('/quotes/'+q.id+'/accept',{method:'POST'});closeModal();toast('Quote accepted and job scheduled');await loadDashboard()}catch(e){toast(e.message)}
+  try{const first=lastDashboard.homeowner&&lastDashboard.homeowner.requests[0];if(!first)return;const qs=await api('/requests/'+first.id+'/quotes');const q=qs.quotes[0];await api('/quotes/'+q.id+'/accept',{method:'POST'});closeModal();toast('Quote accepted and job scheduled');await loadDashboard()}catch(e){toast(e.message)}
 }
 async function loadQuotes(requestId){
-  try{const d=await api('/requests/'+requestId+'/quotes');const cards=document.querySelector('#quotesModal .quotegrid');cards.innerHTML=d.quotes.map((q,i)=>`<div class="quoteCard ${i===0?'selected':''}"><div class="profilebar"><div class="avatar">${initials(q.provider.name)}</div><div><b>${esc(q.provider.name)}</b><div class="statusline">★ ${esc(q.provider.rating||'New')} · ${esc(q.provider.reviewCount||0)} jobs</div></div></div><h3>$${Number(q.amountMin)}–$${Number(q.amountMax)}</h3><p style="color:var(--muted);font-size:13px">${esc(q.availability)}</p><button class="${i===0?'primary':'secondary'}" style="width:100%" onclick="viewQuote('${esc(q.id)}')">View Response</button></div>`).join('')||'<div class="notice">No responses yet.</div>'}catch(e){toast(e.message)}
+  try{const d=await api('/requests/'+requestId+'/quotes');quoteTargetRequestId=requestId;const cards=document.querySelector('#quotesModal .quotegrid');cards.innerHTML=d.quotes.map((q,i)=>`<div class="quoteCard ${i===0?'selected':''}"><div class="profilebar"><div class="avatar">${initials(q.provider.name)}</div><div><b>${esc(q.provider.name)}</b><div class="statusline">★ ${esc(q.provider.rating||'New')} · ${esc(q.provider.reviewCount||0)} jobs</div></div></div><h3>$${Number(q.amountMin)}–$${Number(q.amountMax)}</h3><p style="color:var(--muted);font-size:13px">${esc(q.availability)}</p><button class="${i===0?'primary':'secondary'}" style="width:100%" onclick="viewQuote('${esc(q.id)}')">View Response</button></div>`).join('')||'<div class="notice">No responses yet.</div>'}catch(e){toast(e.message)}
 }
-async function viewQuote(id){try{const d=await api('/requests/req_demo_sink/quotes');const q=d.quotes.find(x=>x.id===id);if(!q)return;document.querySelector('#quoteModal .quoteCard h2').textContent=`$${q.amountMin}–$${q.amountMax}`;document.querySelector('#quoteModal .profilebar b').textContent=q.provider.name;document.querySelector('#quoteModal .quoteCard .tag').textContent=q.availability;document.querySelector('#quoteModal p').textContent='“'+q.message+'”';document.getElementById('quotesModal').classList.remove('show');document.getElementById('quoteModal').classList.add('show');document.querySelector('#quoteModal .primary').onclick=()=>acceptSpecificQuote(id);document.querySelector('#quoteModal .secondary').onclick=()=>{closeModal();switchPanel('homeowner','messages');openThread('homeowner',q.providerId)}}catch(e){toast(e.message)}}
+async function viewQuote(id){try{const d=await api('/requests/'+quoteTargetRequestId+'/quotes');const q=d.quotes.find(x=>x.id===id);if(!q)return;document.querySelector('#quoteModal .quoteCard h2').textContent=`$${q.amountMin}–$${q.amountMax}`;document.querySelector('#quoteModal .profilebar b').textContent=q.provider.name;document.querySelector('#quoteModal .quoteCard .tag').textContent=q.availability;document.querySelector('#quoteModal p').textContent='"'+q.message+'"';document.getElementById('quotesModal').classList.remove('show');document.getElementById('quoteModal').classList.add('show');document.querySelector('#quoteModal .primary').onclick=()=>acceptSpecificQuote(id);document.querySelector('#quoteModal .secondary').onclick=()=>{closeModal();switchPanel('homeowner','messages');openThread('homeowner',q.providerId)}}catch(e){toast(e.message)}}
 async function acceptSpecificQuote(id){try{await api('/quotes/'+id+'/accept',{method:'POST'});closeModal();toast('Quote accepted and job scheduled');await loadDashboard()}catch(e){toast(e.message)}}
 
 async function submitProviderQuote(){try{await api('/requests/'+quoteTargetRequestId+'/quotes',{method:'POST',body:JSON.stringify({amountMin:document.getElementById('quoteMin').value,amountMax:document.getElementById('quoteMax').value,availability:document.getElementById('quoteAvailability').value,message:document.getElementById('quoteMessage').value})});closeModal();toast('Quote sent to homeowner');await loadDashboard()}catch(e){toast(e.message)}}
@@ -240,27 +533,51 @@ let activeThreadWith={homeowner:null,provider:null};
 let providersCache=null;
 async function getProviders(){if(!providersCache){try{providersCache=(await api('/providers')).providers}catch(e){providersCache=[]}}return providersCache}
 
+function setAvatar(prefix,name){
+  const slot=document.getElementById(prefix+'-header-avatar');
+  const fb=document.getElementById(prefix+'-header-initials');
+  if(fb) fb.textContent=initials(name).toUpperCase()||'?';
+}
+
 async function loadDashboard(){
   if(!authToken)return;
   try{
     const d=await api('/dashboard');currentUser=d.user;
     const page=currentUser.role==='homeowner'?'homeowner':'provider';
     lastDashboard[page]=d;
-    const h=document.querySelector('#'+page+' .apphead h1'); if(h)h.textContent=currentUser.role==='homeowner'?'Homeowner Dashboard':'Provider Dashboard';
-    const pill=document.querySelector('#'+page+' .apphead .pill'); if(pill)pill.textContent=currentUser.role==='homeowner'?(currentUser.community||'My Community'):`${d.requests.filter(r=>!r.quote).length} open opportunities`;
-    const welcome=document.querySelector('#'+page+' .welcome h2'); if(welcome)welcome.textContent=currentUser.role==='homeowner'?`What does your home need, ${currentUser.name.split(' ')[0]}?`:'Find your next customer.';
-    if(currentUser.role==='homeowner'){
-      const req=d.requests[0]; const rbox=document.querySelector('#homeowner .request'); if(req&&rbox){rbox.querySelector('h3').textContent=req.title;rbox.querySelector('p').textContent=`Submitted ${new Date(req.createdAt).toLocaleDateString()} · ${req.quotes.length} providers have responded`;rbox.querySelector('.tag').textContent=req.serviceType.toUpperCase();rbox.querySelector('button').onclick=()=>{document.getElementById('quotesModal').classList.add('show');loadQuotes(req.id)}}
+    setAvatar(page==='homeowner'?'ho':'pr', currentUser.name);
+    const headerName=document.getElementById((page==='homeowner'?'ho':'pr')+'-header-name'); if(headerName)headerName.textContent=currentUser.name;
+    if(page==='homeowner'){
+      const sub=document.getElementById('ho-welcome-sub'); if(sub)sub.textContent=`What does your home need, ${currentUser.name.split(' ')[0]}?`;
+      const pill=document.getElementById('ho-location-pill'); if(pill)pill.textContent='📍 '+(currentUser.community||'My Community');
+      const req=d.requests[0]; const rbox=document.querySelector('#homeowner .panel[data-panel="dashboard"] .request');
+      if(rbox){
+        if(req){
+          rbox.querySelector('h3').textContent=req.title;rbox.querySelector('p').textContent=`Submitted ${new Date(req.createdAt).toLocaleDateString()} · ${req.quotes.length} providers have responded`;rbox.querySelector('.tag').textContent=req.serviceType.toUpperCase();
+          const img=rbox.querySelector('.req-thumb img'); if(img){img.src='images/'+serviceImage(req.serviceType);img.closest('.photo-slot').classList.remove('missing');img.setAttribute('onerror',"this.closest('.photo-slot').classList.add('missing')")}
+          rbox.style.display='';
+          rbox.querySelector('button').onclick=()=>{document.getElementById('quotesModal').classList.add('show');loadQuotes(req.id)}
+        } else { rbox.style.display='none'; }
+      }
     }else{
+      const pill=document.getElementById('pr-opportunity-pill'); if(pill)pill.textContent=`${d.requests.filter(r=>!r.quote).length} open opportunities`;
       renderPrFeed(d);
     }
     renderPanel(page, activePanel[page]);
   }catch(e){console.error(e)}
 }
 
+function toggleAllServices(role){
+  const grid=document.getElementById(role==='homeowner'?'ho-allservices':'pr-allservices');
+  const link=document.getElementById(role==='homeowner'?'ho-viewall-link':'pr-viewall-link');
+  if(!grid)return;
+  const showing=grid.classList.toggle('hidden')===false;
+  if(link) link.textContent=showing?'Show less':'View all services';
+}
+
 function switchPanel(role,panelName){
   activePanel[role]=panelName;
-  document.querySelectorAll('#'+role+' .sidebar .sideitem').forEach(el=>el.classList.toggle('active',el.dataset.panel===panelName));
+  document.querySelectorAll('#'+role+' .sidebar .sideitem[data-panel]').forEach(el=>el.classList.toggle('active',el.dataset.panel===panelName));
   document.querySelectorAll('#'+role+' .content .panel').forEach(el=>el.classList.toggle('hidden',el.dataset.panel!==panelName));
   renderPanel(role,panelName);
 }
@@ -268,6 +585,7 @@ function renderPanel(role,panelName){
   const d=lastDashboard[role]; if(!d)return;
   if(role==='homeowner'){
     if(panelName==='requests')renderHoRequests(d);
+    else if(panelName==='quotes')renderHoQuotes(d);
     else if(panelName==='messages')renderMessages('homeowner',d);
     else if(panelName==='jobs')renderHoJobs(d);
     else if(panelName==='profile')renderHoProfile(d);
@@ -280,26 +598,36 @@ function renderPanel(role,panelName){
   }
 }
 
+function requestCardHTML(r){
+  return `<div class="request">${photoSlotHTML(serviceImage(r.serviceType),null,'req-thumb')}<div class="requestrow"><div><span class="tag">${esc(r.serviceType.toUpperCase())}</span><span class="tag status-${esc(r.status)}">${esc(r.status.toUpperCase())}</span><h3>${esc(r.title)}</h3><p>${esc(r.description||'')}</p><div class="statusline"><span class="dot"></span> ${r.quotes.length} provider${r.quotes.length===1?'':'s'} responded</div></div><button class="primary" onclick="document.getElementById('quotesModal').classList.add('show');loadQuotes('${esc(r.id)}')">View ${r.quotes.length} Response${r.quotes.length===1?'':'s'}</button></div></div>`;
+}
 function renderHoRequests(d){
   const el=document.getElementById('ho-requests-list'); if(!el)return;
   if(!d.requests.length){el.innerHTML='<div class="notice">You haven\'t submitted any requests yet.</div>';return}
-  el.innerHTML=d.requests.map(r=>`<div class="request"><div class="requestrow"><div><span class="tag">${esc(r.serviceType.toUpperCase())}</span><span class="tag">${esc(r.status.toUpperCase())}</span><h3>${esc(r.title)}</h3><p>${esc(r.description||'')}</p><div class="statusline"><span class="dot"></span> ${r.quotes.length} provider${r.quotes.length===1?'':'s'} responded</div></div><button class="primary" onclick="document.getElementById('quotesModal').classList.add('show');loadQuotes('${esc(r.id)}')">View ${r.quotes.length} Response${r.quotes.length===1?'':'s'}</button></div></div>`).join('');
+  el.innerHTML=d.requests.map(requestCardHTML).join('');
+}
+function renderHoQuotes(d){
+  const el=document.getElementById('ho-quotes-list'); if(!el)return;
+  const all=[];
+  (d.requests||[]).forEach(r=>(r.quotes||[]).forEach(q=>all.push({r,q})));
+  if(!all.length){el.innerHTML='<div class="notice">No quotes yet. Once providers respond to your requests, they\'ll show up here.</div>';return}
+  el.innerHTML=all.map(({r,q})=>`<div class="request">${photoSlotHTML(serviceImage(r.serviceType),null,'req-thumb')}<div class="requestrow"><div><span class="tag">${esc(r.serviceType.toUpperCase())}</span><span class="tag status-${esc(q.status)}">${esc(q.status.toUpperCase())}</span><h3>${esc(r.title)}</h3><p>${esc(q.provider.name)} · $${Number(q.amountMin)}–$${Number(q.amountMax)} · ${esc(q.availability)}</p></div><button class="secondary" onclick="document.getElementById('quotesModal').classList.add('show');loadQuotes('${esc(r.id)}')">View</button></div></div>`).join('');
 }
 function renderHoJobs(d){
   const el=document.getElementById('ho-jobs-list'); if(!el)return;
   const jobs=d.jobs||[];
-  if(!jobs.length){el.innerHTML='<div class="notice">No scheduled services yet. Accept a quote from My Requests to schedule one.</div>';return}
-  el.innerHTML=jobs.map(j=>`<div class="request"><div class="requestrow"><div><span class="tag">${esc((j.serviceType||'SERVICE').toUpperCase())}</span><span class="tag">${esc(j.status.toUpperCase())}</span><h3>${esc(j.title||'Service job')}</h3><p>Scheduled: ${esc(j.scheduledFor||'')}</p></div>${j.status==='completed'?'<span class="tag">Completed</span>':`<button class="secondary" onclick="markJobStatus('${esc(j.id)}','completed')">Mark Completed</button>`}</div></div>`).join('');
+  if(!jobs.length){el.innerHTML='<div class="notice">No appointments yet. Accept a quote from My Requests to schedule one.</div>';return}
+  el.innerHTML=jobs.map(j=>`<div class="request">${photoSlotHTML(serviceImage(j.serviceType),null,'req-thumb')}<div class="requestrow"><div><span class="tag">${esc((j.serviceType||'SERVICE').toUpperCase())}</span><span class="tag status-${esc(j.status)}">${esc(j.status.toUpperCase())}</span><h3>${esc(j.title||'Service job')}</h3><p>Scheduled: ${esc(j.scheduledFor||'')}</p></div>${j.status==='completed'?'<span class="tag status-completed">Completed</span>':`<button class="secondary" onclick="markJobStatus('${esc(j.id)}','completed')">Mark Completed</button>`}</div></div>`).join('');
 }
 function renderHoProfile(d){
   const el=document.getElementById('ho-profile-view'); if(!el)return; const u=d.user;
-  el.innerHTML=`<div class="request"><div class="profilebar"><div class="avatar">${initials(u.name)}</div><div><b>${esc(u.name)}</b><div class="statusline">${esc(u.community||'')}</div></div></div><p style="margin-top:14px;color:var(--muted);font-size:14px">Email: ${esc(u.email)}<br>Phone: ${esc(u.phone||'—')}<br>Plan: ${esc(u.subscription)}</p></div>`;
+  el.innerHTML=`<div class="request"><div class="avatar-slot" style="width:56px;height:56px"><span class="avatar-fallback" style="display:block;font-size:18px">${initials(u.name)}</span></div><div class="requestrow" style="flex-direction:column;align-items:flex-start;gap:6px"><div><b style="font-size:16px">${esc(u.name)}</b><div class="statusline">${esc(u.community||'')} · Plan: ${esc(u.subscription)}</div></div><p style="margin:6px 0 0">Email: ${esc(u.email)}<br>Phone: ${esc(u.phone||'—')}</p></div></div>`;
 }
 function renderPrFeed(d){
   const el=document.getElementById('pr-feed-list'); if(!el)return;
   const open=(d.requests||[]).filter(r=>!r.quote);
   if(!open.length){el.innerHTML='<div class="notice">No new opportunities right now — check back soon.</div>';return}
-  el.innerHTML=open.map(r=>`<div class="request"><div class="provider"><div><span class="tag">${esc(r.serviceType.toUpperCase())}</span><h3>${esc(r.title)}</h3><p>${esc(r.description||'')}</p><small>📍 ${esc(d.user.community||'Local area')} · ${esc(r.urgency||'Flexible')}</small></div><div class="mini-actions"><button class="secondary" onclick="messageHomeowner('${esc(r.homeownerId)}')">Message</button><button class="primary" onclick="openQuoteSubmit('${esc(r.id)}')">I Can Help</button></div></div></div>`).join('');
+  el.innerHTML=open.map(r=>`<div class="request">${photoSlotHTML(serviceImage(r.serviceType),null,'req-thumb')}<div class="provider" style="flex:1"><div><span class="tag">${esc(r.serviceType.toUpperCase())}</span><h3 style="margin:8px 0 4px">${esc(r.title)}</h3><p style="color:var(--muted);font-size:14px;margin:0 0 6px">${esc(r.description||'')}</p><small style="color:var(--muted)">📍 ${esc(d.user.community||'Local area')} · ${esc(r.urgency||'Flexible')}</small></div><div class="mini-actions"><button class="secondary" onclick="messageHomeowner('${esc(r.homeownerId)}')">Message</button><button class="primary" onclick="openQuoteSubmit('${esc(r.id)}')">I Can Help</button></div></div></div>`).join('');
 }
 function openQuoteSubmit(rid){
   if(!authToken){openLogin('provider');return}
@@ -315,17 +643,17 @@ function renderPrLeads(d){
   const el=document.getElementById('pr-leads-list'); if(!el)return;
   const leads=(d.requests||[]).filter(r=>r.quote);
   if(!leads.length){el.innerHTML='<div class="notice">You haven\'t sent any quotes yet. Respond to requests in the feed to see them here.</div>';return}
-  el.innerHTML=leads.map(r=>`<div class="request"><div class="requestrow"><div><span class="tag">${esc(r.serviceType.toUpperCase())}</span><span class="tag">${esc(r.quote.status.toUpperCase())}</span><h3>${esc(r.title)}</h3><p>Your quote: $${Number(r.quote.amountMin)}–$${Number(r.quote.amountMax)} · ${esc(r.quote.availability)}</p></div></div></div>`).join('');
+  el.innerHTML=leads.map(r=>`<div class="request">${photoSlotHTML(serviceImage(r.serviceType),null,'req-thumb')}<div class="requestrow"><div><span class="tag">${esc(r.serviceType.toUpperCase())}</span><span class="tag status-${esc(r.quote.status)}">${esc(r.quote.status.toUpperCase())}</span><h3>${esc(r.title)}</h3><p>Your quote: $${Number(r.quote.amountMin)}–$${Number(r.quote.amountMax)} · ${esc(r.quote.availability)}</p></div></div></div>`).join('');
 }
 function renderPrJobs(d,statuses,elId){
   const el=document.getElementById(elId); if(!el)return;
   const jobs=(d.jobs||[]).filter(j=>statuses.includes(j.status));
   if(!jobs.length){el.innerHTML=`<div class="notice">No ${statuses.includes('completed')?'completed':'active'} jobs yet.</div>`;return}
-  el.innerHTML=jobs.map(j=>`<div class="request"><div class="requestrow"><div><span class="tag">${esc((j.serviceType||'SERVICE').toUpperCase())}</span><span class="tag">${esc(j.status.toUpperCase())}</span><h3>${esc(j.title||'Service job')}</h3><p>Scheduled: ${esc(j.scheduledFor||'')}</p></div>${j.status!=='completed'?`<button class="secondary" onclick="markJobStatus('${esc(j.id)}','completed')">Mark Completed</button>`:''}</div></div>`).join('');
+  el.innerHTML=jobs.map(j=>`<div class="request">${photoSlotHTML(serviceImage(j.serviceType),null,'req-thumb')}<div class="requestrow"><div><span class="tag">${esc((j.serviceType||'SERVICE').toUpperCase())}</span><span class="tag status-${esc(j.status)}">${esc(j.status.toUpperCase())}</span><h3>${esc(j.title||'Service job')}</h3><p>Scheduled: ${esc(j.scheduledFor||'')}</p></div>${j.status!=='completed'?`<button class="secondary" onclick="markJobStatus('${esc(j.id)}','completed')">Mark Completed</button>`:''}</div></div>`).join('');
 }
 function renderPrProfile(d){
   const el=document.getElementById('pr-profile-view'); if(!el)return; const u=d.user;
-  el.innerHTML=`<div class="request"><div class="profilebar"><div class="avatar">${initials(u.name)}</div><div><b>${esc(u.name)}</b><div class="statusline">★ ${esc(u.rating||'New')} · ${esc(u.reviewCount||0)} jobs${u.verified?' · Verified':''}</div></div></div><p style="margin-top:14px;color:var(--muted);font-size:14px">${esc(u.businessDescription||'')}</p><p style="color:var(--muted);font-size:14px">Services: ${esc((u.serviceTypes||[]).join(', '))}<br>Phone: ${esc(u.phone||'—')}<br>Plan: ${esc(u.subscription)}</p></div>`;
+  el.innerHTML=`<div class="request"><div class="avatar-slot" style="width:56px;height:56px"><span class="avatar-fallback" style="display:block;font-size:18px">${initials(u.name)}</span></div><div class="requestrow" style="flex-direction:column;align-items:flex-start;gap:6px"><div><b style="font-size:16px">${esc(u.name)}</b><div class="statusline">★ ${esc(u.rating||'New')} · ${esc(u.reviewCount||0)} jobs${u.verified?' · Verified':''} · Plan: ${esc(u.subscription)}</div></div><p style="margin:6px 0 0">${esc(u.businessDescription||'')}</p><p style="margin:4px 0 0">Services: ${esc((u.serviceTypes||[]).join(', '))}<br>Phone: ${esc(u.phone||'—')}</p></div></div>`;
 }
 async function renderMessages(role,d){
   const el=document.getElementById(role==='homeowner'?'ho-messages-view':'pr-messages-view'); if(!el)return;
@@ -360,16 +688,6 @@ async function markJobStatus(jobId,status){
 function show(id){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById(id).classList.add('active');window.scrollTo({top:0,behavior:'smooth'});
   if(id==='homeowner'||id==='provider') loadDashboard();
-}
-// Turn the prototype's navigation actions into authenticated flows.
-document.querySelector('.nav button').onclick=()=>openLogin();
-document.querySelectorAll('.hero .actions button')[0].onclick=()=>enterApp('homeowner');
-document.querySelectorAll('.hero .actions button')[1].onclick=()=>enterApp('provider');
-
-// Add authenticated account controls to both dashboards.
-for(const role of ['homeowner','provider']){
-  const head=document.querySelector('#'+role+' .apphead');
-  if(head&&!head.querySelector('.account-actions')){const wrap=document.createElement('div');wrap.className='account-actions';wrap.innerHTML='<button class="secondary" onclick="logout()">Sign Out</button>';head.appendChild(wrap)}
 }
 if(authToken) ensureAuth().then(()=>loadDashboard());
 </script>
