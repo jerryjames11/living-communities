@@ -163,6 +163,16 @@ button{font:inherit;cursor:pointer}
 .tag.status-completed{background:#e8effc;color:#2c4f8c}
 .provider{display:flex;justify-content:space-between;gap:15px;align-items:center}
 .stub-notice{background:#fff;border:1px solid var(--line);border-radius:17px;padding:26px;text-align:center;color:var(--muted);line-height:1.6}
+.plans-header{background:#fff;border-bottom:1px solid var(--line);padding:14px 6%;display:flex;align-items:center;gap:14px}
+.back-link{border:0;background:none;color:#3f4f4a;font-weight:700;font-size:14px;display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 8px;border-radius:8px}
+.back-link:hover{background:#f3f6f4}
+.current-plan-banner{background:var(--mint);border:1px solid #cfe4d9;border-radius:16px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:26px}
+.current-plan-banner b{color:var(--ink)}
+.price.current{border:2px solid var(--green);background:#f6faf8}
+.price .current-tag{position:absolute;top:16px;right:16px;background:var(--green);color:#fff;font-size:10.5px;font-weight:800;letter-spacing:.4px;padding:4px 9px;border-radius:20px;text-transform:uppercase}
+.checkout-summary{background:var(--mint);border-radius:12px;padding:14px 16px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;font-weight:700}
+.checkout-summary small{display:block;color:var(--muted);font-weight:600;font-size:12px;margin-top:2px}
+.cardrow{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .stub-notice .icon{font-size:30px;margin-bottom:10px}
 
 @media(max-width:900px){.grid{grid-template-columns:1fr}.sidebar{display:none}.servicegrid{grid-template-columns:repeat(2,1fr)}.footer{flex-direction:column}}
@@ -296,7 +306,7 @@ button{font:inherit;cursor:pointer}
 </div>
 <div class="promo-bar">
   <div class="promo-text"><b>Your home. Our priority.</b><span>Reliable service. Transparent pricing. Guaranteed satisfaction.</span></div>
-  <button onclick="show('home');scrollToSection('pricing')">View Plans</button>
+  <button id="ho-viewplans-btn" onclick="openPlansPage('homeowner')">View Plans</button>
 </div>
 <div class="app">
 <div class="dash-titlebar"><div><h1>My Dashboard</h1><p class="subtle" id="ho-welcome-sub">Welcome back!</p></div><div class="pill-select" id="ho-location-pill">📍 Richardson Community</div></div>
@@ -330,7 +340,7 @@ button{font:inherit;cursor:pointer}
 <div class="panel hidden" data-panel="jobs"><div id="ho-jobs-list"></div></div>
 <div class="panel hidden" data-panel="payments"><div class="stub-notice"><div class="icon">💳</div>Payments aren't live yet. Once providers accept jobs through Living Communities, your payment history and receipts will show up here.</div></div>
 <div class="panel hidden" data-panel="messages"><div id="ho-messages-view"></div></div>
-<div class="panel hidden" data-panel="maintenance"><div class="stub-notice"><div class="icon">🏡</div>Home maintenance reminders and seasonal checklists are part of the upcoming Home Manager plan. <a href="#" onclick="show('home');scrollToSection('pricing');return false" style="color:var(--green);font-weight:800">See Plans →</a></div></div>
+<div class="panel hidden" data-panel="maintenance"><div class="stub-notice"><div class="icon">🏡</div>Home maintenance reminders and seasonal checklists are part of the upcoming Home Manager plan. <a href="#" onclick="openPlansPage('homeowner');return false" style="color:var(--green);font-weight:800">See Plans →</a></div></div>
 <div class="panel hidden" data-panel="profile"><div id="ho-profile-view"></div></div>
 <div class="panel hidden" data-panel="help"><div class="stub-notice"><div class="icon">💬</div>Need a hand? Email us at <a href="mailto:hello@livingcommunities.example" style="color:var(--green);font-weight:800">hello@livingcommunities.example</a> and we'll get back to you.</div></div>
 </section></div></div>
@@ -381,6 +391,37 @@ button{font:inherit;cursor:pointer}
 <div class="panel hidden" data-panel="help"><div class="stub-notice"><div class="icon">💬</div>Need a hand? Email us at <a href="mailto:hello@livingcommunities.example" style="color:var(--green);font-weight:800">hello@livingcommunities.example</a> and we'll get back to you.</div></div>
 </section></div></div>
 </main>
+
+<main id="plans" class="page">
+<div class="plans-header">
+  <button class="back-link" onclick="backFromPlans()"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 4.5L6 10l6.5 5.5"/></svg>Back to Dashboard</button>
+  <div class="logo" style="margin-left:4px">Living <span>Communities</span></div>
+</div>
+<div class="app">
+<div class="dash-titlebar"><div><h1>Plans & Pricing</h1><p class="subtle">Pick the plan that fits how you use Living Communities.</p></div></div>
+<div class="current-plan-banner"><div>You're currently on the <b id="plans-current-label">Basic</b> plan.</div></div>
+<div class="pricing3">
+  <div class="price" id="plan-card-free"><h3>Basic</h3><div class="sub">For small jobs and quick fixes</div><div class="amount">$0<small>/month</small></div><div style="color:var(--muted);font-size:12.5px;margin-top:-8px">Pay per service</div><ul><li>Access to trusted providers</li><li>Compare & message providers</li><li>Customer support</li></ul><button class="secondary" style="width:100%" id="plan-btn-free" onclick="selectPlan('free')">Choose Plan</button></div>
+  <div class="price featured" id="plan-card-plus"><div class="price-badge">Most Popular</div><div class="price-body"><h3>Plus</h3><div class="sub">For homeowners who need more</div><div class="amount">$9.99<small>/month</small></div><ul><li>Everything in Basic, plus:</li><li>Priority matching</li><li>Exclusive discounts</li><li>Extended support</li></ul><button class="primary" style="width:100%" id="plan-btn-plus" onclick="selectPlan('plus')">Choose Plan</button></div></div>
+  <div class="price" id="plan-card-pro"><h3>Premium</h3><div class="sub">For ongoing home care</div><div class="amount">$24.99<small>/month</small></div><ul><li>Everything in Plus, plus:</li><li>Annual home check-up</li><li>VIP support</li><li>Priority scheduling</li></ul><button class="secondary" style="width:100%" id="plan-btn-pro" onclick="selectPlan('pro')">Choose Plan</button></div>
+</div>
+</div>
+</main>
+
+<div id="checkoutModal" class="modal"><div class="modalbox">
+ <div class="modalhead"><div><div class="eyebrow">Confirm your plan</div><h2>Payment details</h2></div><button class="close" onclick="closeCheckout()">×</button></div>
+ <div class="checkout-summary"><div id="checkout-plan-name">Plus plan<small>Billed monthly</small></div><div id="checkout-plan-price">$9.99/mo</div></div>
+ <div class="notice">🔒 This is a demo checkout — no real charge is made and no card details are stored.</div>
+ <div class="field"><label>NAME ON CARD</label><input id="ckName" placeholder="Jane Doe"></div>
+ <div class="field"><label>CARD NUMBER</label><input id="ckCardNumber" placeholder="4242 4242 4242 4242" inputmode="numeric" maxlength="19" oninput="formatCardInput(this)"></div>
+ <div class="cardrow">
+   <div class="field"><label>EXPIRY</label><input id="ckExpiry" placeholder="MM/YY" maxlength="5" oninput="formatExpiryInput(this)"></div>
+   <div class="field"><label>CVC</label><input id="ckCvc" placeholder="123" inputmode="numeric" maxlength="4" oninput="this.value=this.value.replace(/[^\d]/g,'')"></div>
+ </div>
+ <div class="field"><label>BILLING ZIP</label><input id="ckZip" placeholder="75080" inputmode="numeric" maxlength="10" oninput="this.value=this.value.replace(/[^\d]/g,'')"></div>
+ <div id="checkoutError" class="notice hidden"></div>
+ <div class="mini-actions"><button class="secondary" onclick="closeCheckout()">Cancel</button><button class="primary" id="checkoutSubmitBtn" onclick="submitCheckout()">Subscribe</button></div>
+</div></div>
 
 <div id="loginModal" class="modal"><div class="modalbox loginbox">
  <div class="modalhead"><div><div class="eyebrow">Secure sign in</div><h2>Welcome back</h2></div><button class="close" onclick="closeLogin()">×</button></div>
@@ -512,6 +553,85 @@ function choosePlan(plan){
   pendingPlan=plan;
   openSignup('homeowner');
 }
+const PLAN_INFO={free:{label:'Basic',price:'$0/mo'},plus:{label:'Plus',price:'$9.99/mo'},pro:{label:'Premium',price:'$24.99/mo'}};
+const PLAN_ORDER=['free','plus','pro'];
+let plansOrigin='homeowner';
+function openPlansPage(role){ plansOrigin=role||'homeowner'; show('plans'); renderPlansPage(); }
+function backFromPlans(){ show(plansOrigin); }
+function updatePlanButtonLabel(){
+  const btn=document.getElementById('ho-viewplans-btn'); if(!btn)return;
+  const cur=(currentUser&&currentUser.subscription)||'free';
+  btn.textContent = cur==='free' ? 'View Plans' : 'View or Upgrade Your Plan';
+}
+function renderPlansPage(){
+  const cur=(currentUser&&currentUser.subscription)||'free';
+  const curLabel=document.getElementById('plans-current-label'); if(curLabel) curLabel.textContent=(PLAN_INFO[cur]||PLAN_INFO.free).label;
+  PLAN_ORDER.forEach(plan=>{
+    const card=document.getElementById('plan-card-'+plan);
+    const btn=document.getElementById('plan-btn-'+plan);
+    if(!card||!btn)return;
+    let tag=card.querySelector('.current-tag');
+    card.classList.toggle('current',plan===cur);
+    if(plan===cur){
+      if(!tag){tag=document.createElement('div');tag.className='current-tag';card.appendChild(tag)}
+      tag.textContent='Current Plan';
+      tag.style.top=card.classList.contains('featured')?'40px':'16px';
+      btn.textContent='Current Plan';btn.disabled=true;
+    } else {
+      if(tag) tag.remove();
+      btn.disabled=false;
+      btn.textContent = PLAN_ORDER.indexOf(plan)>PLAN_ORDER.indexOf(cur) ? 'Upgrade' : 'Downgrade';
+    }
+  });
+}
+async function selectPlan(plan){
+  if(!currentUser)return;
+  const cur=currentUser.subscription||'free';
+  if(plan===cur){toast("You're already on this plan.");return}
+  if(plan==='free'){
+    if(!confirm('Switch to the Basic plan? You will lose your current plan\'s benefits.'))return;
+    try{await api('/subscription',{method:'POST',body:JSON.stringify({plan})});currentUser.subscription=plan;toast('Switched to the Basic plan.');renderPlansPage();updatePlanButtonLabel()}catch(e){toast(e.message)}
+    return;
+  }
+  openCheckoutModal(plan);
+}
+let pendingCheckoutPlan=null;
+function openCheckoutModal(plan){
+  pendingCheckoutPlan=plan;
+  const info=PLAN_INFO[plan];
+  document.getElementById('checkout-plan-name').innerHTML=`${esc(info.label)} plan<small>Billed monthly</small>`;
+  document.getElementById('checkout-plan-price').textContent=info.price;
+  ['ckName','ckCardNumber','ckExpiry','ckCvc','ckZip'].forEach(id=>{const el=document.getElementById(id); if(el)el.value=''});
+  document.getElementById('checkoutError').classList.add('hidden');
+  document.getElementById('checkoutModal').classList.add('show');
+}
+function closeCheckout(){document.getElementById('checkoutModal').classList.remove('show')}
+function formatCardInput(el){el.value=el.value.replace(/[^\d]/g,'').slice(0,16).replace(/(.{4})/g,'$1 ').trim()}
+function formatExpiryInput(el){let v=el.value.replace(/[^\d]/g,'').slice(0,4); if(v.length>=3) v=v.slice(0,2)+'/'+v.slice(2); el.value=v}
+async function submitCheckout(){
+  const err=document.getElementById('checkoutError'); err.classList.add('hidden');
+  const name=document.getElementById('ckName').value.trim();
+  const cardRaw=document.getElementById('ckCardNumber').value.replace(/\s+/g,'');
+  const expiry=document.getElementById('ckExpiry').value.trim();
+  const cvc=document.getElementById('ckCvc').value.trim();
+  const zip=document.getElementById('ckZip').value.trim();
+  const fail=msg=>{err.textContent=msg;err.classList.remove('hidden')};
+  if(!name) return fail('Enter the name on the card.');
+  if(!/^\d{15,16}$/.test(cardRaw)) return fail('Enter a valid card number.');
+  if(!/^(0[1-9]|1[0-2])\/\d{2}$/.test(expiry)) return fail('Enter expiry as MM/YY.');
+  if(!/^\d{3,4}$/.test(cvc)) return fail('Enter a valid CVC.');
+  if(!zip) return fail('Enter your billing ZIP code.');
+  const btn=document.getElementById('checkoutSubmitBtn'); btn.disabled=true; btn.textContent='Processing…';
+  try{
+    await api('/subscription',{method:'POST',body:JSON.stringify({plan:pendingCheckoutPlan})});
+    currentUser.subscription=pendingCheckoutPlan;
+    closeCheckout();
+    toast('You are now on the '+(PLAN_INFO[pendingCheckoutPlan]||{}).label+' plan!');
+    renderPlansPage();
+    updatePlanButtonLabel();
+  }catch(e){fail(e.message)}
+  finally{btn.disabled=false;btn.textContent='Subscribe'}
+}
 function enterApp(role){ if(authToken){ openApp(role); } else { openSignup(role); } }
 async function ensureAuth(role){
   if(!authToken){openLogin(role);return false}
@@ -584,6 +704,7 @@ async function loadDashboard(){
     if(page==='homeowner'){
       const sub=document.getElementById('ho-welcome-sub'); if(sub)sub.textContent=`What does your home need, ${currentUser.name.split(' ')[0]}?`;
       const pill=document.getElementById('ho-location-pill'); if(pill)pill.textContent='📍 '+(currentUser.community||'My Community');
+      updatePlanButtonLabel();
       const req=d.requests[0]; const rbox=document.querySelector('#homeowner .panel[data-panel="dashboard"] .request');
       if(rbox){
         if(req){
