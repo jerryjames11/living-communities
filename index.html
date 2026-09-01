@@ -333,7 +333,7 @@ button{font:inherit;cursor:pointer}
 <div class="service" onclick="openRequest(this.querySelector('b').textContent)">🌱<b>Lawn & Landscaping</b><small>Yards, trees, cleanup</small></div><div class="service" onclick="openRequest(this.querySelector('b').textContent)">🏊<b>Pool Service</b><small>Cleaning & maintenance</small></div><div class="service" onclick="openRequest(this.querySelector('b').textContent)">🔧<b>Handyman</b><small>Repairs & projects</small></div><div class="service" onclick="openRequest(this.querySelector('b').textContent)">🐜<b>Pest Control</b><small>Interior & exterior</small></div>
 </div>
 <div class="section-row" style="margin-top:22px"><h3 style="margin:0">Recent Requests</h3></div>
-<div class="request"><div class="photo-slot req-thumb" data-label="" data-service-img="1"><img src="" alt="" onerror="this.closest('.photo-slot').classList.add('missing')"></div><div class="requestrow"><div><span class="tag">PLUMBING</span><span class="tag">THIS WEEK</span><h3>Kitchen sink leak</h3><p>Submitted yesterday · 3 providers have responded</p><div class="statusline"><span class="dot"></span> 3 providers are interested</div></div><button class="primary" onclick="openQuotes()">View 3 Responses</button></div></div>
+<div id="ho-recent-request"></div>
 </div>
 <div class="panel hidden" data-panel="requests"><div id="ho-requests-list"></div></div>
 <div class="panel hidden" data-panel="quotes"><div id="ho-quotes-list"></div></div>
@@ -477,7 +477,7 @@ button{font:inherit;cursor:pointer}
 </div></div>
 
 <div id="quotesModal" class="modal"><div class="modalbox">
- <div class="modalhead"><div><div class="eyebrow">Compare providers</div><h2>3 responses</h2></div><button class="close" onclick="closeModal()">×</button></div>
+ <div class="modalhead"><div><div class="eyebrow">Compare providers</div><h2 id="quotesModalCount">0 responses</h2></div><button class="close" onclick="closeModal()">×</button></div>
  <div class="quotegrid">
   <div class="quoteCard selected"><div class="profilebar"><div class="avatar">RM</div><div><b>Richardson Pro Plumbing</b><div class="statusline">★ 4.9 · 86 jobs</div></div></div><h3>$185–$250</h3><p style="color:var(--muted);font-size:13px">Thursday, 2–4 PM</p><button class="primary" style="width:100%" onclick="openQuote()">View Response</button></div>
  </div>
@@ -675,9 +675,22 @@ async function acceptQuote(){
   try{const first=lastDashboard.homeowner&&lastDashboard.homeowner.requests[0];if(!first)return;const qs=await api('/requests/'+first.id+'/quotes');const q=qs.quotes[0];await api('/quotes/'+q.id+'/accept',{method:'POST'});closeModal();toast('Quote accepted and job scheduled');await loadDashboard()}catch(e){toast(e.message)}
 }
 async function loadQuotes(requestId){
-  try{const d=await api('/requests/'+requestId+'/quotes');quoteTargetRequestId=requestId;const cards=document.querySelector('#quotesModal .quotegrid');cards.innerHTML=d.quotes.map((q,i)=>`<div class="quoteCard ${i===0?'selected':''}"><div class="profilebar"><div class="avatar">${initials(q.provider.name)}</div><div><b>${esc(q.provider.name)}</b><div class="statusline">★ ${esc(q.provider.rating||'New')} · ${esc(q.provider.reviewCount||0)} jobs</div></div></div><h3>$${Number(q.amountMin)}–$${Number(q.amountMax)}</h3><p style="color:var(--muted);font-size:13px">${esc(q.availability)}</p><button class="${i===0?'primary':'secondary'}" style="width:100%" onclick="viewQuote('${esc(q.id)}')">View Response</button></div>`).join('')||'<div class="notice">No responses yet.</div>'}catch(e){toast(e.message)}
+  try{const d=await api('/requests/'+requestId+'/quotes');quoteTargetRequestId=requestId;const cards=document.querySelector('#quotesModal .quotegrid');cards.innerHTML=d.quotes.map((q,i)=>`<div class="quoteCard ${i===0?'selected':''}"><div class="profilebar"><div class="avatar">${initials(q.provider.name)}</div><div><b>${esc(q.provider.name)}</b><div class="statusline">★ ${esc(q.provider.rating||'New')} · ${esc(q.provider.reviewCount||0)} jobs</div></div></div><h3>$${Number(q.amountMin)}–$${Number(q.amountMax)}</h3><p style="color:var(--muted);font-size:13px">${esc(q.availability)}</p><button class="${i===0?'primary':'secondary'}" style="width:100%" onclick="viewQuote('${esc(q.id)}')">View Response</button></div>`).join('')||'<div class="notice">No responses yet.</div>';const countEl=document.getElementById('quotesModalCount');if(countEl)countEl.textContent=`${d.quotes.length} response${d.quotes.length===1?'':'s'}`}catch(e){toast(e.message)}
 }
-async function viewQuote(id){try{const d=await api('/requests/'+quoteTargetRequestId+'/quotes');const q=d.quotes.find(x=>x.id===id);if(!q)return;document.querySelector('#quoteModal .quoteCard h2').textContent=`$${q.amountMin}–$${q.amountMax}`;document.querySelector('#quoteModal .profilebar b').textContent=q.provider.name;document.querySelector('#quoteModal .quoteCard .tag').textContent=q.availability;document.querySelector('#quoteModal p').textContent='"'+q.message+'"';document.getElementById('quotesModal').classList.remove('show');document.getElementById('quoteModal').classList.add('show');document.querySelector('#quoteModal .primary').onclick=()=>acceptSpecificQuote(id);document.querySelector('#quoteModal .secondary').onclick=()=>{closeModal();switchPanel('homeowner','messages');openThread('homeowner',q.providerId)}}catch(e){toast(e.message)}}
+async function viewQuote(id){try{
+  const d=await api('/requests/'+quoteTargetRequestId+'/quotes');const q=d.quotes.find(x=>x.id===id);if(!q)return;
+  const req=((lastDashboard.homeowner&&lastDashboard.homeowner.requests)||[]).find(r=>r.id===quoteTargetRequestId);
+  document.querySelector('#quoteModal .modalhead h2').textContent=req?req.title:'Service request';
+  document.querySelector('#quoteModal .avatar').textContent=initials(q.provider.name);
+  document.querySelector('#quoteModal .profilebar b').textContent=q.provider.name;
+  document.querySelector('#quoteModal .profilebar .statusline').innerHTML=`<span class="dot"></span>${q.provider.verified?'Verified provider':'Provider'} · ${q.provider.rating?Number(q.provider.rating).toFixed(1):'New'} ★`;
+  document.querySelector('#quoteModal .quoteCard h2').textContent=`$${q.amountMin}–$${q.amountMax}`;
+  document.querySelector('#quoteModal .quoteCard .tag').textContent=q.availability;
+  document.querySelector('#quoteModal p').textContent='"'+(q.message||'No message provided.')+'"';
+  document.getElementById('quotesModal').classList.remove('show');document.getElementById('quoteModal').classList.add('show');
+  document.querySelector('#quoteModal .primary').onclick=()=>acceptSpecificQuote(id);
+  document.querySelector('#quoteModal .secondary').onclick=()=>{closeModal();switchPanel('homeowner','messages');openThread('homeowner',q.providerId)}
+}catch(e){toast(e.message)}}
 async function acceptSpecificQuote(id){try{await api('/quotes/'+id+'/accept',{method:'POST'});closeModal();toast('Quote accepted and job scheduled');await loadDashboard()}catch(e){toast(e.message)}}
 
 async function submitProviderQuote(){try{await api('/requests/'+quoteTargetRequestId+'/quotes',{method:'POST',body:JSON.stringify({amountMin:document.getElementById('quoteMin').value,amountMax:document.getElementById('quoteMax').value,availability:document.getElementById('quoteAvailability').value,message:document.getElementById('quoteMessage').value})});closeModal();toast('Quote sent to homeowner');await loadDashboard()}catch(e){toast(e.message)}}
@@ -705,15 +718,8 @@ async function loadDashboard(){
       const sub=document.getElementById('ho-welcome-sub'); if(sub)sub.textContent=`What does your home need, ${currentUser.name.split(' ')[0]}?`;
       const pill=document.getElementById('ho-location-pill'); if(pill)pill.textContent='📍 '+(currentUser.community||'My Community');
       updatePlanButtonLabel();
-      const req=d.requests[0]; const rbox=document.querySelector('#homeowner .panel[data-panel="dashboard"] .request');
-      if(rbox){
-        if(req){
-          rbox.querySelector('h3').textContent=req.title;rbox.querySelector('p').textContent=`Submitted ${new Date(req.createdAt).toLocaleDateString()} · ${req.quotes.length} providers have responded`;rbox.querySelector('.tag').textContent=req.serviceType.toUpperCase();
-          const img=rbox.querySelector('.req-thumb img'); if(img){img.src='images/'+serviceImage(req.serviceType);img.closest('.photo-slot').classList.remove('missing');img.setAttribute('onerror',"this.closest('.photo-slot').classList.add('missing')")}
-          rbox.style.display='';
-          rbox.querySelector('button').onclick=()=>{document.getElementById('quotesModal').classList.add('show');loadQuotes(req.id)}
-        } else { rbox.style.display='none'; }
-      }
+      const req=d.requests[0]; const rbox=document.getElementById('ho-recent-request');
+      if(rbox) rbox.innerHTML = req ? requestCardHTML(req) : '<div class="stub-notice">You haven\'t submitted any requests yet.</div>';
     }else{
       const pill=document.getElementById('pr-opportunity-pill'); if(pill)pill.textContent=`${d.requests.filter(r=>!r.quote).length} open opportunities`;
       renderPrFeed(d);
