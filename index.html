@@ -108,12 +108,20 @@ button{font:inherit;cursor:pointer}
 .dash-header .logo{font-size:19px}
 .dash-header-right{display:flex;align-items:center;gap:16px}
 .icon-btn{border:1px solid var(--line);background:#fff;border-radius:10px;width:38px;height:38px;display:grid;place-items:center;color:#51635e}
-.dash-user{display:flex;align-items:center;gap:10px}
+.profile-menu-wrap{position:relative}
+.dash-user{display:flex;align-items:center;gap:10px;border:0;background:none;padding:5px 8px 5px 5px;border-radius:12px;cursor:pointer;font:inherit;color:inherit;text-align:left}
+.dash-user:hover{background:#f3f6f4}
 .dash-user .avatar-slot{width:38px;height:38px}
 .dash-user b{display:block;font-size:13.5px;line-height:1.2}
 .dash-user small{color:var(--muted);font-size:11.5px}
-.exit-link{border:0;background:none;color:var(--muted);font-size:13px;font-weight:600;padding:6px 4px}
-.exit-link:hover{color:var(--green)}
+.dash-user .chev{color:#8a9995;flex:0 0 auto;transition:transform .15s}
+.profile-menu-wrap.open .dash-user .chev{transform:rotate(180deg)}
+.profile-menu-wrap.open .dash-user{background:#f3f6f4}
+.profile-menu{position:absolute;top:calc(100% + 8px);right:0;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 14px 34px #17352f26;min-width:200px;padding:8px;z-index:30}
+.profile-menu-item{padding:10px 12px;border-radius:9px;font-size:14px;font-weight:600;color:#3f4f4a;cursor:pointer;display:flex;align-items:center;gap:9px}
+.profile-menu-item:hover{background:#f0f4f2}
+.profile-menu-item.danger{color:#b3432e}
+.profile-menu-divider{height:1px;background:var(--line);margin:6px 4px}
 
 .app{padding:30px 5% 60px}
 .dash-titlebar{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:22px;flex-wrap:wrap;gap:12px}
@@ -279,8 +287,15 @@ button{font:inherit;cursor:pointer}
   <div class="logo">Living <span>Communities</span></div>
   <div class="dash-header-right">
     <button class="icon-btn" title="Notifications" type="button"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8a5 5 0 0 1 10 0c0 4 1.5 5 1.5 5h-13S5 12 5 8Z"/><path d="M8.2 16a1.8 1.8 0 0 0 3.6 0"/></svg></button>
-    <div class="dash-user"><div class="avatar-slot" id="ho-header-avatar" data-label=""><img src="images/avatar-homeowner.jpg" alt="" onerror="this.closest('.avatar-slot').classList.add('missing')"><span class="avatar-fallback" id="ho-header-initials">JC</span></div><div><b id="ho-header-name">Jamie Carter</b><small>Homeowner</small></div></div>
-    <button class="exit-link" onclick="show('home')">Exit</button>
+    <div class="profile-menu-wrap" id="ho-profile-menu-wrap">
+      <button class="dash-user" type="button" onclick="toggleProfileMenu(event,'homeowner')"><div class="avatar-slot" id="ho-header-avatar" data-label=""><img src="images/avatar-homeowner.jpg" alt="" onerror="this.closest('.avatar-slot').classList.add('missing')"><span class="avatar-fallback" id="ho-header-initials">JC</span></div><div><b id="ho-header-name">Jamie Carter</b><small>Homeowner</small></div><svg class="chev" width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7.5l5 5 5-5"/></svg></button>
+      <div class="profile-menu hidden" id="ho-profile-menu">
+        <div class="profile-menu-item" onclick="closeProfileMenus();switchPanel('homeowner','profile')">Settings</div>
+        <div class="profile-menu-item" onclick="closeProfileMenus();switchPanel('homeowner','help')">Help & Support</div>
+        <div class="profile-menu-divider"></div>
+        <div class="profile-menu-item danger" onclick="logout()">Log Out</div>
+      </div>
+    </div>
   </div>
 </div>
 <div class="app">
@@ -293,10 +308,6 @@ button{font:inherit;cursor:pointer}
 <div class="sideitem" data-panel="payments" onclick="switchPanel('homeowner','payments')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="16" height="11" rx="2"/><path d="M2 9h16"/></svg>Payments</div>
 <div class="sideitem" data-panel="messages" onclick="switchPanel('homeowner','messages')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h14v10H8l-4 3v-3H3z"/></svg>Messages</div>
 <div class="sideitem" data-panel="maintenance" onclick="switchPanel('homeowner','maintenance')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l7-6 7 6"/><path d="M5 8v9h10V8"/></svg>My Home</div>
-<div class="sideitem" data-panel="profile" onclick="switchPanel('homeowner','profile')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="2.6"/><path d="M10 2.5v2.2M10 15.3v2.2M3.4 5.6l1.9 1.1M14.7 13.3l1.9 1.1M2.5 10h2.2M15.3 10h2.2M3.4 14.4l1.9-1.1M14.7 6.7l1.9-1.1"/></svg>Settings</div>
-<div class="sideitem" data-panel="help" onclick="switchPanel('homeowner','help')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7.5"/><path d="M7.6 7.7a2.4 2.4 0 1 1 3.3 2.2c-.7.3-1.1.9-1.1 1.5v.3"/><circle cx="9.9" cy="14" r=".5" fill="currentColor" stroke="none"/></svg>Help & Support</div>
-<div class="sidedivider"></div>
-<div class="sideitem" onclick="logout()"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4H4v12h4"/><path d="M11.5 10H17M17 10l-2.5-2.5M17 10l-2.5 2.5"/></svg>Log Out</div>
 </aside>
 <section class="content">
 <div class="panel" data-panel="dashboard">
@@ -334,8 +345,15 @@ button{font:inherit;cursor:pointer}
   <div class="logo">Living <span>Communities</span></div>
   <div class="dash-header-right">
     <button class="icon-btn" title="Notifications" type="button"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8a5 5 0 0 1 10 0c0 4 1.5 5 1.5 5h-13S5 12 5 8Z"/><path d="M8.2 16a1.8 1.8 0 0 0 3.6 0"/></svg></button>
-    <div class="dash-user"><div class="avatar-slot" id="pr-header-avatar" data-label=""><img src="images/avatar-provider.jpg" alt="" onerror="this.closest('.avatar-slot').classList.add('missing')"><span class="avatar-fallback" id="pr-header-initials">RP</span></div><div><b id="pr-header-name">Richardson Pro Plumbing</b><small>Provider</small></div></div>
-    <button class="exit-link" onclick="show('home')">Exit</button>
+    <div class="profile-menu-wrap" id="pr-profile-menu-wrap">
+      <button class="dash-user" type="button" onclick="toggleProfileMenu(event,'provider')"><div class="avatar-slot" id="pr-header-avatar" data-label=""><img src="images/avatar-provider.jpg" alt="" onerror="this.closest('.avatar-slot').classList.add('missing')"><span class="avatar-fallback" id="pr-header-initials">RP</span></div><div><b id="pr-header-name">Richardson Pro Plumbing</b><small>Provider</small></div><svg class="chev" width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7.5l5 5 5-5"/></svg></button>
+      <div class="profile-menu hidden" id="pr-profile-menu">
+        <div class="profile-menu-item" onclick="closeProfileMenus();switchPanel('provider','profile')">Business Profile</div>
+        <div class="profile-menu-item" onclick="closeProfileMenus();switchPanel('provider','help')">Help & Support</div>
+        <div class="profile-menu-divider"></div>
+        <div class="profile-menu-item danger" onclick="logout()">Log Out</div>
+      </div>
+    </div>
   </div>
 </div>
 <div class="app">
@@ -348,9 +366,6 @@ button{font:inherit;cursor:pointer}
 <div class="sideitem" data-panel="completedjobs" onclick="switchPanel('provider','completedjobs')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7.5"/><path d="M6.5 10.2l2.3 2.3 4.7-5"/></svg>Completed Jobs</div>
 <div class="sideitem" data-panel="payments" onclick="switchPanel('provider','payments')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="16" height="11" rx="2"/><path d="M2 9h16"/></svg>Payments</div>
 <div class="sideitem" data-panel="profile" onclick="switchPanel('provider','profile')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l7-6 7 6"/><path d="M5 8v9h10V8"/></svg>Business Profile</div>
-<div class="sideitem" data-panel="help" onclick="switchPanel('provider','help')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7.5"/><path d="M7.6 7.7a2.4 2.4 0 1 1 3.3 2.2c-.7.3-1.1.9-1.1 1.5v.3"/><circle cx="9.9" cy="14" r=".5" fill="currentColor" stroke="none"/></svg>Help & Support</div>
-<div class="sidedivider"></div>
-<div class="sideitem" onclick="logout()"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4H4v12h4"/><path d="M11.5 10H17M17 10l-2.5-2.5M17 10l-2.5 2.5"/></svg>Log Out</div>
 </aside>
 <section class="content">
 <div class="panel" data-panel="dashboard">
@@ -462,7 +477,7 @@ function openLogin(role){
 function closeLogin(){document.getElementById('loginModal').classList.remove('show')}
 async function login(){
   const err=document.getElementById('loginError');err.classList.add('hidden');
-  try{const d=await api('/auth/login',{method:'POST',body:JSON.stringify({email:document.getElementById('loginEmail').value,password:document.getElementById('loginPassword').value})});authToken=d.token;localStorage.setItem('lc_token',authToken);currentUser=d.user;closeLogin();show(currentUser.role==='homeowner'?'homeowner':'provider');await loadDashboard();toast('Signed in as '+currentUser.name)}catch(e){err.textContent=e.message;err.classList.remove('hidden')}
+  try{const d=await api('/auth/login',{method:'POST',body:JSON.stringify({email:document.getElementById('loginEmail').value,password:document.getElementById('loginPassword').value})});authToken=d.token;localStorage.setItem('lc_token',authToken);currentUser=d.user;closeLogin();updateNavAuthUI();show(currentUser.role==='homeowner'?'homeowner':'provider');await loadDashboard();toast('Signed in as '+currentUser.name)}catch(e){err.textContent=e.message;err.classList.remove('hidden')}
 }
 let signupRole='homeowner';
 let pendingPlan=null;
@@ -485,7 +500,7 @@ async function signup(){
     const d=await api('/auth/register',{method:'POST',body:JSON.stringify(payload)});
     authToken=d.token;localStorage.setItem('lc_token',authToken);currentUser=d.user;
     if(pendingPlan){try{await api('/subscription',{method:'POST',body:JSON.stringify({plan:pendingPlan})});currentUser.subscription=pendingPlan}catch(e){} pendingPlan=null}
-    closeSignup();show(currentUser.role==='homeowner'?'homeowner':'provider');await loadDashboard();
+    closeSignup();updateNavAuthUI();show(currentUser.role==='homeowner'?'homeowner':'provider');await loadDashboard();
     toast('Welcome, '+currentUser.name.split(' ')[0]+'!');
   }catch(e){err.textContent=e.message;err.classList.remove('hidden')}
 }
@@ -503,7 +518,25 @@ async function ensureAuth(role){
   try{if(!currentUser) currentUser=(await api('/auth/me')).user;if(role&&currentUser.role!==role){toast('Please sign in with a '+role+' account.');return false}return true}catch(e){authToken=null;localStorage.removeItem('lc_token');openLogin(role);return false}
 }
 async function openApp(role){if(await ensureAuth(role)){show(role);loadDashboard()}}
-function logout(){api('/auth/logout',{method:'POST'}).catch(()=>{});authToken=null;currentUser=null;localStorage.removeItem('lc_token');show('home');toast('Signed out')}
+function logout(){closeProfileMenus();api('/auth/logout',{method:'POST'}).catch(()=>{});authToken=null;currentUser=null;localStorage.removeItem('lc_token');updateNavAuthUI();show('home');toast('Signed out')}
+
+function updateNavAuthUI(){
+  const loggedIn=!!(authToken&&currentUser);
+  document.querySelectorAll('.navcta').forEach(el=>el.classList.toggle('hidden',loggedIn));
+}
+function toggleProfileMenu(evt,role){
+  evt.stopPropagation();
+  const wrap=document.getElementById(role==='homeowner'?'ho-profile-menu-wrap':'pr-profile-menu-wrap');
+  const menu=document.getElementById(role==='homeowner'?'ho-profile-menu':'pr-profile-menu');
+  const isOpen=wrap.classList.contains('open');
+  closeProfileMenus();
+  if(!isOpen){wrap.classList.add('open');menu.classList.remove('hidden')}
+}
+function closeProfileMenus(){
+  document.querySelectorAll('.profile-menu-wrap').forEach(w=>w.classList.remove('open'));
+  document.querySelectorAll('.profile-menu').forEach(m=>m.classList.add('hidden'));
+}
+document.addEventListener('click',closeProfileMenus);
 
 let quoteTargetRequestId=null;
 function openRequest(service){if(!authToken){openLogin('homeowner');return}document.getElementById('serviceType').value=service;document.getElementById('requestModal').classList.add('show')}
@@ -689,7 +722,15 @@ function show(id){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById(id).classList.add('active');window.scrollTo({top:0,behavior:'smooth'});
   if(id==='homeowner'||id==='provider') loadDashboard();
 }
-if(authToken) ensureAuth().then(()=>loadDashboard());
+async function bootAuth(){
+  if(authToken){
+    const ok=await ensureAuth();
+    if(ok&&currentUser){ show(currentUser.role==='homeowner'?'homeowner':'provider'); }
+    else{ authToken=null; }
+  }
+  updateNavAuthUI();
+}
+bootAuth();
 </script>
 
 <div id="quoteSubmitModal" class="modal"><div class="modalbox">
