@@ -522,7 +522,8 @@ function logout(){closeProfileMenus();api('/auth/logout',{method:'POST'}).catch(
 
 function updateNavAuthUI(){
   const loggedIn=!!(authToken&&currentUser);
-  document.querySelectorAll('.navcta').forEach(el=>el.classList.toggle('hidden',loggedIn));
+  const nav=document.querySelector('nav.nav');
+  if(nav) nav.classList.toggle('hidden',loggedIn);
 }
 function toggleProfileMenu(evt,role){
   evt.stopPropagation();
