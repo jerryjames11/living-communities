@@ -173,6 +173,39 @@ button{font:inherit;cursor:pointer}
 .checkout-summary{background:var(--mint);border-radius:12px;padding:14px 16px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;font-weight:700}
 .checkout-summary small{display:block;color:var(--muted);font-weight:600;font-size:12px;margin-top:2px}
 .cardrow{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.care-layout{display:grid;grid-template-columns:1fr 300px;gap:24px;align-items:start}
+.care-list{display:flex;flex-direction:column;gap:12px}
+.care-card{background:#fff;border:1.5px solid var(--line);border-radius:16px;padding:18px 20px;display:flex;gap:14px;align-items:flex-start;cursor:pointer;transition:border-color .12s}
+.care-card:hover{border-color:#b9cec4}
+.care-card.selected{border-color:var(--green);background:#f6faf8}
+.care-checkbox{width:22px;height:22px;border-radius:7px;border:1.5px solid #c7d6cf;flex:0 0 auto;margin-top:2px;display:grid;place-items:center;color:#fff;font-size:13px;font-weight:800}
+.care-checkbox.checked{background:var(--green);border-color:var(--green)}
+.care-checkbox.checked::after{content:"✓"}
+.care-icon{font-size:22px;flex:0 0 auto}
+.care-body{flex:1}
+.care-body .name{font-weight:800;font-size:15.5px}
+.care-body .desc{color:var(--muted);font-size:13px;margin-top:3px;line-height:1.5}
+.care-price{font-weight:800;color:var(--ink);white-space:nowrap;text-align:right}
+.care-price small{display:block;font-weight:600;color:var(--muted);font-size:11.5px}
+.care-summary{background:#fff;border:1px solid var(--line);border-radius:16px;padding:22px;position:sticky;top:20px}
+.care-summary h3{margin:0 0 4px}
+.care-summary .total{font-size:32px;font-weight:800;margin:10px 0 2px}
+.care-summary .seasonal-row{color:var(--muted);font-size:12.5px;margin-bottom:14px}
+@media(max-width:800px){.care-layout{grid-template-columns:1fr}.care-summary{position:static}}
+.careplan-promo{background:linear-gradient(135deg,#f6faf8,#eef5f1);border:1px solid #dbe8e1;border-radius:22px;padding:36px 40px;display:grid;grid-template-columns:1.3fr 1fr;gap:32px;align-items:center}
+.careplan-checklist{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:9px}
+.careplan-checklist li{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:9px 14px;font-weight:700;font-size:14px}
+.careplan-checklist li span{font-size:17px}
+.careplan-checklist li b{margin-left:auto;color:var(--muted);font-weight:700;font-size:13px}
+.careplan-card-preview{display:flex;justify-content:center}
+@media(max-width:800px){.careplan-promo{grid-template-columns:1fr;padding:26px}}
+.hometab-bar{display:flex;gap:6px;background:#f4f7f5;border-radius:11px;padding:4px;width:max-content;margin-bottom:20px}
+.hometab{padding:9px 18px;border-radius:8px;font-size:13.5px;font-weight:600;color:#54655f;cursor:pointer;display:flex;align-items:center;gap:7px;border:0;background:none;font-family:inherit}
+.hometab.active{background:#fff;color:var(--green);font-weight:700;box-shadow:0 1px 3px #17352f1a}
+.nb-post{border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:12px}
+.nb-composer{border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start;margin-bottom:16px}
+.nb-avatar{width:36px;height:36px;border-radius:50%;background:var(--mint);display:grid;place-items:center;flex:0 0 auto;font-weight:800;color:var(--green);font-size:12.5px}
+.nb-upsell{background:#fff;border:1px solid var(--line);border-radius:18px;padding:34px 38px;max-width:420px;text-align:center;margin:10px auto}
 .stub-notice .icon{font-size:30px;margin-bottom:10px}
 
 @media(max-width:900px){.grid{grid-template-columns:1fr}.sidebar{display:none}.servicegrid{grid-template-columns:repeat(2,1fr)}.footer{flex-direction:column}}
@@ -216,6 +249,7 @@ button{font:inherit;cursor:pointer}
   <div class="navlinks">
     <a onclick="scrollToSection('how-it-works')">How It Works</a>
     <a onclick="scrollToSection('services')">Services</a>
+    <a onclick="scrollToSection('careplan')">Home Care Plan</a>
     <a onclick="scrollToSection('pricing')">Pricing</a>
     <a onclick="scrollToSection('about')">About Us</a>
     <a onclick="scrollToSection('contact')">Contact</a>
@@ -259,6 +293,35 @@ button{font:inherit;cursor:pointer}
   <button class="servicetile" onclick="enterApp('homeowner')"><div class="photo-slot" data-label="images/service-electrical.jpg"><img src="images/service-electrical.jpg" alt="" onerror="this.closest('.photo-slot').classList.add('missing')"></div><div class="servicetile-body"><b>Electrical</b><small>Outlets, lighting, panels & more</small></div></button>
   <button class="servicetile" onclick="enterApp('homeowner')"><div class="photo-slot" data-label="images/service-hvac.jpg"><img src="images/service-hvac.jpg" alt="" onerror="this.closest('.photo-slot').classList.add('missing')"></div><div class="servicetile-body"><b>HVAC</b><small>Heating, cooling, AC & more</small></div></button>
   <button class="servicetile" onclick="enterApp('homeowner')"><div class="photo-slot" data-label="images/service-cleaning.jpg"><img src="images/service-cleaning.jpg" alt="" onerror="this.closest('.photo-slot').classList.add('missing')"></div><div class="servicetile-body"><b>House Cleaning</b><small>Recurring or one-time deep clean</small></div></button>
+</div>
+</section>
+
+<section class="section" id="careplan">
+<div class="careplan-promo">
+  <div class="careplan-copy">
+    <div class="eyebrow">New: Home Care Plan</div>
+    <h2 style="margin:6px 0 10px">One flat monthly bill. Every recurring service handled.</h2>
+    <p class="lead" style="margin-bottom:18px">Stop juggling five different providers and five different bills. Pick the recurring services your home needs and we line up trusted local pros — you get one simple monthly charge, plus a private chat with homes near you.</p>
+    <ul class="careplan-checklist">
+      <li><span>🌱</span>Landscaping<b>$89/mo</b></li>
+      <li><span>🐜</span>Pest Control<b>$39/mo</b></li>
+      <li><span>🧹</span>Home Cleaning<b>$129/mo</b></li>
+      <li><span>🏊</span>Pool Cleaning<b>$99/mo</b></li>
+      <li><span>✨</span>Holiday Lighting<b>seasonal</b></li>
+    </ul>
+    <div style="margin-top:22px;display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+      <button class="primary" onclick="openCarePlanPage()">Build Your Plan</button>
+      <span class="subtle" style="font-size:13px">Starting at $39/mo · add or remove services anytime</span>
+    </div>
+  </div>
+  <div class="careplan-card-preview">
+    <div class="care-summary" style="position:static">
+      <h3>Example plan</h3>
+      <div class="subtle" style="font-size:13px">Landscaping + Pest Control + Cleaning</div>
+      <div class="total">$257<small>/mo</small></div>
+      <div class="subtle" style="font-size:12.5px;margin-top:6px">Cancel or change anytime.</div>
+    </div>
+  </div>
 </div>
 </section>
 
@@ -318,6 +381,8 @@ button{font:inherit;cursor:pointer}
 <div class="sideitem" data-panel="payments" onclick="switchPanel('homeowner','payments')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="16" height="11" rx="2"/><path d="M2 9h16"/></svg>Payments</div>
 <div class="sideitem" data-panel="messages" onclick="switchPanel('homeowner','messages')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h14v10H8l-4 3v-3H3z"/></svg>Messages</div>
 <div class="sideitem" data-panel="maintenance" onclick="switchPanel('homeowner','maintenance')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l7-6 7 6"/><path d="M5 8v9h10V8"/></svg>My Home</div>
+<div style="height:1px;background:var(--line);margin:8px 4px"></div>
+<div class="sideitem" onclick="openCarePlanPage('homeowner')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3l1.4 3.4L15 7l-2.6 2.4.7 3.6L10 11.2 6.9 13l.7-3.6L5 7l3.6-.6L10 3z"/></svg><span id="ho-careplan-sidelabel">Home Care Plan</span></div>
 </aside>
 <section class="content">
 <div class="panel" data-panel="dashboard">
@@ -340,7 +405,14 @@ button{font:inherit;cursor:pointer}
 <div class="panel hidden" data-panel="jobs"><div id="ho-jobs-list"></div></div>
 <div class="panel hidden" data-panel="payments"><div class="stub-notice"><div class="icon">💳</div>Payments aren't live yet. Once providers accept jobs through Living Communities, your payment history and receipts will show up here.</div></div>
 <div class="panel hidden" data-panel="messages"><div id="ho-messages-view"></div></div>
-<div class="panel hidden" data-panel="maintenance"><div class="stub-notice"><div class="icon">🏡</div>Home maintenance reminders and seasonal checklists are part of the upcoming Home Manager plan. <a href="#" onclick="openPlansPage('homeowner');return false" style="color:var(--green);font-weight:800">See Plans →</a></div></div>
+<div class="panel hidden" data-panel="maintenance">
+  <div class="hometab-bar">
+    <button type="button" class="hometab active" id="hometab-btn-maintenance" onclick="switchHomeTab('maintenance')">Maintenance</button>
+    <button type="button" class="hometab" id="hometab-btn-neighborhood" onclick="switchHomeTab('neighborhood')"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7.2" stroke-dasharray="2 2.4"/><path d="M10 6.3a2.5 2.5 0 0 1 2.5 2.5c0 1.9-2.5 4.7-2.5 4.7S7.5 10.7 7.5 8.8A2.5 2.5 0 0 1 10 6.3Z"/><circle cx="10" cy="8.8" r="0.75" fill="currentColor" stroke="none"/></svg>Neighborhood</button>
+  </div>
+  <div id="hometab-maintenance"><div class="stub-notice"><div class="icon">🏡</div>Home maintenance reminders and seasonal checklists are coming soon.</div></div>
+  <div id="hometab-neighborhood" class="hidden"></div>
+</div>
 <div class="panel hidden" data-panel="profile"><div id="ho-profile-view"></div></div>
 <div class="panel hidden" data-panel="help"><div class="stub-notice"><div class="icon">💬</div>Need a hand? Email us at <a href="mailto:hello@livingcommunities.example" style="color:var(--green);font-weight:800">hello@livingcommunities.example</a> and we'll get back to you.</div></div>
 </section></div></div>
@@ -364,7 +436,11 @@ button{font:inherit;cursor:pointer}
 </div>
 <div class="promo-bar">
   <div class="promo-text"><b>Grow your business.</b><span>Reach local homeowners looking for trusted help.</span></div>
-  <button onclick="switchPanel('provider','profile')">View Business Profile</button>
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <span class="pill-select" id="pr-usage-badge" style="background:#20493d;color:#fff;border-color:transparent"></span>
+    <button onclick="openProviderPlanPage()">Provider Plan</button>
+    <button onclick="switchPanel('provider','profile')">View Business Profile</button>
+  </div>
 </div>
 <div class="app">
 <div class="dash-titlebar"><div><h1>Provider Dashboard</h1><p class="subtle">Find your next customer.</p></div><div class="pill-select" id="pr-opportunity-pill">12 new opportunities</div></div>
@@ -408,17 +484,64 @@ button{font:inherit;cursor:pointer}
 </div>
 </main>
 
+<main id="providerplan" class="page">
+<div class="plans-header">
+  <button class="back-link" onclick="show('provider')"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 4.5L6 10l6.5 5.5"/></svg>Back to Dashboard</button>
+  <div class="logo" style="margin-left:4px">Living <span>Communities</span></div>
+</div>
+<div class="app">
+<div class="dash-titlebar"><div><h1>Provider Plan</h1><p class="subtle">Free providers can send 3 quotes and start 3 new conversations a month. Go Pro for unlimited.</p></div></div>
+<div class="current-plan-banner"><div>You're currently on the <b id="pp-current-label">Free</b> plan.</div></div>
+<div class="pricing3" style="grid-template-columns:repeat(2,1fr);max-width:680px;margin:0 auto">
+  <div class="price" id="pp-card-free"><h3>Free</h3><div class="sub">Get started at no cost</div><div class="amount">$0<small>/month</small></div><ul><li>See every open request</li><li>3 quotes sent per month</li><li>3 new conversations started per month</li></ul><button class="secondary" style="width:100%" id="pp-btn-free" onclick="selectProviderPlan('free')">Choose Plan</button></div>
+  <div class="price featured" id="pp-card-pro"><div class="price-badge">Grow faster</div><div class="price-body"><h3>Pro Provider</h3><div class="sub">For active providers</div><div class="amount">$29<small>/month</small></div><ul><li>Unlimited quotes</li><li>Unlimited new conversations</li><li>Everything in Free</li></ul><button class="primary" style="width:100%" id="pp-btn-pro" onclick="selectProviderPlan('pro')">Choose Plan</button></div></div>
+</div>
+</div>
+</main>
+
+<main id="carebuilder" class="page">
+<div class="plans-header">
+  <button class="back-link" onclick="backFromCarePlan()"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 4.5L6 10l6.5 5.5"/></svg>Back</button>
+  <div class="logo" style="margin-left:4px">Living <span>Communities</span></div>
+</div>
+<div class="app">
+<div class="dash-titlebar"><div><h1>Build Your Home Care Plan</h1><p class="subtle">Pick the recurring services you want — we line up trusted local pros and bill you once a month.</p></div></div>
+<div class="care-layout">
+  <div class="care-list">
+    <div class="care-card" id="care-card-landscaping" onclick="toggleCareService('landscaping')"><div class="care-checkbox"></div><div class="care-icon">🌱</div><div class="care-body"><div class="name">Landscaping</div><div class="desc">Weekly mow, edge & blow. Final price confirmed after a quick property check for larger lots.</div></div><div class="care-price">$89<small>/mo</small></div></div>
+    <div class="care-card" id="care-card-pest" onclick="toggleCareService('pest')"><div class="care-checkbox"></div><div class="care-icon">🐜</div><div class="care-body"><div class="name">Pest Control</div><div class="desc">Quarterly treatment inside & out, with free call-backs between visits.</div></div><div class="care-price">$39<small>/mo</small></div></div>
+    <div class="care-card" id="care-card-cleaning" onclick="toggleCareService('cleaning')"><div class="care-checkbox"></div><div class="care-icon">🧹</div><div class="care-body"><div class="name">Home Cleaning</div><div class="desc">A full clean every two weeks — kitchens, baths, floors, dusting.</div></div><div class="care-price">$129<small>/mo</small></div></div>
+    <div class="care-card" id="care-card-pool" onclick="toggleCareService('pool')"><div class="care-checkbox"></div><div class="care-icon">🏊</div><div class="care-body"><div class="name">Pool Cleaning</div><div class="desc">Weekly cleaning, chemical balance, and an equipment check.</div></div><div class="care-price">$99<small>/mo</small></div></div>
+    <div class="care-card" id="care-card-holiday_lighting" onclick="toggleCareService('holiday_lighting')"><div class="care-checkbox"></div><div class="care-icon">✨</div><div class="care-body"><div class="name">Holiday Lighting</div><div class="desc">We install in November and take it down in January. Billed once per season, not monthly.</div></div><div class="care-price">$65<small>seasonal</small></div></div>
+  </div>
+  <div class="care-summary">
+    <h3>Your plan</h3>
+    <div class="subtle" style="font-size:13px">Cancel or change anytime.</div>
+    <div class="total" id="care-monthly-total">$0/mo</div>
+    <div class="seasonal-row hidden" id="care-seasonal-row"></div>
+    <div class="seasonal-row hidden" id="care-next-billing-row"></div>
+    <button class="primary" style="width:100%" id="carePlanSubmitBtn" disabled onclick="submitCarePlan()">Select a service to continue</button>
+  </div>
+</div>
+</div>
+</main>
+
 <div id="checkoutModal" class="modal"><div class="modalbox">
  <div class="modalhead"><div><div class="eyebrow">Confirm your plan</div><h2>Payment details</h2></div><button class="close" onclick="closeCheckout()">×</button></div>
  <div class="checkout-summary"><div id="checkout-plan-name">Plus plan<small>Billed monthly</small></div><div id="checkout-plan-price">$9.99/mo</div></div>
- <div class="notice">🔒 This is a demo checkout — no real charge is made and no card details are stored.</div>
+ <div class="notice" id="checkoutSecurityNotice">🔒 This is a demo checkout — no real charge is made and no card details are stored.</div>
  <div class="field"><label>NAME ON CARD</label><input id="ckName" placeholder="Jane Doe"></div>
- <div class="field"><label>CARD NUMBER</label><input id="ckCardNumber" placeholder="4242 4242 4242 4242" inputmode="numeric" maxlength="19" oninput="formatCardInput(this)"></div>
- <div class="cardrow">
-   <div class="field"><label>EXPIRY</label><input id="ckExpiry" placeholder="MM/YY" maxlength="5" oninput="formatExpiryInput(this)"></div>
-   <div class="field"><label>CVC</label><input id="ckCvc" placeholder="123" inputmode="numeric" maxlength="4" oninput="this.value=this.value.replace(/[^\d]/g,'')"></div>
+ <div id="ckDemoFields">
+   <div class="field"><label>CARD NUMBER</label><input id="ckCardNumber" placeholder="4242 4242 4242 4242" inputmode="numeric" maxlength="19" oninput="formatCardInput(this)"></div>
+   <div class="cardrow">
+     <div class="field"><label>EXPIRY</label><input id="ckExpiry" placeholder="MM/YY" maxlength="5" oninput="formatExpiryInput(this)"></div>
+     <div class="field"><label>CVC</label><input id="ckCvc" placeholder="123" inputmode="numeric" maxlength="4" oninput="this.value=this.value.replace(/[^\d]/g,'')"></div>
+   </div>
+   <div class="field"><label>BILLING ZIP</label><input id="ckZip" placeholder="75080" inputmode="numeric" maxlength="10" oninput="this.value=this.value.replace(/[^\d]/g,'')"></div>
  </div>
- <div class="field"><label>BILLING ZIP</label><input id="ckZip" placeholder="75080" inputmode="numeric" maxlength="10" oninput="this.value=this.value.replace(/[^\d]/g,'')"></div>
+ <div id="ckStripeFields" class="hidden">
+   <div class="field"><label>CARD</label><div id="card-element" style="border:1px solid #cbd9d3;border-radius:10px;padding:12px 13px;background:#fff"></div></div>
+ </div>
  <div id="checkoutError" class="notice hidden"></div>
  <div class="mini-actions"><button class="secondary" onclick="closeCheckout()">Cancel</button><button class="primary" id="checkoutSubmitBtn" onclick="submitCheckout()">Subscribe</button></div>
 </div></div>
@@ -442,7 +565,7 @@ button{font:inherit;cursor:pointer}
  <div class="field"><label>EMAIL</label><input id="signupEmail" type="email" placeholder="you@example.com"></div>
  <div class="field"><label>PASSWORD</label><input id="signupPassword" type="password" placeholder="At least 8 characters"></div>
  <div class="field"><label>PHONE</label><input id="signupPhone" placeholder="(214) 555-0100"></div>
- <div id="signupHomeownerFields"><div class="field"><label>COMMUNITY / CITY</label><input id="signupCommunity" placeholder="Richardson Community"></div></div>
+ <div id="signupHomeownerFields"><div class="field"><label>COMMUNITY / CITY</label><input id="signupCommunity" placeholder="Richardson Community"></div><div class="field"><label>HOME ADDRESS <span class="subtle" style="font-weight:600;text-transform:none">(optional — unlocks Neighborhood on a Home Care Plan)</span></label><input id="signupAddress" placeholder="123 Main St, Richardson, TX"></div></div>
  <div id="signupProviderFields" class="hidden">
    <div class="field"><label>SERVICES OFFERED</label><input id="signupServiceTypes" placeholder="Plumbing, Handyman"></div>
    <div class="field"><label>BUSINESS DESCRIPTION</label><textarea id="signupBusinessDescription" placeholder="Tell homeowners what you do..."></textarea></div>
@@ -493,14 +616,141 @@ async function api(path, options={}){
   if(authToken) headers.Authorization='Bearer '+authToken;
   const res=await fetch(API+path,{...options,headers});
   const data=await res.json().catch(()=>({}));
-  if(!res.ok) throw new Error(data.error||'Request failed');
+  if(!res.ok){ const e=new Error(data.error||'Request failed'); e.status=res.status; e.data=data; throw e; }
   return data;
+}
+
+// --- billing (Stripe) ---
+let STRIPE_ENABLED=false, stripe=null, cardElement=null;
+function loadStripeJs(){
+  return new Promise((resolve,reject)=>{
+    if(window.Stripe) return resolve();
+    const s=document.createElement('script'); s.src='https://js.stripe.com/v3/'; s.onload=resolve; s.onerror=reject; document.head.appendChild(s);
+  });
+}
+async function initBilling(){
+  try{
+    const resp=await fetch(API+'/billing/config');
+    const ct=resp.headers.get('content-type')||'';
+    if(!resp.ok || !ct.includes('application/json')) throw new Error('billing config endpoint unreachable (HTTP '+resp.status+') — is the latest server.js running?');
+    const cfg=await resp.json();
+    STRIPE_ENABLED=!!cfg.stripeEnabled;
+    if(STRIPE_ENABLED){
+      await loadStripeJs();
+      stripe=Stripe(cfg.publishableKey);
+      const elements=stripe.elements();
+      cardElement=elements.create('card',{style:{base:{fontSize:'15px',fontFamily:'Inter,system-ui,sans-serif',color:'#17352f','::placeholder':{color:'#8a9995'}}}});
+    }
+  }catch(e){ console.warn('Stripe billing unavailable — using demo checkout instead.',e.message); STRIPE_ENABLED=false; }
+  updateCheckoutFormMode();
+}
+function updateCheckoutFormMode(){
+  const demo=document.getElementById('ckDemoFields'), strp=document.getElementById('ckStripeFields'), notice=document.getElementById('checkoutSecurityNotice');
+  if(!demo||!strp)return;
+  demo.classList.toggle('hidden',STRIPE_ENABLED);
+  strp.classList.toggle('hidden',!STRIPE_ENABLED);
+  if(notice) notice.textContent = STRIPE_ENABLED ? '🔒 Payments are securely processed by Stripe. Your card details never touch our server.' : '🔒 This is a demo checkout — no real charge is made and no card details are stored.';
+}
+function ensureCardElementMounted(){
+  if(STRIPE_ENABLED && cardElement && !cardElement._mounted){ cardElement.mount('#card-element'); cardElement._mounted=true; }
 }
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000)}
 // Escape any value that came from the server before it goes into innerHTML —
 // provider names, quote messages, request text, etc. are all user-entered.
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function initials(name){return esc(String(name||'?').split(' ').map(x=>x[0]).slice(0,2).join(''))}
+
+// --- profile avatars: upload your own photo, or pick one of 5 generic icons per role ---
+const AVATAR_ICONS={
+  homeowner:[
+    {id:'h1',color:'#286b58',label:'House',path:'M8 16L16 9l8 7M10.5 14.5V23h11v-8.5'},
+    {id:'h2',color:'#3f6fb0',label:'Leaf',path:'M16 24V14M16 14c0-4 3-7 7-7 0 4-3 7-7 7zm0 0c0-3-2.5-5-6-5 0 3 2.5 5 6 5z'},
+    {id:'h3',color:'#d9a84e',label:'Key',path:'M20 12a3.5 3.5 0 11-3.5-3.5A3.5 3.5 0 0120 12zM17.5 14.5L9 23m3-3l-2-2m5-1l-2-2'},
+    {id:'h4',color:'#c1694f',label:'Heart',path:'M16 24s-8-5-8-11a4.5 4.5 0 018-2.8A4.5 4.5 0 0124 13c0 6-8 11-8 11z'},
+    {id:'h5',color:'#2f8f8a',label:'Sun',path:'M16 11v-3M16 24v-3M23 16h3M6 16h3M20.5 11.5l2-2M9.5 20.5l-2 2M20.5 20.5l2 2M9.5 11.5l-2-2M16 12.5a3.5 3.5 0 100 7 3.5 3.5 0 000-7z'}
+  ],
+  provider:[
+    {id:'p1',color:'#286b58',label:'Wrench',path:'M21 10a4.5 4.5 0 01-5.8 4.3L9 20.5 6.5 18l6.2-6.2A4.5 4.5 0 0117 6l-2.8 2.8 2 2L19 8a4.5 4.5 0 012 2z'},
+    {id:'p2',color:'#3f6fb0',label:'Toolbox',path:'M6 15h20v9H6zM12 15v-2.5a2 2 0 012-2h4a2 2 0 012 2V15M6 19.5h20'},
+    {id:'p3',color:'#d9a84e',label:'Hammer',path:'M17 9l6 6-2.5 2.5-2-2-8.5 8.5-3-3L15.5 12.5l-2-2z'},
+    {id:'p4',color:'#c1694f',label:'Paint Roller',path:'M9 11h12v5H9zM12 16v8M9 21h6M19 13h3.5v3H19z'},
+    {id:'p5',color:'#2f8f8a',label:'Hard Hat',path:'M9 21a7 7 0 0114 0zM6 21h20v2.5H6zM16 11v3'}
+  ]
+};
+function findAvatarIcon(iconId){ return AVATAR_ICONS.homeowner.concat(AVATAR_ICONS.provider).find(i=>i.id===iconId); }
+function avatarIconSVG(icon,size){
+  return `<svg width="${size}" height="${size}" viewBox="0 0 32 32" style="display:block"><circle cx="16" cy="16" r="16" fill="${icon.color}"/><path d="${icon.path}" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+}
+// Returns the right avatar markup for a user: their uploaded photo, their chosen icon, or an
+// initials fallback — used everywhere an avatar shows (header, profile, Neighborhood).
+function avatarInnerHTML(user,size){
+  if(user&&user.avatarKind==='upload'&&user.avatarValue) return `<img src="${user.avatarValue}" alt="" style="width:${size}px;height:${size}px;object-fit:cover;border-radius:50%;display:block">`;
+  if(user&&user.avatarKind==='icon'&&user.avatarValue){ const icon=findAvatarIcon(user.avatarValue); if(icon) return avatarIconSVG(icon,size); }
+  return `<span style="font-weight:800;color:var(--green);font-size:${Math.round(size*0.38)}px">${initials(user&&user.name)}</span>`;
+}
+function resizeImageFile(file,maxDim){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=()=>{
+      const img=new Image();
+      img.onload=()=>{
+        const scale=Math.min(1,maxDim/Math.max(img.width,img.height));
+        const w=Math.max(1,Math.round(img.width*scale)), h=Math.max(1,Math.round(img.height*scale));
+        const canvas=document.createElement('canvas'); canvas.width=w; canvas.height=h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        resolve(canvas.toDataURL('image/jpeg',0.85));
+      };
+      img.onerror=reject; img.src=reader.result;
+    };
+    reader.onerror=reject; reader.readAsDataURL(file);
+  });
+}
+function refreshProfilePanel(){
+  if(!currentUser)return;
+  const role=currentUser.role==='homeowner'?'homeowner':'provider';
+  if(lastDashboard[role]) lastDashboard[role].user=currentUser; // keep the cached dashboard's user in sync so the re-render isn't stale
+  renderPanel(role,'profile');
+}
+async function pickAvatarIcon(iconId){
+  try{const d=await api('/profile/avatar',{method:'POST',body:JSON.stringify({kind:'icon',value:iconId})});currentUser=d.user;toast('Profile photo updated');refreshProfilePanel();setAvatar(currentUser.role==='homeowner'?'ho':'pr',currentUser)}catch(e){toast(e.message)}
+}
+async function removeAvatar(){
+  try{const d=await api('/profile/avatar',{method:'POST',body:JSON.stringify({kind:'none'})});currentUser=d.user;toast('Reverted to initials');refreshProfilePanel();setAvatar(currentUser.role==='homeowner'?'ho':'pr',currentUser)}catch(e){toast(e.message)}
+}
+async function handleAvatarFileChange(input){
+  const file=input.files&&input.files[0]; if(!file)return;
+  const err=document.getElementById('avatarError'); if(err)err.classList.add('hidden');
+  const fail=msg=>{ if(err){err.textContent=msg;err.classList.remove('hidden')} };
+  if(!/^image\/(png|jpe?g|webp)$/.test(file.type)) return fail('Please choose a PNG, JPEG, or WEBP image.');
+  if(file.size>8*1024*1024) return fail('That image is too large (max 8MB).');
+  try{
+    const dataUrl=await resizeImageFile(file,240);
+    const d=await api('/profile/avatar',{method:'POST',body:JSON.stringify({kind:'upload',value:dataUrl})});
+    currentUser=d.user; toast('Profile photo updated'); refreshProfilePanel(); setAvatar(currentUser.role==='homeowner'?'ho':'pr',currentUser);
+  }catch(e){ fail(e.message) }
+  finally{ input.value=''; }
+}
+function avatarEditorHTML(role,user){
+  const icons=AVATAR_ICONS[role]||AVATAR_ICONS.homeowner;
+  const hasAvatar=!!(user&&user.avatarKind);
+  return `<div class="request" style="margin-top:14px">
+    <div class="requestrow" style="flex-direction:column;align-items:flex-start;gap:10px;width:100%">
+      <b style="font-size:14.5px">Profile Photo</b>
+      <div style="display:flex;align-items:center;gap:14px">
+        <div style="width:64px;height:64px;border-radius:50%;overflow:hidden;background:var(--mint);display:grid;place-items:center;flex:0 0 auto">${avatarInnerHTML(user,64)}</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <label class="secondary" style="display:inline-block;text-align:center;cursor:pointer">Upload Photo<input type="file" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="handleAvatarFileChange(this)"></label>
+          ${hasAvatar?'<button class="secondary" onclick="removeAvatar()">Use Initials Instead</button>':''}
+        </div>
+      </div>
+      <div class="subtle" style="font-size:12.5px">Or pick a generic icon:</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        ${icons.map(ic=>`<button type="button" onclick="pickAvatarIcon('${ic.id}')" title="${esc(ic.label)}" style="border:2px solid ${user&&user.avatarKind==='icon'&&user.avatarValue===ic.id?'var(--green)':'transparent'};background:none;padding:2px;border-radius:50%;cursor:pointer;line-height:0">${avatarIconSVG(ic,40)}</button>`).join('')}
+      </div>
+      <div id="avatarError" class="notice hidden"></div>
+    </div>
+  </div>`;
+}
 
 // Maps a service type to one of the shared placeholder photo files (see images/README.md).
 const SERVICE_IMAGES={'Plumbing':'service-plumbing.jpg','Electrical':'service-electrical.jpg','HVAC':'service-hvac.jpg','House Cleaning':'service-cleaning.jpg','Lawn & Landscaping':'service-lawn.jpg','Handyman':'service-handyman.jpg','Pool Service':'service-pool.jpg','Pest Control':'service-pest.jpg'};
@@ -535,14 +785,19 @@ function updateSignupRoleUI(){
 async function signup(){
   const err=document.getElementById('signupError');err.classList.add('hidden');
   const payload={role:signupRole,name:document.getElementById('signupName').value.trim(),email:document.getElementById('signupEmail').value.trim(),password:document.getElementById('signupPassword').value,phone:document.getElementById('signupPhone').value.trim()};
-  if(signupRole==='homeowner'){payload.community=document.getElementById('signupCommunity').value.trim()}
+  if(signupRole==='homeowner'){payload.community=document.getElementById('signupCommunity').value.trim();payload.address=document.getElementById('signupAddress').value.trim()}
   else{payload.serviceTypes=document.getElementById('signupServiceTypes').value.split(',').map(s=>s.trim()).filter(Boolean);payload.businessDescription=document.getElementById('signupBusinessDescription').value.trim()}
   try{
     const d=await api('/auth/register',{method:'POST',body:JSON.stringify(payload)});
     authToken=d.token;localStorage.setItem('lc_token',authToken);currentUser=d.user;
-    if(pendingPlan){try{await api('/subscription',{method:'POST',body:JSON.stringify({plan:pendingPlan})});currentUser.subscription=pendingPlan}catch(e){} pendingPlan=null}
     closeSignup();updateNavAuthUI();show(currentUser.role==='homeowner'?'homeowner':'provider');await loadDashboard();
     toast('Welcome, '+currentUser.name.split(' ')[0]+'!');
+    if(pendingPlan){
+      const pp=pendingPlan; pendingPlan=null;
+      if(STRIPE_ENABLED){ openCheckoutModal(pp); }
+      else { try{await api('/subscription',{method:'POST',body:JSON.stringify({plan:pp})});currentUser.subscription=pp}catch(e){} }
+    }
+    if(pendingCareServices&&pendingCareServices.length){const svc=pendingCareServices;pendingCareServices=null;openCareCheckout(svc)}
   }catch(e){err.textContent=e.message;err.classList.remove('hidden')}
 }
 function choosePlan(plan){
@@ -584,6 +839,47 @@ function renderPlansPage(){
     }
   });
 }
+function openProviderPlanPage(){ show('providerplan'); renderProviderPlanPage(); }
+function renderProviderPlanPage(){
+  const cur=(currentUser&&currentUser.providerPlan)||'free';
+  const label=document.getElementById('pp-current-label'); if(label) label.textContent=cur==='pro'?'Pro Provider':'Free';
+  ['free','pro'].forEach(plan=>{
+    const card=document.getElementById('pp-card-'+plan), btn=document.getElementById('pp-btn-'+plan);
+    if(!card||!btn)return;
+    let tag=card.querySelector('.current-tag');
+    card.classList.toggle('current',plan===cur);
+    if(plan===cur){
+      if(!tag){tag=document.createElement('div');tag.className='current-tag';card.appendChild(tag)}
+      tag.textContent='Current Plan'; tag.style.top=card.classList.contains('featured')?'40px':'16px';
+      btn.textContent='Current Plan'; btn.disabled=true;
+    } else {
+      if(tag) tag.remove();
+      btn.disabled=false; btn.textContent=plan==='pro'?'Upgrade':'Downgrade';
+    }
+  });
+}
+async function selectProviderPlan(plan){
+  if(!currentUser)return;
+  const cur=currentUser.providerPlan||'free';
+  if(plan===cur){toast("You're already on this plan.");return}
+  if(plan==='free'){
+    if(!confirm('Switch to the Free plan? Quotes and new conversations will be capped at 3/month again.'))return;
+    try{const d=await api('/provider-plan',{method:'POST',body:JSON.stringify({plan:'free'})});currentUser=d.user;toast('Switched to the Free plan.');renderProviderPlanPage();updateProviderPlanBadge()}catch(e){toast(e.message)}
+    return;
+  }
+  checkoutMode='providerplan';
+  document.getElementById('checkout-plan-name').innerHTML='Pro Provider plan<small>Billed monthly</small>';
+  document.getElementById('checkout-plan-price').textContent='$29/mo';
+  resetCheckoutFields();
+  ensureCardElementMounted();
+  document.getElementById('checkoutModal').classList.add('show');
+}
+function updateProviderPlanBadge(){
+  const el=document.getElementById('pr-usage-badge'); if(!el||!currentUser)return;
+  if(currentUser.providerPlan==='pro'){ el.textContent='Pro Provider · Unlimited'; return; }
+  const q=currentUser.quotesUsed||0, c=currentUser.convosUsed||0;
+  el.textContent=`${Math.max(0,3-q)} quotes · ${Math.max(0,3-c)} new chats left this month`;
+}
 async function selectPlan(plan){
   if(!currentUser)return;
   const cur=currentUser.subscription||'free';
@@ -595,14 +891,32 @@ async function selectPlan(plan){
   }
   openCheckoutModal(plan);
 }
+let checkoutMode='plan'; // 'plan' | 'careplan'
 let pendingCheckoutPlan=null;
+let pendingCheckoutCareServices=null;
+function resetCheckoutFields(){
+  ['ckName','ckCardNumber','ckExpiry','ckCvc','ckZip'].forEach(id=>{const el=document.getElementById(id); if(el)el.value=''});
+  document.getElementById('checkoutError').classList.add('hidden');
+}
 function openCheckoutModal(plan){
+  checkoutMode='plan';
   pendingCheckoutPlan=plan;
   const info=PLAN_INFO[plan];
   document.getElementById('checkout-plan-name').innerHTML=`${esc(info.label)} plan<small>Billed monthly</small>`;
   document.getElementById('checkout-plan-price').textContent=info.price;
-  ['ckName','ckCardNumber','ckExpiry','ckCvc','ckZip'].forEach(id=>{const el=document.getElementById(id); if(el)el.value=''});
-  document.getElementById('checkoutError').classList.add('hidden');
+  resetCheckoutFields();
+  ensureCardElementMounted();
+  document.getElementById('checkoutModal').classList.add('show');
+}
+function openCareCheckout(services){
+  checkoutMode='careplan';
+  pendingCheckoutCareServices=services;
+  const monthly=careMonthlyTotal(services), seasonal=careSeasonalTotal(services);
+  let priceText=`$${monthly}/mo`; if(seasonal) priceText+=` + $${seasonal} seasonal`;
+  document.getElementById('checkout-plan-name').innerHTML=`Home Care Plan<small>${services.length} service${services.length===1?'':'s'} selected</small>`;
+  document.getElementById('checkout-plan-price').textContent=priceText;
+  resetCheckoutFields();
+  ensureCardElementMounted();
   document.getElementById('checkoutModal').classList.add('show');
 }
 function closeCheckout(){document.getElementById('checkoutModal').classList.remove('show')}
@@ -611,27 +925,215 @@ function formatExpiryInput(el){let v=el.value.replace(/[^\d]/g,'').slice(0,4); i
 async function submitCheckout(){
   const err=document.getElementById('checkoutError'); err.classList.add('hidden');
   const name=document.getElementById('ckName').value.trim();
-  const cardRaw=document.getElementById('ckCardNumber').value.replace(/\s+/g,'');
-  const expiry=document.getElementById('ckExpiry').value.trim();
-  const cvc=document.getElementById('ckCvc').value.trim();
-  const zip=document.getElementById('ckZip').value.trim();
   const fail=msg=>{err.textContent=msg;err.classList.remove('hidden')};
   if(!name) return fail('Enter the name on the card.');
-  if(!/^\d{15,16}$/.test(cardRaw)) return fail('Enter a valid card number.');
-  if(!/^(0[1-9]|1[0-2])\/\d{2}$/.test(expiry)) return fail('Enter expiry as MM/YY.');
-  if(!/^\d{3,4}$/.test(cvc)) return fail('Enter a valid CVC.');
-  if(!zip) return fail('Enter your billing ZIP code.');
+  if(!STRIPE_ENABLED){
+    const cardRaw=document.getElementById('ckCardNumber').value.replace(/\s+/g,'');
+    const expiry=document.getElementById('ckExpiry').value.trim();
+    const cvc=document.getElementById('ckCvc').value.trim();
+    const zip=document.getElementById('ckZip').value.trim();
+    if(!/^\d{15,16}$/.test(cardRaw)) return fail('Enter a valid card number.');
+    if(!/^(0[1-9]|1[0-2])\/\d{2}$/.test(expiry)) return fail('Enter expiry as MM/YY.');
+    if(!/^\d{3,4}$/.test(cvc)) return fail('Enter a valid CVC.');
+    if(!zip) return fail('Enter your billing ZIP code.');
+  }
   const btn=document.getElementById('checkoutSubmitBtn'); btn.disabled=true; btn.textContent='Processing…';
   try{
-    await api('/subscription',{method:'POST',body:JSON.stringify({plan:pendingCheckoutPlan})});
-    currentUser.subscription=pendingCheckoutPlan;
-    closeCheckout();
-    toast('You are now on the '+(PLAN_INFO[pendingCheckoutPlan]||{}).label+' plan!');
-    renderPlansPage();
-    updatePlanButtonLabel();
+    let paymentMethodId=null;
+    if(STRIPE_ENABLED){
+      const {clientSecret}=await api('/billing/setup-intent',{method:'POST'});
+      const result=await stripe.confirmCardSetup(clientSecret,{payment_method:{card:cardElement,billing_details:{name}}});
+      if(result.error) return fail(result.error.message);
+      paymentMethodId=result.setupIntent.payment_method;
+    }
+    if(checkoutMode==='careplan'){
+      const d=await api('/care-plan',{method:'POST',body:JSON.stringify({services:pendingCheckoutCareServices,paymentMethodId})});
+      currentUser=d.user;
+      closeCheckout();
+      toast('Your Home Care Plan is active!');
+      renderCareBuilder();
+      updateCarePlanSideitem();
+    } else if(checkoutMode==='providerplan'){
+      const d=await api('/provider-plan',{method:'POST',body:JSON.stringify({plan:'pro',paymentMethodId})});
+      currentUser=d.user;
+      closeCheckout();
+      toast('You are now on the Pro Provider plan!');
+      renderProviderPlanPage();
+      updateProviderPlanBadge();
+    } else {
+      const d=await api('/subscription',{method:'POST',body:JSON.stringify({plan:pendingCheckoutPlan,paymentMethodId})});
+      currentUser=d.user||currentUser;
+      currentUser.subscription=pendingCheckoutPlan;
+      closeCheckout();
+      toast('You are now on the '+(PLAN_INFO[pendingCheckoutPlan]||{}).label+' plan!');
+      renderPlansPage();
+      updatePlanButtonLabel();
+    }
   }catch(e){fail(e.message)}
   finally{btn.disabled=false;btn.textContent='Subscribe'}
 }
+const CARE_PLAN_SERVICES=[
+  {key:'landscaping',icon:'🌱',name:'Landscaping',desc:'Weekly mow, edge & blow. Final price confirmed after a quick property check for larger lots.',price:89,billing:'mo'},
+  {key:'pest',icon:'🐜',name:'Pest Control',desc:'Quarterly treatment inside & out, with free call-backs between visits.',price:39,billing:'mo'},
+  {key:'cleaning',icon:'🧹',name:'Home Cleaning',desc:'A full clean every two weeks — kitchens, baths, floors, dusting.',price:129,billing:'mo'},
+  {key:'pool',icon:'🏊',name:'Pool Cleaning',desc:'Weekly cleaning, chemical balance, and an equipment check.',price:99,billing:'mo'},
+  {key:'holiday_lighting',icon:'✨',name:'Holiday Lighting',desc:'We install in November and take it down in January. Billed once per season, not monthly.',price:65,billing:'season'}
+];
+function careServiceByKey(key){return CARE_PLAN_SERVICES.find(s=>s.key===key)}
+function careMonthlyTotal(services){return (services||[...selectedCareServices]).reduce((sum,k)=>{const s=careServiceByKey(k);return s&&s.billing==='mo'?sum+s.price:sum},0)}
+function careSeasonalTotal(services){return (services||[...selectedCareServices]).reduce((sum,k)=>{const s=careServiceByKey(k);return s&&s.billing==='season'?sum+s.price:sum},0)}
+let selectedCareServices=new Set();
+let carePlanOrigin='homeowner';
+let pendingCareServices=null;
+function toggleCareService(key){
+  if(selectedCareServices.has(key)) selectedCareServices.delete(key); else selectedCareServices.add(key);
+  renderCareBuilder();
+}
+function openCarePlanPage(role){
+  carePlanOrigin=role||'homeowner';
+  selectedCareServices=new Set((currentUser&&currentUser.carePlanServices)||[]);
+  show('carebuilder');
+  renderCareBuilder();
+}
+function backFromCarePlan(){ if(authToken&&currentUser){ show(carePlanOrigin); } else { show('home'); } }
+function renderCareBuilder(){
+  CARE_PLAN_SERVICES.forEach(s=>{
+    const card=document.getElementById('care-card-'+s.key);
+    if(!card)return;
+    card.classList.toggle('selected',selectedCareServices.has(s.key));
+    const box=card.querySelector('.care-checkbox'); if(box) box.classList.toggle('checked',selectedCareServices.has(s.key));
+  });
+  const monthly=careMonthlyTotal(), seasonal=careSeasonalTotal();
+  const monthlyEl=document.getElementById('care-monthly-total'); if(monthlyEl) monthlyEl.textContent='$'+monthly+'/mo';
+  const seasonalRow=document.getElementById('care-seasonal-row');
+  if(seasonalRow){
+    if(seasonal){seasonalRow.textContent='+ $'+seasonal+' one-time this fall for holiday lighting';seasonalRow.classList.remove('hidden')}
+    else{seasonalRow.classList.add('hidden')}
+  }
+  const nextBillingRow=document.getElementById('care-next-billing-row');
+  if(nextBillingRow){
+    const nb=currentUser&&currentUser.carePlanNextBilling;
+    if(nb&&currentUser.carePlanServices&&currentUser.carePlanServices.length){
+      const d=new Date(nb+'T00:00:00Z');
+      nextBillingRow.textContent='Next billed '+d.toLocaleDateString('en-US',{month:'long',day:'numeric'});
+      nextBillingRow.classList.remove('hidden');
+    }else{ nextBillingRow.classList.add('hidden'); }
+  }
+  const hasExisting=!!(currentUser&&currentUser.carePlanServices&&currentUser.carePlanServices.length);
+  const currentSet=new Set((currentUser&&currentUser.carePlanServices)||[]);
+  const changed=selectedCareServices.size!==currentSet.size||[...selectedCareServices].some(k=>!currentSet.has(k));
+  const btn=document.getElementById('carePlanSubmitBtn');
+  if(!btn)return;
+  if(selectedCareServices.size===0){
+    btn.textContent=hasExisting?'Cancel My Plan':'Select a service to continue';
+    btn.disabled=!hasExisting;
+  } else if(!changed&&hasExisting){
+    btn.textContent='Current Plan';btn.disabled=true;
+  } else {
+    btn.textContent=hasExisting?'Update My Plan':'Subscribe to My Plan';btn.disabled=false;
+  }
+}
+async function submitCarePlan(){
+  const services=[...selectedCareServices];
+  if(services.length===0){
+    if(!authToken||!currentUser){toast('Select at least one service.');return}
+    if(!confirm('Cancel your Home Care Plan? This removes all recurring services.'))return;
+    try{const d=await api('/care-plan',{method:'POST',body:JSON.stringify({services:[]})});currentUser=d.user;toast('Home Care Plan canceled.');renderCareBuilder();updateCarePlanSideitem()}catch(e){toast(e.message)}
+    return;
+  }
+  if(!authToken||!currentUser){ pendingCareServices=services; openSignup('homeowner'); return; }
+  openCareCheckout(services);
+}
+function updateCarePlanSideitem(){
+  const el=document.getElementById('ho-careplan-sidelabel'); if(!el)return;
+  const active=currentUser&&currentUser.carePlanServices&&currentUser.carePlanServices.length;
+  el.textContent = active ? 'Home Care Plan · Active' : 'Home Care Plan';
+}
+
+// --- My Home: Maintenance / Neighborhood tabs ---
+function switchHomeTab(tab){
+  const btnM=document.getElementById('hometab-btn-maintenance'), btnN=document.getElementById('hometab-btn-neighborhood');
+  const paneM=document.getElementById('hometab-maintenance'), paneN=document.getElementById('hometab-neighborhood');
+  if(btnM)btnM.classList.toggle('active',tab==='maintenance');
+  if(btnN)btnN.classList.toggle('active',tab==='neighborhood');
+  if(paneM)paneM.classList.toggle('hidden',tab!=='maintenance');
+  if(paneN)paneN.classList.toggle('hidden',tab!=='neighborhood');
+  if(tab==='neighborhood') loadNeighborhood();
+}
+async function loadNeighborhood(){
+  const el=document.getElementById('hometab-neighborhood'); if(!el)return;
+  if(!currentUser||!currentUser.carePlanServices||!currentUser.carePlanServices.length){
+    el.innerHTML=`<div class="nb-upsell">
+      <div style="width:48px;height:48px;border-radius:50%;background:var(--mint);display:grid;place-items:center;margin:0 auto 16px">
+        <svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="var(--green)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7.2" stroke-dasharray="2 2.4"/><path d="M10 6.3a2.5 2.5 0 0 1 2.5 2.5c0 1.9-2.5 4.7-2.5 4.7S7.5 10.7 7.5 8.8A2.5 2.5 0 0 1 10 6.3Z"/><circle cx="10" cy="8.8" r="0.75" fill="var(--green)" stroke="none"/></svg>
+      </div>
+      <h3 style="margin:0 0 8px;font-size:17px">See what's happening near you</h3>
+      <p class="subtle" style="margin:0 0 22px;font-size:13.5px;line-height:1.6">Neighborhood connects you with homes within 0.25 mi to swap recommendations, share alerts, and get to know your street. It's included with every Home Care Plan.</p>
+      <button class="primary" onclick="openCarePlanPage('homeowner')">View Home Care Plan →</button>
+    </div>`;
+    return;
+  }
+  el.innerHTML='<div class="notice">Loading nearby posts…</div>';
+  try{
+    const d=await api('/neighborhood');
+    if(d.needsAddress){
+      el.innerHTML=`<div class="nb-upsell">
+        <h3 style="margin:0 0 8px;font-size:17px">Add your home address</h3>
+        <p class="subtle" style="margin:0 0 18px;font-size:13.5px;line-height:1.6">We use it only to find homes within 0.25 mi of you — it's never shown to neighbors.</p>
+        <div class="field" style="text-align:left"><label>HOME ADDRESS</label><input id="nbAddressInput" placeholder="123 Main St, Richardson, TX"></div>
+        <div id="nbAddressError" class="notice hidden" style="text-align:left;margin-top:8px"></div>
+        <button class="primary" style="margin-top:12px" onclick="saveNeighborhoodAddress(this)">Save Address</button>
+      </div>`;
+      return;
+    }
+    renderNeighborhoodFeed(d.posts||[]);
+  }catch(e){ el.innerHTML=`<div class="notice">${esc(e.message)}</div>`; }
+}
+function renderNeighborhoodFeed(posts){
+  const el=document.getElementById('hometab-neighborhood'); if(!el)return;
+  el.innerHTML=`
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+      <p class="subtle" style="margin:0;font-size:13.5px;flex:1">Chat with homes within <b style="color:var(--ink)">0.25 mi</b> of you.</p>
+      <span class="tag">📍 Within 0.25 mi</span>
+    </div>
+    <div class="nb-composer">
+      <div class="nb-avatar" style="overflow:hidden">${avatarInnerHTML(currentUser,36)}</div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:10px">
+        <textarea id="nbComposerInput" placeholder="Share something with your neighbors..." style="min-height:44px"></textarea>
+        <div style="display:flex;justify-content:flex-end"><button class="primary" onclick="submitNeighborhoodPost()">Post</button></div>
+      </div>
+    </div>
+    <div id="nbFeedList">${posts.length?posts.map(nbPostHTML).join(''):'<div class="notice">No posts near you yet. Be the first to say hello.</div>'}</div>
+  `;
+}
+function nbPostHTML(p){
+  const dist = p.distanceMi<0.05 ? 'Your home' : p.distanceMi.toFixed(2)+' mi away';
+  return `<div class="nb-post">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:9px">
+      <div class="nb-avatar" style="width:34px;height:34px;font-size:12px;overflow:hidden">${avatarInnerHTML({name:p.authorName,avatarKind:p.authorAvatarKind,avatarValue:p.authorAvatarValue},34)}</div>
+      <div style="flex:1"><b style="font-size:13.5px">${esc(p.authorName)}</b><div class="statusline">${esc(dist)} · ${esc(new Date(p.createdAt).toLocaleString())}</div></div>
+    </div>
+    <p style="margin:0;font-size:14px;line-height:1.55">${esc(p.body)}</p>
+  </div>`;
+}
+async function submitNeighborhoodPost(){
+  const ta=document.getElementById('nbComposerInput'); const text=(ta?.value||'').trim(); if(!text)return;
+  try{ await api('/neighborhood',{method:'POST',body:JSON.stringify({body:text})}); loadNeighborhood(); }catch(e){ toast(e.message); }
+}
+async function saveNeighborhoodAddress(btn){
+  const input=document.getElementById('nbAddressInput'); const address=(input?.value||'').trim();
+  const err=document.getElementById('nbAddressError');
+  if(!address){ if(err){err.textContent='Enter an address.';err.classList.remove('hidden')} return; }
+  if(btn){btn.disabled=true;btn.textContent='Saving…'}
+  try{
+    const d=await api('/profile/address',{method:'POST',body:JSON.stringify({address})});
+    currentUser=d.user;
+    toast('Address saved!');
+    loadNeighborhood();
+  }catch(e){ if(err){err.textContent=e.message;err.classList.remove('hidden')} }
+  finally{ if(btn){btn.disabled=false;btn.textContent='Save Address'} }
+}
+
 function enterApp(role){ if(authToken){ openApp(role); } else { openSignup(role); } }
 async function ensureAuth(role){
   if(!authToken){openLogin(role);return false}
@@ -693,17 +1195,22 @@ async function viewQuote(id){try{
 }catch(e){toast(e.message)}}
 async function acceptSpecificQuote(id){try{await api('/quotes/'+id+'/accept',{method:'POST'});closeModal();toast('Quote accepted and job scheduled');await loadDashboard()}catch(e){toast(e.message)}}
 
-async function submitProviderQuote(){try{await api('/requests/'+quoteTargetRequestId+'/quotes',{method:'POST',body:JSON.stringify({amountMin:document.getElementById('quoteMin').value,amountMax:document.getElementById('quoteMax').value,availability:document.getElementById('quoteAvailability').value,message:document.getElementById('quoteMessage').value})});closeModal();toast('Quote sent to homeowner');await loadDashboard()}catch(e){toast(e.message)}}
+async function submitProviderQuote(){try{await api('/requests/'+quoteTargetRequestId+'/quotes',{method:'POST',body:JSON.stringify({amountMin:document.getElementById('quoteMin').value,amountMax:document.getElementById('quoteMax').value,availability:document.getElementById('quoteAvailability').value,message:document.getElementById('quoteMessage').value})});closeModal();toast('Quote sent to homeowner');await loadDashboard()}catch(e){handleUpgradeError(e)}}
+function handleUpgradeError(e){
+  toast(e.message);
+  if(e.data&&e.data.upgradeRequired){ setTimeout(()=>{ if(confirm('Upgrade to Pro Provider now for unlimited quotes and messaging?')) openProviderPlanPage(); },250); }
+}
 let lastDashboard={homeowner:null,provider:null};
 let activePanel={homeowner:'dashboard',provider:'dashboard'};
 let activeThreadWith={homeowner:null,provider:null};
 let providersCache=null;
 async function getProviders(){if(!providersCache){try{providersCache=(await api('/providers')).providers}catch(e){providersCache=[]}}return providersCache}
 
-function setAvatar(prefix,name){
+function setAvatar(prefix,user){
   const slot=document.getElementById(prefix+'-header-avatar');
-  const fb=document.getElementById(prefix+'-header-initials');
-  if(fb) fb.textContent=initials(name).toUpperCase()||'?';
+  if(!slot)return;
+  slot.className='avatar-slot';
+  slot.innerHTML=avatarInnerHTML(user,38);
 }
 
 async function loadDashboard(){
@@ -712,16 +1219,18 @@ async function loadDashboard(){
     const d=await api('/dashboard');currentUser=d.user;
     const page=currentUser.role==='homeowner'?'homeowner':'provider';
     lastDashboard[page]=d;
-    setAvatar(page==='homeowner'?'ho':'pr', currentUser.name);
+    setAvatar(page==='homeowner'?'ho':'pr', currentUser);
     const headerName=document.getElementById((page==='homeowner'?'ho':'pr')+'-header-name'); if(headerName)headerName.textContent=currentUser.name;
     if(page==='homeowner'){
       const sub=document.getElementById('ho-welcome-sub'); if(sub)sub.textContent=`What does your home need, ${currentUser.name.split(' ')[0]}?`;
       const pill=document.getElementById('ho-location-pill'); if(pill)pill.textContent='📍 '+(currentUser.community||'My Community');
       updatePlanButtonLabel();
+      updateCarePlanSideitem();
       const req=d.requests[0]; const rbox=document.getElementById('ho-recent-request');
       if(rbox) rbox.innerHTML = req ? requestCardHTML(req) : '<div class="stub-notice">You haven\'t submitted any requests yet.</div>';
     }else{
       const pill=document.getElementById('pr-opportunity-pill'); if(pill)pill.textContent=`${d.requests.filter(r=>!r.quote).length} open opportunities`;
+      updateProviderPlanBadge();
       renderPrFeed(d);
     }
     renderPanel(page, activePanel[page]);
@@ -782,7 +1291,30 @@ function renderHoJobs(d){
 }
 function renderHoProfile(d){
   const el=document.getElementById('ho-profile-view'); if(!el)return; const u=d.user;
-  el.innerHTML=`<div class="request"><div class="avatar-slot" style="width:56px;height:56px"><span class="avatar-fallback" style="display:block;font-size:18px">${initials(u.name)}</span></div><div class="requestrow" style="flex-direction:column;align-items:flex-start;gap:6px"><div><b style="font-size:16px">${esc(u.name)}</b><div class="statusline">${esc(u.community||'')} · Plan: ${esc(u.subscription)}</div></div><p style="margin:6px 0 0">Email: ${esc(u.email)}<br>Phone: ${esc(u.phone||'—')}</p></div></div>`;
+  const geoStatus = u.address ? (u.lat!=null ? '<span style="color:var(--green)">✓ located</span>' : '<span style="color:#b3432e">could not locate — try a more complete address</span>') : '';
+  el.innerHTML=`<div class="request"><div class="avatar-slot" style="width:56px;height:56px;overflow:hidden">${avatarInnerHTML(u,56)}</div><div class="requestrow" style="flex-direction:column;align-items:flex-start;gap:6px"><div><b style="font-size:16px">${esc(u.name)}</b><div class="statusline">${esc(u.community||'')} · Plan: ${esc(u.subscription)}</div></div><p style="margin:6px 0 0">Email: ${esc(u.email)}<br>Phone: ${esc(u.phone||'—')}</p></div></div>
+  <div class="request" style="margin-top:14px">
+    <div class="requestrow" style="flex-direction:column;align-items:flex-start;gap:8px;width:100%">
+      <b style="font-size:14.5px">Home Address</b>
+      <div class="subtle" style="font-size:12.5px;margin-top:-4px">Used only to find neighbors within 0.25 mi for the Home Care Plan Neighborhood feed. ${geoStatus}</div>
+      <div class="field" style="width:100%;margin:6px 0 0"><input id="profileAddressInput" value="${esc(u.address||'')}" placeholder="123 Main St, Richardson, TX"></div>
+      <div id="profileAddressError" class="notice hidden"></div>
+      <button class="secondary" onclick="saveProfileAddress()">Save Address</button>
+    </div>
+  </div>` + avatarEditorHTML('homeowner',u);
+}
+async function saveProfileAddress(){
+  const input=document.getElementById('profileAddressInput'); const address=(input?.value||'').trim();
+  const err=document.getElementById('profileAddressError');
+  if(err)err.classList.add('hidden');
+  if(!address){ if(err){err.textContent='Enter an address.';err.classList.remove('hidden')} return; }
+  try{
+    const d=await api('/profile/address',{method:'POST',body:JSON.stringify({address})});
+    currentUser=d.user;
+    toast('Address saved!');
+    await loadDashboard();
+    renderPanel('homeowner','profile');
+  }catch(e){ if(err){err.textContent=e.message;err.classList.remove('hidden')} }
 }
 function renderPrFeed(d){
   const el=document.getElementById('pr-feed-list'); if(!el)return;
@@ -814,7 +1346,7 @@ function renderPrJobs(d,statuses,elId){
 }
 function renderPrProfile(d){
   const el=document.getElementById('pr-profile-view'); if(!el)return; const u=d.user;
-  el.innerHTML=`<div class="request"><div class="avatar-slot" style="width:56px;height:56px"><span class="avatar-fallback" style="display:block;font-size:18px">${initials(u.name)}</span></div><div class="requestrow" style="flex-direction:column;align-items:flex-start;gap:6px"><div><b style="font-size:16px">${esc(u.name)}</b><div class="statusline">★ ${esc(u.rating||'New')} · ${esc(u.reviewCount||0)} jobs${u.verified?' · Verified':''} · Plan: ${esc(u.subscription)}</div></div><p style="margin:6px 0 0">${esc(u.businessDescription||'')}</p><p style="margin:4px 0 0">Services: ${esc((u.serviceTypes||[]).join(', '))}<br>Phone: ${esc(u.phone||'—')}</p></div></div>`;
+  el.innerHTML=`<div class="request"><div class="avatar-slot" style="width:56px;height:56px;overflow:hidden">${avatarInnerHTML(u,56)}</div><div class="requestrow" style="flex-direction:column;align-items:flex-start;gap:6px"><div><b style="font-size:16px">${esc(u.name)}</b><div class="statusline">★ ${esc(u.rating||'New')} · ${esc(u.reviewCount||0)} jobs${u.verified?' · Verified':''} · Plan: ${esc(u.subscription)}</div></div><p style="margin:6px 0 0">${esc(u.businessDescription||'')}</p><p style="margin:4px 0 0">Services: ${esc((u.serviceTypes||[]).join(', '))}<br>Phone: ${esc(u.phone||'—')}</p></div></div>` + avatarEditorHTML('provider',u);
 }
 async function renderMessages(role,d){
   const el=document.getElementById(role==='homeowner'?'ho-messages-view':'pr-messages-view'); if(!el)return;
@@ -840,7 +1372,7 @@ async function renderMessages(role,d){
 function openThread(role,oid){activeThreadWith[role]=oid;renderMessages(role,lastDashboard[role])}
 async function replyThread(role,oid){
   const ta=document.getElementById('threadReply-'+role); const text=(ta?.value||'').trim(); if(!text)return;
-  try{await api('/messages',{method:'POST',body:JSON.stringify({recipientId:oid,body:text})});await loadDashboard()}catch(e){toast(e.message)}
+  try{await api('/messages',{method:'POST',body:JSON.stringify({recipientId:oid,body:text})});await loadDashboard()}catch(e){handleUpgradeError(e)}
 }
 async function markJobStatus(jobId,status){
   try{await api('/jobs/'+jobId,{method:'PATCH',body:JSON.stringify({status})});toast('Job updated');await loadDashboard()}catch(e){toast(e.message)}
@@ -858,6 +1390,7 @@ async function bootAuth(){
   }
   updateNavAuthUI();
 }
+initBilling();
 bootAuth();
 </script>
 
