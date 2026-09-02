@@ -139,12 +139,12 @@ button{font:inherit;cursor:pointer}
 .sidedivider{height:1px;background:var(--line);margin:10px 4px}
 .content{min-width:0}
 
-.welcome{background:linear-gradient(120deg,var(--ink),#20493d);color:#fff;border-radius:20px;padding:0;margin-bottom:24px;overflow:hidden;display:grid;grid-template-columns:1.3fr 1fr;align-items:stretch}
-.welcome-text{padding:30px 32px}
-.welcome-text h2{margin:0 0 8px;font-size:24px}
+.welcome{background:linear-gradient(120deg,var(--ink),#20493d);color:#fff;border-radius:20px;padding:0;margin-bottom:24px;overflow:hidden;display:grid;grid-template-columns:1.3fr 1fr;align-items:stretch;height:150px}
+.welcome-text{padding:20px 32px;display:flex;flex-direction:column;justify-content:center}
+.welcome-text h2{margin:0 0 6px;font-size:22px}
 .welcome-text p{color:#c9d8d3;margin:0}
-.welcome-photo{min-height:150px}
-@media(max-width:700px){.welcome{grid-template-columns:1fr}.welcome-photo{display:none}}
+.welcome-photo{height:100%}
+@media(max-width:700px){.welcome{grid-template-columns:1fr;height:auto}.welcome-photo{display:none}}
 
 .servicegrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:16px}
 .service{background:#fff;border:1px solid var(--line);border-radius:15px;padding:16px;text-align:left}
@@ -579,15 +579,17 @@ button{font:inherit;cursor:pointer}
 <div id="requestModal" class="modal"><div class="modalbox">
  <div class="modalhead"><div><div class="eyebrow">New service request</div><h2 id="requestTitle">Tell us what your home needs</h2></div><button class="close" onclick="closeModal()">×</button></div>
  <div class="steps"><div class="step on"></div><div class="step on"></div><div class="step"></div></div>
- <div class="notice">🔒 Your name and exact address stay private while providers review your request.</div>
+ <div class="notice">🔒 Your name and exact address stay private. We use your ZIP/city only to match you with nearby providers.</div>
  <div class="formgrid">
   <div class="field"><label>SERVICE</label><select id="serviceType"><option>Lawn & Landscaping</option><option>House Cleaning</option><option>Pool Service</option><option>Handyman</option><option>Plumbing</option><option>Electrical</option><option>HVAC</option><option>Pest Control</option></select></div>
   <div class="field"><label>URGENCY</label><select><option>Flexible</option><option>This week</option><option>ASAP</option><option>Emergency</option></select></div>
+  <div class="field full"><label>YOUR ZIP CODE OR CITY</label><input id="requestZip" placeholder="e.g. 75080 or Richardson, TX" required></div>
   <div class="field full"><label>WHAT DO YOU NEED?</label><textarea placeholder="Describe the work you need done..."></textarea></div>
   <div class="field"><label>PREFERRED DATE</label><input type="date"></div>
   <div class="field"><label>PREFERRED TIME</label><select><option>Morning</option><option>Afternoon</option><option>Evening</option><option>Any time</option></select></div>
   <div class="field full"><label>PHOTOS (OPTIONAL)</label><input type="file" multiple></div>
  </div>
+ <div id="requestZipError" class="notice hidden"></div>
  <div class="mini-actions"><button class="secondary" onclick="closeModal()">Cancel</button><button class="primary" onclick="submitRequest()">Publish Request</button></div>
 </div></div>
 
@@ -1162,16 +1164,26 @@ function closeProfileMenus(){
 document.addEventListener('click',closeProfileMenus);
 
 let quoteTargetRequestId=null;
-function openRequest(service){if(!authToken){openLogin('homeowner');return}document.getElementById('serviceType').value=service;document.getElementById('requestModal').classList.add('show')}
+function openRequest(service){
+  if(!authToken){openLogin('homeowner');return}
+  document.getElementById('serviceType').value=service;
+  const zipEl=document.getElementById('requestZip'); if(zipEl) zipEl.value=(currentUser&&currentUser.address)||'';
+  const zipErr=document.getElementById('requestZipError'); if(zipErr) zipErr.classList.add('hidden');
+  document.getElementById('requestModal').classList.add('show');
+}
 function openQuotes(){document.getElementById('quotesModal').classList.add('show');const first=lastDashboard.homeowner&&lastDashboard.homeowner.requests[0];if(first)loadQuotes(first.id)}
 function openQuote(){document.getElementById('quotesModal').classList.remove('show');document.getElementById('quoteModal').classList.add('show')}
 function closeModal(){document.querySelectorAll('.modal').forEach(m=>m.classList.remove('show'))}
 async function submitRequest(){
+  const zip=document.getElementById('requestZip').value.trim();
+  const zipErr=document.getElementById('requestZipError');
+  if(!zip){ if(zipErr){zipErr.textContent='Enter your ZIP code or city so nearby providers can find your request.';zipErr.classList.remove('hidden')} return; }
+  if(zipErr) zipErr.classList.add('hidden');
   try{
     const svc=document.getElementById('serviceType').value;
-    const d=await api('/requests',{method:'POST',body:JSON.stringify({serviceType:svc,title:svc+' request',description:document.querySelector('#requestModal textarea').value,urgency:document.querySelector('#requestModal select').value,preferredDate:document.querySelector('#requestModal input[type=date]').value,preferredTime:document.querySelectorAll('#requestModal select')[2]?.value||'Any time'})});
+    const d=await api('/requests',{method:'POST',body:JSON.stringify({serviceType:svc,title:svc+' request',address:zip,description:document.querySelector('#requestModal textarea').value,urgency:document.querySelector('#requestModal select').value,preferredDate:document.querySelector('#requestModal input[type=date]').value,preferredTime:document.querySelectorAll('#requestModal select')[2]?.value||'Any time'})});
     closeModal();toast('Request published successfully');await loadDashboard();
-  }catch(e){toast(e.message)}
+  }catch(e){ if(zipErr && e.status===422){zipErr.textContent=e.message;zipErr.classList.remove('hidden')} else {toast(e.message)} }
 }
 async function acceptQuote(){
   try{const first=lastDashboard.homeowner&&lastDashboard.homeowner.requests[0];if(!first)return;const qs=await api('/requests/'+first.id+'/quotes');const q=qs.quotes[0];await api('/quotes/'+q.id+'/accept',{method:'POST'});closeModal();toast('Quote accepted and job scheduled');await loadDashboard()}catch(e){toast(e.message)}
@@ -1229,7 +1241,7 @@ async function loadDashboard(){
       const req=d.requests[0]; const rbox=document.getElementById('ho-recent-request');
       if(rbox) rbox.innerHTML = req ? requestCardHTML(req) : '<div class="stub-notice">You haven\'t submitted any requests yet.</div>';
     }else{
-      const pill=document.getElementById('pr-opportunity-pill'); if(pill)pill.textContent=`${d.requests.filter(r=>!r.quote).length} open opportunities`;
+      const pill=document.getElementById('pr-opportunity-pill'); if(pill)pill.textContent=`${visibleFeedRequests(d).length} open opportunities`;
       updateProviderPlanBadge();
       renderPrFeed(d);
     }
@@ -1316,11 +1328,25 @@ async function saveProfileAddress(){
     renderPanel('homeowner','profile');
   }catch(e){ if(err){err.textContent=e.message;err.classList.remove('hidden')} }
 }
+// Requests without a quote yet, narrowed to the provider's service radius when they've set one.
+// A request whose homeowner never geocoded an address (distanceMi:null) is always kept — missing
+// location data should never silently hide a real lead. Leads already quoted (My Leads) never run
+// through this filter, so shrinking your radius later can't make past work disappear.
+function visibleFeedRequests(d){
+  const radius=d.user&&d.user.effectiveServiceRadiusMi;
+  return (d.requests||[]).filter(r=>!r.quote && (radius==null || r.distanceMi==null || r.distanceMi<=radius));
+}
 function renderPrFeed(d){
   const el=document.getElementById('pr-feed-list'); if(!el)return;
-  const open=(d.requests||[]).filter(r=>!r.quote);
-  if(!open.length){el.innerHTML='<div class="notice">No new opportunities right now — check back soon.</div>';return}
-  el.innerHTML=open.map(r=>`<div class="request">${photoSlotHTML(serviceImage(r.serviceType),null,'req-thumb')}<div class="provider" style="flex:1"><div><span class="tag">${esc(r.serviceType.toUpperCase())}</span><h3 style="margin:8px 0 4px">${esc(r.title)}</h3><p style="color:var(--muted);font-size:14px;margin:0 0 6px">${esc(r.description||'')}</p><small style="color:var(--muted)">📍 ${esc(d.user.community||'Local area')} · ${esc(r.urgency||'Flexible')}</small></div><div class="mini-actions"><button class="secondary" onclick="messageHomeowner('${esc(r.homeownerId)}')">Message</button><button class="primary" onclick="openQuoteSubmit('${esc(r.id)}')">I Can Help</button></div></div></div>`).join('');
+  const open=visibleFeedRequests(d);
+  const radius=d.user&&d.user.effectiveServiceRadiusMi;
+  if(!open.length){
+    el.innerHTML = radius!=null
+      ? `<div class="notice">No open requests within ${radius} mi of ${esc(d.user.address||'your service area')} right now. <a onclick="switchPanel('provider','profile')" style="color:var(--green);font-weight:700;cursor:pointer">Widen your service area →</a></div>`
+      : '<div class="notice">No new opportunities right now — check back soon.</div>';
+    return;
+  }
+  el.innerHTML=open.map(r=>`<div class="request">${photoSlotHTML(serviceImage(r.serviceType),null,'req-thumb')}<div class="provider" style="flex:1"><div><span class="tag">${esc(r.serviceType.toUpperCase())}</span><h3 style="margin:8px 0 4px">${esc(r.title)}</h3><p style="color:var(--muted);font-size:14px;margin:0 0 6px">${esc(r.description||'')}</p><small style="color:var(--muted)">📍 ${esc(d.user.community||'Local area')}${r.distanceMi!=null?' · '+r.distanceMi+' mi away':''} · ${esc(r.urgency||'Flexible')}</small></div><div class="mini-actions"><button class="secondary" onclick="messageHomeowner('${esc(r.homeownerId)}')">Message</button><button class="primary" onclick="openQuoteSubmit('${esc(r.id)}')">I Can Help</button></div></div></div>`).join('');
 }
 function openQuoteSubmit(rid){
   if(!authToken){openLogin('provider');return}
@@ -1344,9 +1370,52 @@ function renderPrJobs(d,statuses,elId){
   if(!jobs.length){el.innerHTML=`<div class="notice">No ${statuses.includes('completed')?'completed':'active'} jobs yet.</div>`;return}
   el.innerHTML=jobs.map(j=>`<div class="request">${photoSlotHTML(serviceImage(j.serviceType),null,'req-thumb')}<div class="requestrow"><div><span class="tag">${esc((j.serviceType||'SERVICE').toUpperCase())}</span><span class="tag status-${esc(j.status)}">${esc(j.status.toUpperCase())}</span><h3>${esc(j.title||'Service job')}</h3><p>Scheduled: ${esc(j.scheduledFor||'')}</p></div>${j.status!=='completed'?`<button class="secondary" onclick="markJobStatus('${esc(j.id)}','completed')">Mark Completed</button>`:''}</div></div>`).join('');
 }
+const PROVIDER_FREE_MAX_RADIUS_MI = 50;
+function providerServiceAreaHTML(u){
+  const geoStatus = u.address ? (u.lat!=null ? '<span style="color:var(--green)">✓ located</span>' : '<span style="color:#b3432e">could not locate — try a more specific city or ZIP</span>') : '';
+  const isPro = u.providerPlan==='pro';
+  const maxRadius = isPro ? 200 : PROVIDER_FREE_MAX_RADIUS_MI;
+  const radius = Math.min(u.serviceRadiusMi || (isPro?25:PROVIDER_FREE_MAX_RADIUS_MI), maxRadius);
+  const planNote = isPro
+    ? ''
+    : `<div class="subtle" style="font-size:12.5px">Free plan is capped at ${PROVIDER_FREE_MAX_RADIUS_MI} mi. <a onclick="openProviderPlanPage()" style="color:var(--green);font-weight:700;cursor:pointer">Upgrade to Pro</a> to widen it or see every request nationwide.</div>`;
+  return `<div class="request" style="margin-top:14px">
+    <div class="requestrow" style="flex-direction:column;align-items:flex-start;gap:8px;width:100%">
+      <b style="font-size:14.5px">Service Area</b>
+      <div class="subtle" style="font-size:12.5px;margin-top:-4px">Filter your Request Feed to jobs near you. ${geoStatus}</div>
+      <div class="field" style="width:100%;margin:6px 0 0"><input id="providerAreaCityZip" value="${esc(u.address||'')}" placeholder="City, State or ZIP — e.g. Richardson, TX or 75080"></div>
+      <div style="width:100%;display:flex;align-items:center;gap:12px">
+        <input type="range" id="providerAreaRadius" min="5" max="${maxRadius}" step="5" value="${radius}" style="flex:1" oninput="document.getElementById('providerAreaRadiusLabel').textContent=this.value+' mi'">
+        <span id="providerAreaRadiusLabel" style="font-weight:700;min-width:52px">${radius} mi</span>
+      </div>
+      ${planNote}
+      <div id="providerAreaError" class="notice hidden"></div>
+      <div class="mini-actions" style="margin-top:2px">
+        <button class="primary" onclick="saveProviderServiceArea()">Save Service Area</button>
+        ${(isPro&&u.address)?'<button class="secondary" onclick="clearProviderServiceArea()">Show All Requests</button>':''}
+      </div>
+    </div>
+  </div>`;
+}
+async function saveProviderServiceArea(){
+  const cityzip=document.getElementById('providerAreaCityZip').value.trim();
+  const radius=Number(document.getElementById('providerAreaRadius').value);
+  const err=document.getElementById('providerAreaError'); if(err)err.classList.add('hidden');
+  if(!cityzip){ if(err){err.textContent='Enter a city or ZIP code.';err.classList.remove('hidden')} return; }
+  try{
+    const d=await api('/profile/service-area',{method:'POST',body:JSON.stringify({address:cityzip,radiusMi:radius})});
+    currentUser=d.user; toast('Service area saved!'); await loadDashboard(); renderPanel('provider','profile');
+  }catch(e){ if(err){err.textContent=e.message;err.classList.remove('hidden')} }
+}
+async function clearProviderServiceArea(){
+  try{
+    const d=await api('/profile/service-area',{method:'POST',body:JSON.stringify({address:''})});
+    currentUser=d.user; toast('Showing every open request again.'); await loadDashboard(); renderPanel('provider','profile');
+  }catch(e){ handleUpgradeError(e); }
+}
 function renderPrProfile(d){
   const el=document.getElementById('pr-profile-view'); if(!el)return; const u=d.user;
-  el.innerHTML=`<div class="request"><div class="avatar-slot" style="width:56px;height:56px;overflow:hidden">${avatarInnerHTML(u,56)}</div><div class="requestrow" style="flex-direction:column;align-items:flex-start;gap:6px"><div><b style="font-size:16px">${esc(u.name)}</b><div class="statusline">★ ${esc(u.rating||'New')} · ${esc(u.reviewCount||0)} jobs${u.verified?' · Verified':''} · Plan: ${esc(u.subscription)}</div></div><p style="margin:6px 0 0">${esc(u.businessDescription||'')}</p><p style="margin:4px 0 0">Services: ${esc((u.serviceTypes||[]).join(', '))}<br>Phone: ${esc(u.phone||'—')}</p></div></div>` + avatarEditorHTML('provider',u);
+  el.innerHTML=`<div class="request"><div class="avatar-slot" style="width:56px;height:56px;overflow:hidden">${avatarInnerHTML(u,56)}</div><div class="requestrow" style="flex-direction:column;align-items:flex-start;gap:6px"><div><b style="font-size:16px">${esc(u.name)}</b><div class="statusline">★ ${esc(u.rating||'New')} · ${esc(u.reviewCount||0)} jobs${u.verified?' · Verified':''} · Plan: ${esc(u.subscription)}</div></div><p style="margin:6px 0 0">${esc(u.businessDescription||'')}</p><p style="margin:4px 0 0">Services: ${esc((u.serviceTypes||[]).join(', '))}<br>Phone: ${esc(u.phone||'—')}</p></div></div>` + providerServiceAreaHTML(u) + avatarEditorHTML('provider',u);
 }
 async function renderMessages(role,d){
   const el=document.getElementById(role==='homeowner'?'ho-messages-view':'pr-messages-view'); if(!el)return;

@@ -52,9 +52,18 @@ function tooManyAttempts(ip){
 // --- row -> API-shape mappers (DB stays snake_case; the frontend expects the original camelCase shape) ---
 function mapUser(r){
   if(!r) return null;
-  const u={id:r.id,role:r.role,name:r.name,email:r.email,passwordHash:r.password_hash,salt:r.salt,phone:r.phone,createdAt:toISO(r.created_at),subscription:r.subscription,carePlanServices:r.care_plan_services||[],avatarKind:r.avatar_kind||null,avatarValue:r.avatar_value||null};
-  if(r.role==='homeowner'){ u.address=r.address; u.community=r.community; u.lat=r.lat!=null?Number(r.lat):null; u.lng=r.lng!=null?Number(r.lng):null; u.carePlanNextBilling=r.care_plan_next_billing?new Date(r.care_plan_next_billing).toISOString().slice(0,10):null; }
-  else { u.serviceTypes=r.service_types||[]; u.rating=r.rating!=null?Number(r.rating):null; u.reviewCount=r.review_count||0; u.verified=!!r.verified; u.businessDescription=r.business_description; u.providerPlan=r.provider_plan||'free'; u.quotesUsed=r.quotes_sent_this_period||0; u.convosUsed=r.new_conversations_this_period||0; }
+  const u={id:r.id,role:r.role,name:r.name,email:r.email,passwordHash:r.password_hash,salt:r.salt,phone:r.phone,createdAt:toISO(r.created_at),subscription:r.subscription,carePlanServices:r.care_plan_services||[],avatarKind:r.avatar_kind||null,avatarValue:r.avatar_value||null,address:r.address,lat:r.lat!=null?Number(r.lat):null,lng:r.lng!=null?Number(r.lng):null};
+  if(r.role==='homeowner'){ u.community=r.community; u.carePlanNextBilling=r.care_plan_next_billing?new Date(r.care_plan_next_billing).toISOString().slice(0,10):null; }
+  else {
+    u.serviceTypes=r.service_types||[]; u.rating=r.rating!=null?Number(r.rating):null; u.reviewCount=r.review_count||0; u.verified=!!r.verified; u.businessDescription=r.business_description; u.providerPlan=r.provider_plan||'free'; u.quotesUsed=r.quotes_sent_this_period||0; u.convosUsed=r.new_conversations_this_period||0;
+    u.serviceRadiusMi=r.service_radius_mi!=null?Number(r.service_radius_mi):null;
+    // Effective radius actually used to filter the feed: Free plan is capped at PROVIDER_FREE_MAX_RADIUS_MI
+    // (even if an older saved value exceeds it) and defaults to it once they have a location on file but
+    // never picked a radius themselves. Pro plan is unlimited unless they've set their own radius.
+    if(u.providerPlan==='pro'){ u.effectiveServiceRadiusMi = u.serviceRadiusMi; }
+    else if(u.serviceRadiusMi!=null){ u.effectiveServiceRadiusMi = Math.min(u.serviceRadiusMi, PROVIDER_FREE_MAX_RADIUS_MI); }
+    else { u.effectiveServiceRadiusMi = u.lat!=null ? PROVIDER_FREE_DEFAULT_RADIUS_MI : null; }
+  }
   return u;
 }
 function mapRequest(r){ return {id:r.id,homeownerId:r.homeowner_id,serviceType:r.service_type,title:r.title,description:r.description,urgency:r.urgency,preferredDate:r.preferred_date,preferredTime:r.preferred_time,status:r.status,createdAt:toISO(r.created_at)}; }
@@ -102,6 +111,8 @@ function stripeConfigured(){ return !!STRIPE_SECRET_KEY; }
 const PROVIDER_PLAN_PRICE_CENTS = 2900;
 const PROVIDER_FREE_QUOTE_LIMIT = 3;
 const PROVIDER_FREE_CONVO_LIMIT = 3;
+const PROVIDER_FREE_MAX_RADIUS_MI = 50;
+const PROVIDER_FREE_DEFAULT_RADIUS_MI = 50;
 
 // Flattens a nested object into Stripe's bracket-notation form encoding, e.g.
 // {items:[{price_data:{unit_amount:100}}]} -> "items[0][price_data][unit_amount]=100"
@@ -407,6 +418,7 @@ async function initSchema(){
   await pool.query(`CREATE TABLE IF NOT EXISTS stripe_events (id text PRIMARY KEY, type text, created_at timestamptz DEFAULT now())`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_kind text`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_value text`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS service_radius_mi integer`);
   await pool.query(`
     CREATE TABLE IF NOT EXISTS email_log (
       id text PRIMARY KEY,
@@ -632,10 +644,17 @@ const server=http.createServer(async (req,res)=>{
         return send(res,200,{user:safeUser(u),requests,messages:messages.map(mapMessage),jobs:jobs.map(mapJob),reviews:reviews.map(mapReview)});
       }
       if(u.role==='provider'){ const usage=await ensureUsagePeriod(u); u.quotesUsed=usage.quotes; u.convosUsed=usage.convos; }
-      const openRows=await q("SELECT * FROM requests WHERE status='open' ORDER BY created_at DESC");
+      // Joins in the homeowner's lat/lng (if they ever geocoded an address) so each request can
+      // carry a distanceMi from this provider — used to filter/label the feed by service area.
+      // Requests whose homeowner has no geocoded location get distanceMi:null and are never
+      // filtered out, so incomplete address data never silently hides real leads.
+      const openRows=await q("SELECT r.*, uh.lat AS h_lat, uh.lng AS h_lng FROM requests r JOIN users uh ON uh.id=r.homeowner_id WHERE r.status='open' ORDER BY r.created_at DESC");
       const myQuotes=openRows.length?await q('SELECT * FROM quotes WHERE request_id = ANY($1::text[]) AND provider_id=$2',[openRows.map(r=>r.id),u.id]):[];
       const quoteByReq=Object.fromEntries(myQuotes.map(qq=>[qq.request_id,mapQuote(qq)]));
-      const requests=openRows.map(r=>({...mapRequest(r),quote:quoteByReq[r.id]||null}));
+      const requests=openRows.map(r=>{
+        const distanceMi=(u.lat!=null&&u.lng!=null&&r.h_lat!=null&&r.h_lng!=null)?Math.round(haversineMiles(u.lat,u.lng,Number(r.h_lat),Number(r.h_lng))*10)/10:null;
+        return {...mapRequest(r),quote:quoteByReq[r.id]||null,distanceMi};
+      });
       const messages=await q('SELECT * FROM messages WHERE $1 = ANY(participants) ORDER BY created_at',[u.id]);
       const jobs=await q('SELECT * FROM jobs WHERE provider_id=$1 ORDER BY created_at DESC',[u.id]);
       const reviews=await q('SELECT * FROM reviews WHERE provider_id=$1',[u.id]);
@@ -649,6 +668,17 @@ const server=http.createServer(async (req,res)=>{
     if(p==='/api/requests' && req.method==='POST'){
       if(u.role!=='homeowner')return send(res,403,{error:'Only homeowners can create requests'});
       const b=await body(req);
+      const address=String(b.address||'').trim().slice(0,200);
+      if(!address) return send(res,400,{error:'Enter your ZIP code or city so nearby providers can find your request.'});
+      let lat=u.lat, lng=u.lng;
+      // Only re-geocode when the address is new or changed — keeps this fast/cheap for the common case
+      // where the homeowner is just confirming their saved address on a new request.
+      if(address!==(u.address||'') || lat==null || lng==null){
+        const geo=await geocodeAddress(address);
+        if(!geo) return send(res,422,{error:"We couldn't locate that ZIP or city. Try being more specific (e.g. \"Richardson, TX\" or \"75080\")."});
+        lat=geo.lat; lng=geo.lng;
+        await q1('UPDATE users SET address=$1,lat=$2,lng=$3,geocoded_at=now() WHERE id=$4 RETURNING *',[address,lat,lng,u.id]);
+      }
       const serviceType=b.serviceType||'Handyman';
       const row=await q1('INSERT INTO requests (id,homeowner_id,service_type,title,description,urgency,preferred_date,preferred_time,status) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *',
         [id('req'),u.id,serviceType,String(b.title||`${serviceType} service request`).slice(0,120),String(b.description||'').slice(0,2000),b.urgency||'Flexible',b.preferredDate||'',b.preferredTime||'Any time','open']);
@@ -852,6 +882,25 @@ const server=http.createServer(async (req,res)=>{
         return send(res,200,{user:safeUser(mapUser(row))});
       }
       return send(res,400,{error:'Invalid avatar selection'});
+    }
+    if(p==='/api/profile/service-area' && req.method==='POST'){
+      if(u.role!=='provider')return send(res,403,{error:'Only providers set a service area'});
+      const b=await body(req);
+      const address=String(b.address||'').trim().slice(0,200);
+      const maxRadiusMi = u.providerPlan==='pro' ? 200 : PROVIDER_FREE_MAX_RADIUS_MI;
+      if(!address){
+        if(u.providerPlan!=='pro'){
+          return send(res,403,{error:`Free plan providers keep a service area (up to ${PROVIDER_FREE_MAX_RADIUS_MI} mi). Upgrade to Pro Provider to see every open request, nationwide.`,upgradeRequired:true});
+        }
+        // Clearing the field resets to "show every open request" — Pro plan only.
+        const row=await q1('UPDATE users SET address=NULL, lat=NULL, lng=NULL, geocoded_at=NULL, service_radius_mi=NULL WHERE id=$1 RETURNING *',[u.id]);
+        return send(res,200,{user:safeUser(mapUser(row))});
+      }
+      const radiusMi=Math.max(1,Math.min(maxRadiusMi,Number(b.radiusMi)||Math.min(25,maxRadiusMi)));
+      const geo=await geocodeAddress(address);
+      if(!geo) return send(res,422,{error:"We couldn't locate that city or ZIP. Try being more specific (e.g. \"Richardson, TX\" or \"75080\")."});
+      const row=await q1('UPDATE users SET address=$1, lat=$2, lng=$3, geocoded_at=now(), service_radius_mi=$4 WHERE id=$5 RETURNING *',[address,geo.lat,geo.lng,radiusMi,u.id]);
+      return send(res,200,{user:safeUser(mapUser(row))});
     }
     if(p==='/api/profile/address' && req.method==='POST'){
       if(u.role!=='homeowner')return send(res,403,{error:'Only homeowners have a home address'});
