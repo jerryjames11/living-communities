@@ -54,7 +54,7 @@ function mapUser(r){
   if(!r) return null;
   const u={id:r.id,role:r.role,name:r.name,email:r.email,passwordHash:r.password_hash,salt:r.salt,phone:r.phone,createdAt:toISO(r.created_at),subscription:r.subscription,carePlanServices:r.care_plan_services||[],avatarKind:r.avatar_kind||null,avatarValue:r.avatar_value||null,address:r.address,lat:r.lat!=null?Number(r.lat):null,lng:r.lng!=null?Number(r.lng):null};
   if(r.role==='homeowner'){ u.community=r.community; u.carePlanNextBilling=r.care_plan_next_billing?new Date(r.care_plan_next_billing).toISOString().slice(0,10):null; }
-  else {
+  else if(r.role==='provider'){
     u.serviceTypes=r.service_types||[]; u.rating=r.rating!=null?Number(r.rating):null; u.reviewCount=r.review_count||0; u.verified=!!r.verified; u.businessDescription=r.business_description; u.providerPlan=r.provider_plan||'free'; u.quotesUsed=r.quotes_sent_this_period||0; u.convosUsed=r.new_conversations_this_period||0;
     u.serviceRadiusMi=r.service_radius_mi!=null?Number(r.service_radius_mi):null;
     // Effective radius actually used to filter the feed: Free plan is capped at PROVIDER_FREE_MAX_RADIUS_MI
@@ -63,8 +63,31 @@ function mapUser(r){
     if(u.providerPlan==='pro'){ u.effectiveServiceRadiusMi = u.serviceRadiusMi; }
     else if(u.serviceRadiusMi!=null){ u.effectiveServiceRadiusMi = Math.min(u.serviceRadiusMi, PROVIDER_FREE_MAX_RADIUS_MI); }
     else { u.effectiveServiceRadiusMi = u.lat!=null ? PROVIDER_FREE_DEFAULT_RADIUS_MI : null; }
+    // Verification / background-check workflow
+    u.entityType=r.provider_entity_type||null;
+    u.verificationStatus=r.verification_status||'unverified';
+    u.verificationNotes=r.verification_notes||null;
+    u.verificationSubmittedAt=toISO(r.verification_submitted_at);
+    u.verificationReviewedAt=toISO(r.verification_reviewed_at);
+    u.verificationDocuments=r.verification_documents||[];
+    u.backgroundCheckStatus=r.background_check_status||'not_requested';
+    u.backgroundCheckRequestedAt=toISO(r.background_check_requested_at);
   }
   return u;
+}
+// The subset of a provider's record that's safe to hand to OTHER users (homeowners viewing a
+// quote, the provider directory). Never includes verification documents (ID/license scans),
+// review notes, email, phone, or precise location — only what builds trust + lets the
+// homeowner recognize/contact them through the app's own messaging.
+function publicProviderView(u){
+  if(!u) return null;
+  return {
+    id:u.id, name:u.name, role:u.role, rating:u.rating, reviewCount:u.reviewCount,
+    verified:u.verified, verificationStatus:u.verificationStatus, entityType:u.entityType,
+    businessDescription:u.businessDescription, serviceTypes:u.serviceTypes,
+    avatarKind:u.avatarKind, avatarValue:u.avatarValue, providerPlan:u.providerPlan,
+    createdAt:u.createdAt
+  };
 }
 function mapRequest(r){ return {id:r.id,homeownerId:r.homeowner_id,serviceType:r.service_type,title:r.title,description:r.description,urgency:r.urgency,preferredDate:r.preferred_date,preferredTime:r.preferred_time,status:r.status,createdAt:toISO(r.created_at)}; }
 function mapQuote(r){ return {id:r.id,requestId:r.request_id,providerId:r.provider_id,amountMin:Number(r.amount_min),amountMax:Number(r.amount_max),availability:r.availability,message:r.message,status:r.status,createdAt:toISO(r.created_at)}; }
@@ -230,6 +253,21 @@ async function sendEmail({to,type,subject,html,userId}){
 // Must match the icon ids defined client-side in AVATAR_ICONS (index.html) — kept here only as a
 // server-side allowlist so an /api/profile/avatar call can't stash an arbitrary string.
 const AVATAR_ICON_IDS=['h1','h2','h3','h4','h5','p1','p2','p3','p4','p5'];
+
+// --- provider verification / background-check workflow ---
+const VERIFICATION_DOC_RE=/^data:(image\/(png|jpe?g|webp)|application\/pdf);base64,[A-Za-z0-9+/=]+$/;
+const VERIFICATION_MAX_DOC_BYTES=5_500_000; // ~4MB file once base64-encoded
+const VERIFICATION_MAX_DOCS=5;
+// No real screening vendor is wired up (needs a signed vendor account + API keys we don't have,
+// and this sandbox can't reach the internet to test one anyway). This just records that a check
+// was requested so it shows up in the admin queue. To go live: sign up with a vendor that offers
+// a HOSTED candidate flow (e.g. Checkr Invitations) — the provider enters SSN/DOB directly on the
+// vendor's own site, so this server never touches that data — then call the vendor's "create
+// invitation" API here and flip background_check_status via their webhook, the same pattern used
+// for the Stripe webhook above.
+async function initiateBackgroundCheck(provider){
+  console.log(`[background-check] requested for provider ${provider.id} (${provider.email}) — no vendor configured, left as 'requested' for manual admin follow-up.`);
+}
 
 const CARE_SERVICE_INFO={
   landscaping:{name:'Landscaping',price:89,billing:'mo'},
@@ -419,6 +457,15 @@ async function initSchema(){
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_kind text`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_value text`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS service_radius_mi integer`);
+  // Provider verification / background-check workflow
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS provider_entity_type text`); // 'individual' | 'business'
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_status text DEFAULT 'unverified'`); // unverified | pending | verified | rejected
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_notes text`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_submitted_at timestamptz`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_reviewed_at timestamptz`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_documents jsonb DEFAULT '[]'::jsonb`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS background_check_status text DEFAULT 'not_requested'`); // not_requested | requested | in_progress | clear | consider
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS background_check_requested_at timestamptz`);
   await pool.query(`
     CREATE TABLE IF NOT EXISTS email_log (
       id text PRIMARY KEY,
@@ -502,7 +549,7 @@ async function quotesByRequestId(reqIds){
   const quotes=await q('SELECT * FROM quotes WHERE request_id = ANY($1::text[]) ORDER BY created_at',[reqIds]);
   const providerIds=[...new Set(quotes.map(x=>x.provider_id))];
   const providers=providerIds.length?await q('SELECT * FROM users WHERE id = ANY($1::text[])',[providerIds]):[];
-  const providerMap=Object.fromEntries(providers.map(p=>[p.id,safeUser(mapUser(p))]));
+  const providerMap=Object.fromEntries(providers.map(p=>[p.id,publicProviderView(mapUser(p))]));
   const out={};
   for(const qq of quotes){ (out[qq.request_id]=out[qq.request_id]||[]).push({...mapQuote(qq),provider:providerMap[qq.provider_id]}); }
   return out;
@@ -634,6 +681,7 @@ const server=http.createServer(async (req,res)=>{
     }
 
     if(p==='/api/dashboard' && req.method==='GET'){
+      if(u.role==='admin') return send(res,403,{error:'Admins use /api/admin/verifications instead of /api/dashboard'});
       if(u.role==='homeowner'){
         const reqRows=await q('SELECT * FROM requests WHERE homeowner_id=$1 ORDER BY created_at DESC',[u.id]);
         const qMap=await quotesByRequestId(reqRows.map(r=>r.id));
@@ -809,6 +857,11 @@ const server=http.createServer(async (req,res)=>{
       const services=Array.isArray(b.services)?b.services.filter(s=>CARE_SERVICE_INFO[s]):[];
       const hadPlan=u.carePlanServices&&u.carePlanServices.length>0;
       const hasPlan=services.length>0;
+      // Home Care Plan is a Plus/Premium perk — canceling down to zero services is always allowed
+      // (so downgrading Community Plan never leaves someone stuck paying for Home Care Plan).
+      if(hasPlan && u.subscription==='free'){
+        return send(res,403,{error:'Home Care Plan is included with the Plus and Premium Community plans. Upgrade to build your plan.',upgradeRequired:true,needsCommunityPlan:true});
+      }
       let row;
       if(!hasPlan){
         // canceled — stop billing
@@ -902,6 +955,35 @@ const server=http.createServer(async (req,res)=>{
       const row=await q1('UPDATE users SET address=$1, lat=$2, lng=$3, geocoded_at=now(), service_radius_mi=$4 WHERE id=$5 RETURNING *',[address,geo.lat,geo.lng,radiusMi,u.id]);
       return send(res,200,{user:safeUser(mapUser(row))});
     }
+    if(p==='/api/profile/verification' && req.method==='POST'){
+      if(u.role!=='provider')return send(res,403,{error:'Only providers submit verification'});
+      const b=await body(req);
+      const entityType=b.entityType==='business'?'business':(b.entityType==='individual'?'individual':null);
+      if(!entityType) return send(res,400,{error:'Choose whether you\'re an individual contractor or a registered business first.'});
+      const docsIn=Array.isArray(b.documents)?b.documents:[];
+      if(!docsIn.length) return send(res,400,{error:'Upload at least one document.'});
+      if(docsIn.length>VERIFICATION_MAX_DOCS) return send(res,400,{error:`You can upload up to ${VERIFICATION_MAX_DOCS} documents.`});
+      const documents=[];
+      for(const d of docsIn){
+        const dataUrl=String((d&&d.dataUrl)||'');
+        const label=String((d&&d.label)||'Document').trim().slice(0,80);
+        const docType=String((d&&d.type)||'other').trim().slice(0,40);
+        if(!VERIFICATION_DOC_RE.test(dataUrl)) return send(res,400,{error:`"${label}" must be a PNG, JPEG, WEBP, or PDF file.`});
+        if(dataUrl.length>VERIFICATION_MAX_DOC_BYTES) return send(res,400,{error:`"${label}" is too large. Please keep each file under 4MB.`});
+        documents.push({type:docType,label,dataUrl,uploadedAt:new Date().toISOString()});
+      }
+      const wantsBackgroundCheck = entityType==='individual' && !!b.requestBackgroundCheck;
+      const bgStatus = wantsBackgroundCheck ? 'requested' : 'not_requested';
+      const row=await q1(
+        `UPDATE users SET provider_entity_type=$1, verification_documents=$2::jsonb, verification_status='pending',
+         verification_notes=NULL, verification_submitted_at=now(), verification_reviewed_at=NULL,
+         background_check_status=$3, background_check_requested_at=$4
+         WHERE id=$5 RETURNING *`,
+        [entityType, JSON.stringify(documents), bgStatus, wantsBackgroundCheck?new Date():null, u.id]
+      );
+      if(wantsBackgroundCheck) initiateBackgroundCheck(mapUser(row)); // stub — see function comment
+      return send(res,200,{user:safeUser(mapUser(row))});
+    }
     if(p==='/api/profile/address' && req.method==='POST'){
       if(u.role!=='homeowner')return send(res,403,{error:'Only homeowners have a home address'});
       const b=await body(req);
@@ -935,14 +1017,56 @@ const server=http.createServer(async (req,res)=>{
     }
     if(p==='/api/providers' && req.method==='GET'){
       const rows=await q("SELECT * FROM users WHERE role='provider' ORDER BY rating DESC NULLS LAST");
+      return send(res,200,{providers:rows.map(r=>publicProviderView(mapUser(r)))});
+    }
+    if(p==='/api/admin/verifications' && req.method==='GET'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const status=String(url.searchParams.get('status')||'pending');
+      const rows = status==='all'
+        ? await q("SELECT * FROM users WHERE role='provider' AND verification_status<>'unverified' ORDER BY verification_submitted_at DESC NULLS LAST")
+        : await q("SELECT * FROM users WHERE role='provider' AND verification_status=$1 ORDER BY verification_submitted_at ASC NULLS LAST",[status]);
+      // Admin sees the full record — including uploaded documents — since reviewing them is the point.
       return send(res,200,{providers:rows.map(r=>safeUser(mapUser(r)))});
+    }
+    if(p.startsWith('/api/admin/verifications/') && p.endsWith('/decision') && req.method==='POST'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const pid=p.split('/')[4];
+      const b=await body(req);
+      const decision=b.decision==='approve'?'approve':(b.decision==='reject'?'reject':null);
+      if(!decision) return send(res,400,{error:'decision must be "approve" or "reject"'});
+      const notes=String(b.notes||'').trim().slice(0,1000);
+      if(decision==='reject' && !notes) return send(res,400,{error:'Add a note explaining why, so the provider knows what to fix.'});
+      const target=await q1("SELECT * FROM users WHERE id=$1 AND role='provider'",[pid]);
+      if(!target) return send(res,404,{error:'Provider not found'});
+      const verified = decision==='approve';
+      const row=await q1(
+        `UPDATE users SET verified=$1, verification_status=$2, verification_notes=$3, verification_reviewed_at=now() WHERE id=$4 RETURNING *`,
+        [verified, verified?'verified':'rejected', notes||null, pid]
+      );
+      return send(res,200,{provider:safeUser(mapUser(row))});
     }
     return send(res,404,{error:'Not found'});
   }catch(e){console.error(e);send(res,500,{error:'Server error',detail:e.message});}
 });
 
+// If ADMIN_EMAIL + ADMIN_PASSWORD are set in the environment and no admin account exists yet
+// with that email, create one. There's no public "sign up as admin" route on purpose — this is
+// the only way to get an admin login, and only you control it via your host's env vars.
+async function ensureAdminBootstrap(){
+  const email=String(process.env.ADMIN_EMAIL||'').trim().toLowerCase();
+  const password=String(process.env.ADMIN_PASSWORD||'');
+  if(!email||!password) return;
+  const existing=await q1('SELECT id FROM users WHERE lower(email)=lower($1)',[email]);
+  if(existing) return;
+  const salt=newSalt();
+  await pool.query('INSERT INTO users (id,role,name,email,password_hash,salt) VALUES ($1,$2,$3,$4,$5,$6)',
+    [id('usr'),'admin','Admin',email,hash(password,salt),salt]);
+  console.log(`[admin] bootstrapped admin account for ${email}`);
+}
+
 initSchema()
   .then(seedIfEmpty)
+  .then(ensureAdminBootstrap)
   .then(()=>{
     server.listen(PORT,()=>console.log(`Living Communities API running at http://localhost:${PORT}`));
     if(!stripeConfigured()){
