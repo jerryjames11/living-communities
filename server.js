@@ -52,7 +52,7 @@ function tooManyAttempts(ip){
 // --- row -> API-shape mappers (DB stays snake_case; the frontend expects the original camelCase shape) ---
 function mapUser(r){
   if(!r) return null;
-  const u={id:r.id,role:r.role,name:r.name,email:r.email,passwordHash:r.password_hash,salt:r.salt,phone:r.phone,createdAt:toISO(r.created_at),subscription:r.subscription,carePlanServices:r.care_plan_services||[],avatarKind:r.avatar_kind||null,avatarValue:r.avatar_value||null,address:r.address,lat:r.lat!=null?Number(r.lat):null,lng:r.lng!=null?Number(r.lng):null};
+  const u={id:r.id,role:r.role,name:r.name,email:r.email,passwordHash:r.password_hash,salt:r.salt,phone:r.phone,createdAt:toISO(r.created_at),subscription:r.subscription,carePlanServices:r.care_plan_services||[],avatarKind:r.avatar_kind||null,avatarValue:r.avatar_value||null,address:r.address,lat:r.lat!=null?Number(r.lat):null,lng:r.lng!=null?Number(r.lng):null,suspended:!!r.suspended};
   if(r.role==='homeowner'){ u.community=r.community; u.carePlanNextBilling=r.care_plan_next_billing?new Date(r.care_plan_next_billing).toISOString().slice(0,10):null; }
   else if(r.role==='provider'){
     u.serviceTypes=r.service_types||[]; u.rating=r.rating!=null?Number(r.rating):null; u.reviewCount=r.review_count||0; u.verified=!!r.verified; u.businessDescription=r.business_description; u.providerPlan=r.provider_plan||'free'; u.quotesUsed=r.quotes_sent_this_period||0; u.convosUsed=r.new_conversations_this_period||0;
@@ -89,7 +89,21 @@ function publicProviderView(u){
     createdAt:u.createdAt
   };
 }
-function mapRequest(r){ return {id:r.id,homeownerId:r.homeowner_id,serviceType:r.service_type,title:r.title,description:r.description,urgency:r.urgency,preferredDate:r.preferred_date,preferredTime:r.preferred_time,status:r.status,createdAt:toISO(r.created_at)}; }
+function mapRequest(r){ return {id:r.id,homeownerId:r.homeowner_id,serviceType:r.service_type,title:r.title,description:r.description,urgency:r.urgency,preferredDate:r.preferred_date,preferredTime:r.preferred_time,status:r.status,createdAt:toISO(r.created_at),dispatchedProviderId:r.dispatched_provider_id||null,dispatchedAt:toISO(r.dispatched_at)||null}; }
+// Slim account view for the admin accounts list — everything an admin needs to monitor an
+// account and its subscription at a glance, but never the heavy/sensitive stuff (password data,
+// uploaded verification document images) that a bulk list endpoint has no business returning.
+function adminAccountView(u){
+  if(!u) return null;
+  const base={id:u.id,role:u.role,name:u.name,email:u.email,phone:u.phone,createdAt:u.createdAt,suspended:!!u.suspended};
+  if(u.role==='homeowner'){
+    return {...base,community:u.community,subscription:u.subscription,carePlanServiceCount:(u.carePlanServices||[]).length,carePlanNextBilling:u.carePlanNextBilling};
+  }
+  if(u.role==='provider'){
+    return {...base,serviceTypes:u.serviceTypes,providerPlan:u.providerPlan,rating:u.rating,reviewCount:u.reviewCount,verified:u.verified,verificationStatus:u.verificationStatus,entityType:u.entityType,backgroundCheckStatus:u.backgroundCheckStatus};
+  }
+  return base;
+}
 function mapQuote(r){ return {id:r.id,requestId:r.request_id,providerId:r.provider_id,amountMin:Number(r.amount_min),amountMax:Number(r.amount_max),availability:r.availability,message:r.message,status:r.status,createdAt:toISO(r.created_at)}; }
 function mapMessage(r){ return {id:r.id,senderId:r.sender_id,recipientId:r.recipient_id,participants:r.participants,body:r.body,createdAt:toISO(r.created_at),read:r.read}; }
 function mapJob(r){ return {id:r.id,requestId:r.request_id,homeownerId:r.homeowner_id,providerId:r.provider_id,serviceType:r.service_type,title:r.title,status:r.status,scheduledFor:r.scheduled_for,createdAt:toISO(r.created_at)}; }
@@ -466,6 +480,10 @@ async function initSchema(){
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_documents jsonb DEFAULT '[]'::jsonb`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS background_check_status text DEFAULT 'not_requested'`); // not_requested | requested | in_progress | clear | consider
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS background_check_requested_at timestamptz`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS suspended boolean DEFAULT false`);
+  await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS dispatched_provider_id text`);
+  await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS dispatched_at timestamptz`);
+  await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS dispatched_note text`);
   await pool.query(`
     CREATE TABLE IF NOT EXISTS email_log (
       id text PRIMARY KEY,
@@ -526,6 +544,7 @@ async function requireAuth(req,res,roles){
   const row=await q1('SELECT * FROM users WHERE id=$1',[uid]);
   if(!row){sessions.delete(token);send(res,401,{error:'Session invalid'});return null}
   const u=mapUser(row);
+  if(u.suspended){sessions.delete(token);send(res,403,{error:'This account has been suspended. Contact support if you think this is a mistake.',suspended:true});return null}
   if(roles&&!roles.includes(u.role)){send(res,403,{error:'Not authorized'});return null}
   return u;
 }
@@ -569,6 +588,7 @@ const server=http.createServer(async (req,res)=>{
       const row=await q1('SELECT * FROM users WHERE lower(email)=lower($1)',[String(b.email||'')]);
       const u=mapUser(row);
       if(!u || u.passwordHash!==hash(String(b.password||''),u.salt)) return send(res,401,{error:'Invalid email or password'});
+      if(u.suspended) return send(res,403,{error:'This account has been suspended. Contact support if you think this is a mistake.',suspended:true});
       const token=crypto.randomBytes(24).toString('hex'); sessions.set(token,u.id); return send(res,200,{token,user:safeUser(u)});
     }
     if(p==='/api/auth/register' && req.method==='POST'){
@@ -1045,6 +1065,136 @@ const server=http.createServer(async (req,res)=>{
       );
       return send(res,200,{provider:safeUser(mapUser(row))});
     }
+
+    // --- Admin: platform-wide monitoring, account controls, and manual dispatch ---
+    if(p==='/api/admin/stats' && req.method==='GET'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const [homeownerPlans,providerPlans,verif,openReqs,staleReqs,carePlanActive,suspendedCount]=await Promise.all([
+        q("SELECT subscription, count(*)::int AS n FROM users WHERE role='homeowner' GROUP BY subscription"),
+        q("SELECT provider_plan, count(*)::int AS n FROM users WHERE role='provider' GROUP BY provider_plan"),
+        q("SELECT verification_status, count(*)::int AS n FROM users WHERE role='provider' GROUP BY verification_status"),
+        q("SELECT count(*)::int AS n FROM requests WHERE status='open'"),
+        q("SELECT count(*)::int AS n FROM requests r WHERE r.status='open' AND r.created_at < now() - interval '24 hours' AND NOT EXISTS (SELECT 1 FROM quotes qq WHERE qq.request_id=r.id)"),
+        q("SELECT count(*)::int AS n FROM users WHERE role='homeowner' AND care_plan_services<>'{}'"),
+        q("SELECT count(*)::int AS n FROM users WHERE suspended=true"),
+      ]);
+      const toObj=(rows,key)=>Object.fromEntries(rows.map(r=>[r[key]||'unknown',r.n]));
+      return send(res,200,{
+        totalHomeowners: homeownerPlans.reduce((s,r)=>s+r.n,0),
+        totalProviders: providerPlans.reduce((s,r)=>s+r.n,0),
+        homeownerPlans: toObj(homeownerPlans,'subscription'),
+        providerPlans: toObj(providerPlans,'provider_plan'),
+        verificationStatus: toObj(verif,'verification_status'),
+        openRequests: openReqs[0].n,
+        staleRequests: staleReqs[0].n,
+        activeCarePlans: carePlanActive[0].n,
+        suspendedAccounts: suspendedCount[0].n,
+      });
+    }
+    if(p==='/api/admin/accounts' && req.method==='GET'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const role=String(url.searchParams.get('role')||'all');
+      const status=String(url.searchParams.get('status')||'all'); // all|active|suspended
+      const qstr=String(url.searchParams.get('q')||'').trim().toLowerCase();
+      const rows = ['homeowner','provider'].includes(role)
+        ? await q('SELECT * FROM users WHERE role=$1 ORDER BY created_at DESC',[role])
+        : await q("SELECT * FROM users WHERE role IN ('homeowner','provider') ORDER BY created_at DESC");
+      let accounts=rows.map(r=>adminAccountView(mapUser(r)));
+      if(status==='active') accounts=accounts.filter(a=>!a.suspended);
+      if(status==='suspended') accounts=accounts.filter(a=>a.suspended);
+      if(qstr) accounts=accounts.filter(a=>(a.name||'').toLowerCase().includes(qstr)||(a.email||'').toLowerCase().includes(qstr));
+      return send(res,200,{accounts});
+    }
+    if(p.startsWith('/api/admin/accounts/') && p.endsWith('/suspend') && req.method==='POST'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const aid=p.split('/')[4];
+      const target=await q1('SELECT * FROM users WHERE id=$1',[aid]);
+      if(!target) return send(res,404,{error:'Account not found'});
+      if(target.role==='admin') return send(res,403,{error:'Cannot suspend an admin account'});
+      const b=await body(req);
+      const suspended=!!b.suspended;
+      const row=await q1('UPDATE users SET suspended=$1 WHERE id=$2 RETURNING *',[suspended,aid]);
+      return send(res,200,{account:adminAccountView(mapUser(row))});
+    }
+    if(p.startsWith('/api/admin/accounts/') && p.endsWith('/subscription') && req.method==='POST'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const aid=p.split('/')[4];
+      const target=await q1('SELECT * FROM users WHERE id=$1',[aid]);
+      if(!target) return send(res,404,{error:'Account not found'});
+      const b=await body(req);
+      let row;
+      if(target.role==='homeowner'){
+        const plan=['free','plus','premium'].includes(b.subscription)?b.subscription:null;
+        if(!plan) return send(res,400,{error:'subscription must be free, plus, or premium'});
+        row=await q1('UPDATE users SET subscription=$1 WHERE id=$2 RETURNING *',[plan,aid]);
+      } else if(target.role==='provider'){
+        const plan=['free','pro'].includes(b.providerPlan)?b.providerPlan:null;
+        if(!plan) return send(res,400,{error:'providerPlan must be free or pro'});
+        row=await q1('UPDATE users SET provider_plan=$1 WHERE id=$2 RETURNING *',[plan,aid]);
+      } else {
+        return send(res,400,{error:'This account type has no subscription to change'});
+      }
+      return send(res,200,{account:adminAccountView(mapUser(row))});
+    }
+    if(p==='/api/admin/requests/stale' && req.method==='GET'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const hours=Math.max(1,Number(url.searchParams.get('hours'))||24);
+      const rows=await q(
+        `SELECT r.*, uh.name AS homeowner_name, uh.community AS homeowner_community,
+                (SELECT count(*)::int FROM quotes qq WHERE qq.request_id=r.id) AS quote_count
+         FROM requests r JOIN users uh ON uh.id=r.homeowner_id
+         WHERE r.status='open' AND r.created_at < now() - ($1 || ' hours')::interval
+           AND NOT EXISTS (SELECT 1 FROM quotes qq WHERE qq.request_id=r.id)
+         ORDER BY r.created_at ASC`,
+        [String(hours)]
+      );
+      const requests=rows.map(r=>({...mapRequest(r),homeownerName:r.homeowner_name,homeownerCommunity:r.homeowner_community,quoteCount:r.quote_count}));
+      return send(res,200,{requests});
+    }
+    if(p.startsWith('/api/admin/requests/') && p.endsWith('/candidates') && req.method==='GET'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const rid=p.split('/')[4];
+      const r=await q1('SELECT * FROM requests WHERE id=$1',[rid]);
+      if(!r) return send(res,404,{error:'Request not found'});
+      const homeowner=await q1('SELECT * FROM users WHERE id=$1',[r.homeowner_id]);
+      const providerRows=await q("SELECT * FROM users WHERE role='provider' ORDER BY rating DESC NULLS LAST");
+      const candidates=providerRows.map(pr=>{
+        const mu=mapUser(pr);
+        const matchesService=(mu.serviceTypes||[]).some(s=>s.toLowerCase()===String(r.service_type).toLowerCase());
+        const distanceMi=(homeowner&&homeowner.lat!=null&&homeowner.lng!=null&&mu.lat!=null&&mu.lng!=null)
+          ? Math.round(haversineMiles(homeowner.lat,homeowner.lng,mu.lat,mu.lng)*10)/10 : null;
+        return {id:mu.id,name:mu.name,serviceTypes:mu.serviceTypes,rating:mu.rating,reviewCount:mu.reviewCount,verified:mu.verified,verificationStatus:mu.verificationStatus,providerPlan:mu.providerPlan,suspended:mu.suspended,matchesService,distanceMi};
+      }).filter(c=>!c.suspended).sort((a,b2)=>{
+        if(a.matchesService!==b2.matchesService) return a.matchesService?-1:1;
+        if(a.distanceMi!=null && b2.distanceMi!=null) return a.distanceMi-b2.distanceMi;
+        return (b2.rating||0)-(a.rating||0);
+      });
+      return send(res,200,{candidates,request:mapRequest(r)});
+    }
+    if(p.startsWith('/api/admin/requests/') && p.endsWith('/assign') && req.method==='POST'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const rid=p.split('/')[4];
+      const r=await q1('SELECT * FROM requests WHERE id=$1',[rid]);
+      if(!r) return send(res,404,{error:'Request not found'});
+      const b=await body(req);
+      const providerId=String(b.providerId||'');
+      const provider=await q1("SELECT * FROM users WHERE id=$1 AND role='provider'",[providerId]);
+      if(!provider) return send(res,404,{error:'Provider not found'});
+      const note=String(b.note||'').trim().slice(0,500);
+      const row=await q1('UPDATE requests SET dispatched_provider_id=$1, dispatched_at=now(), dispatched_note=$2 WHERE id=$3 RETURNING *',[providerId,note||null,rid]);
+      const homeowner=await q1('SELECT * FROM users WHERE id=$1',[r.homeowner_id]);
+      const msgToProvider=`An admin connected you with a request: "${r.title}" (${r.service_type}).${note?(' Note: '+note):''} Please review it in your Request Feed and send a quote if you can help.`;
+      await pool.query('INSERT INTO messages (id,sender_id,recipient_id,participants,body,read) VALUES ($1,$2,$3,$4,$5,$6)',
+        [id('msg'),u.id,providerId,[u.id,providerId],msgToProvider,false]);
+      if(homeowner){
+        const msgToHomeowner=`We reached out directly to ${provider.name}, a trusted local provider, about your request "${r.title}". They'll be in touch shortly.`;
+        await pool.query('INSERT INTO messages (id,sender_id,recipient_id,participants,body,read) VALUES ($1,$2,$3,$4,$5,$6)',
+          [id('msg'),u.id,homeowner.id,[u.id,homeowner.id],msgToHomeowner,false]);
+      }
+      if(provider.email) sendEmail({to:provider.email,type:'admin_dispatch',subject:`New request for you: "${r.title}"`,html:emailShell('New request',`<h2 style="margin:0 0 10px;color:#17352f">A request needs your help</h2><p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Our team connected you with "${esc_(r.title)}" (${esc_(r.service_type)}). Log in and check your Request Feed to send a quote.</p>`),userId:provider.id}).catch(()=>{});
+      return send(res,200,{request:mapRequest(row)});
+    }
+
     return send(res,404,{error:'Not found'});
   }catch(e){console.error(e);send(res,500,{error:'Server error',detail:e.message});}
 });

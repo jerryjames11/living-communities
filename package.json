@@ -8,7 +8,8 @@
     "node": ">=18"
   },
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "admin:set": "node create-admin.js"
   },
   "dependencies": {
     "pg": "^8.23.0"
