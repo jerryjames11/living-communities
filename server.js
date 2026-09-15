@@ -291,6 +291,10 @@ const CARE_SERVICE_INFO={
   holiday_lighting:{name:'Holiday Lighting',price:65,billing:'season'}
 };
 function carePlanMonthlyTotal(services){ return (services||[]).reduce((sum,k)=>{const s=CARE_SERVICE_INFO[k]; return s&&s.billing==='mo'?sum+s.price:sum},0); }
+// Plan catalogs used by the admin account panel: labels/prices for the invoice email, and a rank
+// order so we can tell an upgrade (send an invoice) from a downgrade or lateral change (don't).
+const HOMEOWNER_PLAN_INFO={free:{label:'Free',priceCents:0,rank:0},plus:{label:'Plus',priceCents:999,rank:1},premium:{label:'Premium',priceCents:2499,rank:2}};
+const PROVIDER_PLAN_INFO={free:{label:'Free',priceCents:0,rank:0},pro:{label:'Pro Provider',priceCents:PROVIDER_PLAN_PRICE_CENTS,rank:1}};
 // Maps a Home Care Plan service key to the closest provider-facing service category, so the admin's
 // "assign a provider" picker can rank providers who actually offer that kind of work first.
 const CARE_SERVICE_TO_PROVIDER_TYPE={landscaping:'Lawn & Landscaping',pest:'Pest Control',cleaning:'House Cleaning',pool:'Pool Service',holiday_lighting:'Handyman'};
@@ -332,6 +336,23 @@ function carePlanBilledEmailHtml(u,amount,billingDate){
     `<h2 style="margin:0 0 10px;color:#17352f">Payment received</h2>
      <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Your card on file was charged <b>$${amount}</b> for your Home Care Plan, renewing on ${fmtDate(billingDate)}. This is a demo charge — no real payment was processed.</p>
      ${btn('View Billing',APP_URL)}`);
+}
+function adminPlanInvoiceEmailHtml(u,planLabel,priceCents,invoiceNo){
+  const amount=(priceCents/100).toFixed(2);
+  return emailShell(`Invoice ${invoiceNo}`,
+    `<h2 style="margin:0 0 10px;color:#17352f">Your plan was upgraded</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Our team moved your account to the <b>${esc_(planLabel)}</b> plan. Here's your invoice for the record.</p>
+     <table style="width:100%;border-collapse:collapse;margin-top:14px;font-size:13.5px">
+       <tr><td style="padding:6px 0;color:#6d7b77">Invoice #</td><td style="padding:6px 0;text-align:right;color:#17352f;font-weight:700">${esc_(invoiceNo)}</td></tr>
+       <tr><td style="padding:6px 0;color:#6d7b77">Date</td><td style="padding:6px 0;text-align:right;color:#17352f;font-weight:700">${fmtDate(new Date())}</td></tr>
+       <tr><td style="padding:6px 0;color:#6d7b77">Billed to</td><td style="padding:6px 0;text-align:right;color:#17352f;font-weight:700">${esc_(u.name)}</td></tr>
+     </table>
+     <table style="width:100%;border-collapse:collapse;margin-top:14px;border-top:1px solid #e4e9e6;font-size:13.5px">
+       <tr><td style="padding:10px 0 4px;color:#3f4f4a">${esc_(planLabel)} plan (monthly)</td><td style="padding:10px 0 4px;text-align:right;color:#3f4f4a">$${amount}</td></tr>
+       <tr><td style="padding:10px 0 0;color:#17352f;font-weight:800;border-top:1px solid #e4e9e6">Total</td><td style="padding:10px 0 0;text-align:right;color:#17352f;font-weight:800;border-top:1px solid #e4e9e6">$${amount}/mo</td></tr>
+     </table>
+     <p style="color:#6d7b77;line-height:1.6;font-size:12.5px;margin-top:16px">Charged to the card on file going forward. Questions about this change? Reply to this email or reach out from your dashboard.</p>
+     ${btn('View My Plan',APP_URL)}`);
 }
 
 // Simulated monthly billing for Home Care Plan: sends a reminder 7 days before the next_billing
@@ -1138,19 +1159,32 @@ const server=http.createServer(async (req,res)=>{
       const target=await q1('SELECT * FROM users WHERE id=$1',[aid]);
       if(!target) return send(res,404,{error:'Account not found'});
       const b=await body(req);
-      let row;
+      let row, isUpgrade=false, planInfo=null;
       if(target.role==='homeowner'){
         const plan=['free','plus','premium'].includes(b.subscription)?b.subscription:null;
         if(!plan) return send(res,400,{error:'subscription must be free, plus, or premium'});
+        const oldPlan=target.subscription||'free';
         row=await q1('UPDATE users SET subscription=$1 WHERE id=$2 RETURNING *',[plan,aid]);
+        planInfo=HOMEOWNER_PLAN_INFO[plan];
+        isUpgrade=planInfo.rank>(HOMEOWNER_PLAN_INFO[oldPlan]?.rank??0);
       } else if(target.role==='provider'){
         const plan=['free','pro'].includes(b.providerPlan)?b.providerPlan:null;
         if(!plan) return send(res,400,{error:'providerPlan must be free or pro'});
+        const oldPlan=target.provider_plan||'free';
         row=await q1('UPDATE users SET provider_plan=$1 WHERE id=$2 RETURNING *',[plan,aid]);
+        planInfo=PROVIDER_PLAN_INFO[plan];
+        isUpgrade=planInfo.rank>(PROVIDER_PLAN_INFO[oldPlan]?.rank??0);
       } else {
         return send(res,400,{error:'This account type has no subscription to change'});
       }
-      return send(res,200,{account:adminAccountView(mapUser(row))});
+      let invoiceNo=null;
+      if(isUpgrade && planInfo.priceCents>0 && row.email){
+        invoiceNo='INV-'+crypto.randomBytes(5).toString('hex').toUpperCase();
+        await pool.query('INSERT INTO messages (id,sender_id,recipient_id,participants,body,read) VALUES ($1,$2,$3,$4,$5,$6)',
+          [id('msg'),u.id,row.id,[u.id,row.id],`An admin upgraded your plan to ${planInfo.label} ($${(planInfo.priceCents/100).toFixed(2)}/mo). An invoice was emailed to you.`,false]);
+        sendEmail({to:row.email,type:'admin_plan_invoice',subject:`Your invoice for the ${planInfo.label} plan (${invoiceNo})`,html:adminPlanInvoiceEmailHtml(mapUser(row),planInfo.label,planInfo.priceCents,invoiceNo),userId:row.id}).catch(()=>{});
+      }
+      return send(res,200,{account:adminAccountView(mapUser(row)),invoiceSent:!!invoiceNo,invoiceNo});
     }
     if(p==='/api/admin/requests/stale' && req.method==='GET'){
       if(u.role!=='admin')return send(res,403,{error:'Not authorized'});

@@ -585,6 +585,13 @@ button{font:inherit;cursor:pointer}
  <div id="adminAssignError" class="notice hidden" style="margin-top:12px"></div>
 </div></div>
 
+<div id="adminPlanModal" class="modal"><div class="modalbox">
+ <div class="modalhead"><div><div class="eyebrow">Account plan</div><h2 id="adminPlanTitle">Change plan</h2></div><button class="close" onclick="closeAdminPlanModal()">×</button></div>
+ <p class="subtle" style="font-size:13px;margin:0 0 10px">Upgrading a plan emails the account holder an invoice.</p>
+ <div id="adminPlanOptions" style="display:flex;flex-direction:column;gap:8px"></div>
+ <div id="adminPlanError" class="notice hidden" style="margin-top:12px"></div>
+</div></div>
+
 <main id="plans" class="page">
 <div class="plans-header">
   <button class="back-link" onclick="backFromPlans()"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 4.5L6 10l6.5 5.5"/></svg>Back to Dashboard</button>
@@ -1778,34 +1785,59 @@ function renderAdminAccounts(accounts){
   if(!accounts.length){ el.innerHTML='<div class="notice">No accounts match.</div>'; return; }
   el.innerHTML=accounts.map(adminAccountRowHTML).join('');
 }
+const ADMIN_HOMEOWNER_PLAN_INFO={free:{label:'Free',price:'$0/mo'},plus:{label:'Plus',price:'$9.99/mo'},premium:{label:'Premium',price:'$24.99/mo'}};
+const ADMIN_PROVIDER_PLAN_INFO={free:{label:'Free',price:'$0/mo'},pro:{label:'Pro',price:'$29/mo'}};
 function adminAccountRowHTML(a){
-  const planOptions = a.role==='homeowner'
-    ? ['free','plus','premium'].map(k=>`<option value="${k}" ${a.subscription===k?'selected':''}>${k==='free'?'Free':k[0].toUpperCase()+k.slice(1)}</option>`).join('')
-    : ['free','pro'].map(k=>`<option value="${k}" ${a.providerPlan===k?'selected':''}>${k==='free'?'Free':'Pro'}</option>`).join('');
+  const planMap = a.role==='homeowner' ? ADMIN_HOMEOWNER_PLAN_INFO : ADMIN_PROVIDER_PLAN_INFO;
+  const currentPlan = a.role==='homeowner' ? (a.subscription||'free') : (a.providerPlan||'free');
+  const planLabel = (planMap[currentPlan]||planMap.free).label+' plan';
   const extraMeta = a.role==='homeowner'
     ? `${a.community?esc(a.community)+' · ':''}Care Plan: ${a.carePlanServiceCount||0} service${a.carePlanServiceCount===1?'':'s'}`
     : `${esc((a.serviceTypes||[]).join(', ')||'—')}${a.verified?' · Verified':(a.verificationStatus&&a.verificationStatus!=='unverified'?' · '+esc(a.verificationStatus):'')}`;
   return `<div class="admin-row">
     <div class="admin-row-main">
-      <div class="name">${esc(a.name)} ${a.suspended?statusPillHTML('Suspended','bad'):statusPillHTML(a.role,'neutral')}</div>
+      <div class="name">${esc(a.name)} ${a.suspended?statusPillHTML('Suspended','bad'):statusPillHTML(a.role,'neutral')} ${statusPillHTML(planLabel,currentPlan==='free'?'neutral':'ok')}</div>
       <div class="meta">${esc(a.email)}${a.phone?' · '+esc(a.phone):''}</div>
       <div class="meta">${extraMeta}</div>
     </div>
     <div class="admin-row-actions">
-      <select id="admin-plan-${a.id}">${planOptions}</select>
-      <button class="secondary" onclick="saveAdminSubscription('${a.id}','${a.role}')">Save plan</button>
+      <button class="secondary" onclick="openAdminPlanModal('${a.id}','${a.role}','${currentPlan}','${jsAttr(a.name)}')">Change plan</button>
       <button class="${a.suspended?'primary':'secondary'}" onclick="toggleAdminSuspend('${a.id}',${!a.suspended})">${a.suspended?'Reactivate':'Suspend'}</button>
     </div>
   </div>`;
 }
-async function saveAdminSubscription(accountId,role){
-  const sel=document.getElementById('admin-plan-'+accountId); if(!sel)return;
-  const payload = role==='homeowner' ? {subscription:sel.value} : {providerPlan:sel.value};
+let adminPlanTarget=null; // {accountId, role, currentPlan}
+function openAdminPlanModal(accountId,role,currentPlan,name){
+  adminPlanTarget={accountId,role,currentPlan};
+  document.getElementById('adminPlanTitle').textContent='Change plan: '+name;
+  const planMap = role==='homeowner' ? ADMIN_HOMEOWNER_PLAN_INFO : ADMIN_PROVIDER_PLAN_INFO;
+  const list=document.getElementById('adminPlanOptions');
+  list.innerHTML=Object.keys(planMap).map(k=>{
+    const info=planMap[k];
+    const isCurrent=k===currentPlan;
+    return `<div class="admin-row" style="margin-top:0">
+      <div class="admin-row-main">
+        <div class="name">${esc(info.label)} ${isCurrent?statusPillHTML('Current plan','neutral'):''}</div>
+        <div class="meta">${esc(info.price)}</div>
+      </div>
+      <div class="admin-row-actions"><button class="${isCurrent?'secondary':'primary'}" ${isCurrent?'disabled':''} onclick="submitAdminPlanChange('${k}')">${isCurrent?'Current':'Select'}</button></div>
+    </div>`;
+  }).join('');
+  const err=document.getElementById('adminPlanError'); if(err)err.classList.add('hidden');
+  document.getElementById('adminPlanModal').classList.add('show');
+}
+function closeAdminPlanModal(){ document.getElementById('adminPlanModal').classList.remove('show'); adminPlanTarget=null; }
+async function submitAdminPlanChange(plan){
+  if(!adminPlanTarget)return;
+  const {accountId,role}=adminPlanTarget;
+  const payload = role==='homeowner' ? {subscription:plan} : {providerPlan:plan};
+  const err=document.getElementById('adminPlanError');
   try{
-    await api('/admin/accounts/'+accountId+'/subscription',{method:'POST',body:JSON.stringify(payload)});
-    toast('Plan updated.');
+    const d=await api('/admin/accounts/'+accountId+'/subscription',{method:'POST',body:JSON.stringify(payload)});
+    closeAdminPlanModal();
+    toast(d.invoiceSent?'Plan updated — invoice emailed to the account holder.':'Plan updated.');
     await loadAdminAccounts();
-  }catch(e){ toast(e.message); }
+  }catch(e){ if(err){err.textContent=e.message;err.classList.remove('hidden')} }
 }
 async function toggleAdminSuspend(accountId,suspend){
   if(suspend && !confirm('Suspend this account? They will be signed out and unable to log back in until reactivated.'))return;
