@@ -291,6 +291,9 @@ const CARE_SERVICE_INFO={
   holiday_lighting:{name:'Holiday Lighting',price:65,billing:'season'}
 };
 function carePlanMonthlyTotal(services){ return (services||[]).reduce((sum,k)=>{const s=CARE_SERVICE_INFO[k]; return s&&s.billing==='mo'?sum+s.price:sum},0); }
+// Maps a Home Care Plan service key to the closest provider-facing service category, so the admin's
+// "assign a provider" picker can rank providers who actually offer that kind of work first.
+const CARE_SERVICE_TO_PROVIDER_TYPE={landscaping:'Lawn & Landscaping',pest:'Pest Control',cleaning:'House Cleaning',pool:'Pool Service',holiday_lighting:'Handyman'};
 function fmtDate(d){ return new Date(d).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}); }
 
 function welcomeEmailHtml(u){
@@ -484,6 +487,19 @@ async function initSchema(){
   await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS dispatched_provider_id text`);
   await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS dispatched_at timestamptz`);
   await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS dispatched_note text`);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS care_plan_visits (
+      id text PRIMARY KEY,
+      homeowner_id text NOT NULL REFERENCES users(id),
+      service_key text NOT NULL,
+      provider_id text,
+      status text NOT NULL DEFAULT 'upcoming',
+      scheduled_date date,
+      note text,
+      created_at timestamptz DEFAULT now(),
+      updated_at timestamptz DEFAULT now(),
+      UNIQUE(homeowner_id, service_key)
+    )`);
   await pool.query(`
     CREATE TABLE IF NOT EXISTS email_log (
       id text PRIMARY KEY,
@@ -1193,6 +1209,104 @@ const server=http.createServer(async (req,res)=>{
       }
       if(provider.email) sendEmail({to:provider.email,type:'admin_dispatch',subject:`New request for you: "${r.title}"`,html:emailShell('New request',`<h2 style="margin:0 0 10px;color:#17352f">A request needs your help</h2><p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Our team connected you with "${esc_(r.title)}" (${esc_(r.service_type)}). Log in and check your Request Feed to send a quote.</p>`),userId:provider.id}).catch(()=>{});
       return send(res,200,{request:mapRequest(row)});
+    }
+
+    // Every Home Care Plan homeowner, with the current fulfillment status (provider assigned,
+    // upcoming/scheduled/completed, and a date) for each recurring service on their plan — so an
+    // admin can see at a glance whether the recurring services people are PAYING for are actually
+    // being taken care of, not just whether a one-off request got a quote.
+    if(p==='/api/admin/care-plan-accounts' && req.method==='GET'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const rows=await q("SELECT * FROM users WHERE role='homeowner' AND care_plan_services<>'{}' ORDER BY name ASC");
+      const homeownerIds=rows.map(r=>r.id);
+      const visits = homeownerIds.length ? await q('SELECT * FROM care_plan_visits WHERE homeowner_id = ANY($1::text[])',[homeownerIds]) : [];
+      const providerIds=[...new Set(visits.map(v=>v.provider_id).filter(Boolean))];
+      const providerRows = providerIds.length ? await q('SELECT id,name FROM users WHERE id = ANY($1::text[])',[providerIds]) : [];
+      const providerNameById=Object.fromEntries(providerRows.map(pr=>[pr.id,pr.name]));
+      const visitKey=(hid,sk)=>hid+'|'+sk;
+      const visitMap=Object.fromEntries(visits.map(v=>[visitKey(v.homeowner_id,v.service_key),v]));
+      const accounts=rows.map(r=>{
+        const mu=mapUser(r);
+        const services=(mu.carePlanServices||[]).filter(sk=>CARE_SERVICE_INFO[sk]).map(sk=>{
+          const v=visitMap[visitKey(r.id,sk)];
+          return {
+            serviceKey:sk,
+            serviceName:CARE_SERVICE_INFO[sk].name,
+            status: v?v.status:'upcoming',
+            scheduledDate: v?(v.scheduled_date?new Date(v.scheduled_date).toISOString().slice(0,10):null):null,
+            providerId: v?v.provider_id:null,
+            providerName: v&&v.provider_id?(providerNameById[v.provider_id]||null):null,
+            note: v?v.note:null,
+          };
+        });
+        return {id:mu.id,name:mu.name,email:mu.email,community:mu.community,subscription:mu.subscription,services};
+      });
+      return send(res,200,{accounts});
+    }
+    if(p==='/api/admin/care-plan-candidates' && req.method==='GET'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const serviceKey=String(url.searchParams.get('serviceKey')||'');
+      const homeownerId=String(url.searchParams.get('homeownerId')||'');
+      const wantType=(CARE_SERVICE_TO_PROVIDER_TYPE[serviceKey]||'').toLowerCase();
+      const homeowner=homeownerId?await q1('SELECT * FROM users WHERE id=$1',[homeownerId]):null;
+      const providerRows=await q("SELECT * FROM users WHERE role='provider' ORDER BY rating DESC NULLS LAST");
+      const candidates=providerRows.map(pr=>{
+        const mu=mapUser(pr);
+        const matchesService=wantType ? (mu.serviceTypes||[]).some(s=>s.toLowerCase()===wantType) : false;
+        const distanceMi=(homeowner&&homeowner.lat!=null&&homeowner.lng!=null&&mu.lat!=null&&mu.lng!=null)
+          ? Math.round(haversineMiles(homeowner.lat,homeowner.lng,mu.lat,mu.lng)*10)/10 : null;
+        return {id:mu.id,name:mu.name,serviceTypes:mu.serviceTypes,rating:mu.rating,reviewCount:mu.reviewCount,verified:mu.verified,providerPlan:mu.providerPlan,suspended:mu.suspended,matchesService,distanceMi};
+      }).filter(c=>!c.suspended).sort((a,b2)=>{
+        if(a.matchesService!==b2.matchesService) return a.matchesService?-1:1;
+        if(a.distanceMi!=null && b2.distanceMi!=null) return a.distanceMi-b2.distanceMi;
+        return (b2.rating||0)-(a.rating||0);
+      });
+      return send(res,200,{candidates});
+    }
+    if(p==='/api/admin/care-plan-visits' && req.method==='POST'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const b=await body(req);
+      const homeownerId=String(b.homeownerId||'');
+      const serviceKey=String(b.serviceKey||'');
+      if(!CARE_SERVICE_INFO[serviceKey]) return send(res,400,{error:'Unknown service'});
+      const homeowner=await q1("SELECT * FROM users WHERE id=$1 AND role='homeowner'",[homeownerId]);
+      if(!homeowner) return send(res,404,{error:'Homeowner not found'});
+      if(!(homeowner.care_plan_services||[]).includes(serviceKey)) return send(res,400,{error:'This homeowner does not have that service on their plan'});
+      const existing=await q1('SELECT * FROM care_plan_visits WHERE homeowner_id=$1 AND service_key=$2',[homeownerId,serviceKey]);
+      const has=k=>Object.prototype.hasOwnProperty.call(b,k);
+      let providerId = existing ? existing.provider_id : null;
+      if(has('providerId')) providerId = b.providerId ? String(b.providerId) : null;
+      let status = existing ? existing.status : 'upcoming';
+      if(has('status') && ['upcoming','scheduled','completed'].includes(b.status)) status = b.status;
+      let scheduledDate = existing ? existing.scheduled_date : null;
+      if(has('scheduledDate')) scheduledDate = b.scheduledDate ? String(b.scheduledDate).slice(0,10) : null;
+      let note = existing ? existing.note : null;
+      if(has('note')) note = String(b.note||'').trim().slice(0,500) || null;
+      if(providerId){
+        const pr=await q1("SELECT id FROM users WHERE id=$1 AND role='provider'",[providerId]);
+        if(!pr) return send(res,400,{error:'Provider not found'});
+      }
+      const providerChanged = !!providerId && providerId !== (existing?existing.provider_id:null);
+      const row=await q1(
+        `INSERT INTO care_plan_visits (id,homeowner_id,service_key,provider_id,status,scheduled_date,note,updated_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,now())
+         ON CONFLICT (homeowner_id,service_key) DO UPDATE SET provider_id=$4,status=$5,scheduled_date=$6,note=$7,updated_at=now()
+         RETURNING *`,
+        [existing?existing.id:id('cpv'), homeownerId, serviceKey, providerId, status, scheduledDate, note]
+      );
+      let providerName=null;
+      if(row.provider_id){
+        const pr=await q1('SELECT name FROM users WHERE id=$1',[row.provider_id]);
+        if(pr){
+          providerName=pr.name;
+          if(providerChanged){
+            const svcName=CARE_SERVICE_INFO[serviceKey].name;
+            await pool.query('INSERT INTO messages (id,sender_id,recipient_id,participants,body,read) VALUES ($1,$2,$3,$4,$5,$6)',
+              [id('msg'),u.id,row.provider_id,[u.id,row.provider_id],`An admin assigned you to a recurring Home Care Plan service: ${svcName} for ${homeowner.name}.${note?(' Note: '+note):''}`,false]);
+          }
+        }
+      }
+      return send(res,200,{visit:{serviceKey:row.service_key,serviceName:CARE_SERVICE_INFO[row.service_key].name,status:row.status,scheduledDate:row.scheduled_date?new Date(row.scheduled_date).toISOString().slice(0,10):null,providerId:row.provider_id,providerName,note:row.note}});
     }
 
     return send(res,404,{error:'Not found'});

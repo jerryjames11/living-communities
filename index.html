@@ -138,6 +138,18 @@ button{font:inherit;cursor:pointer}
 .sideitem.active{background:var(--mint);color:var(--green);font-weight:700}
 .sideitem.active svg{opacity:1}
 .admin-status-tab.active{background:var(--mint);color:var(--green);border-color:transparent}
+.dispatch-sub-tab.active{background:var(--mint);color:var(--green);border-color:transparent}
+.careplan-account{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-top:10px}
+.careplan-account-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.careplan-account-head .name{font-weight:800;font-size:14.5px}
+.careplan-account-head .meta{color:var(--muted);font-size:12.5px}
+.careplan-service-row{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 0;border-top:1px solid var(--line)}
+.careplan-service-row:first-of-type{border-top:1px solid var(--line)}
+.careplan-service-main{flex:1;min-width:160px}
+.careplan-service-main .svc{font-weight:700;font-size:13.5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.careplan-service-main .meta{color:var(--muted);font-size:12px;margin-top:2px}
+.careplan-service-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.careplan-service-actions select,.careplan-service-actions input[type=date]{border:1px solid #cbd9d3;border-radius:8px;padding:6px 8px;font:inherit;font-size:12.5px;background:#fff}
 .sidedivider{height:1px;background:var(--line);margin:10px 4px}
 .admin-row{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-top:10px;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
 .admin-row-main{flex:1;min-width:220px}
@@ -531,13 +543,25 @@ button{font:inherit;cursor:pointer}
 </div>
 
 <div class="panel hidden" data-panel="dispatch">
-  <div class="mini-actions" style="margin-bottom:6px;gap:10px">
-    <span class="subtle" style="font-size:13px">Open requests with no quotes, waiting more than</span>
-    <select id="admin-stale-hours" onchange="loadAdminDispatch()" style="border:1px solid #cbd9d3;border-radius:8px;padding:8px 10px;font:inherit;font-size:13px">
-      <option value="6">6 hours</option><option value="24" selected>24 hours</option><option value="48">48 hours</option><option value="72">72 hours</option>
-    </select>
+  <div class="mini-actions" style="margin:0 0 16px">
+    <button class="secondary dispatch-sub-tab active" data-sub="careplan" onclick="switchDispatchSubTab('careplan')">Care Plan Accounts</button>
+    <button class="secondary dispatch-sub-tab" data-sub="requests" onclick="switchDispatchSubTab('requests')">Open Requests</button>
   </div>
-  <div id="admin-dispatch-list" style="margin-top:12px"></div>
+
+  <div class="dispatch-sub" data-sub="careplan">
+    <p class="subtle" style="font-size:13px;margin:0 0 12px">Every recurring service a Plus/Premium homeowner pays for, and whether a provider is on it.</p>
+    <div id="admin-careplan-list"></div>
+  </div>
+
+  <div class="dispatch-sub hidden" data-sub="requests">
+    <div class="mini-actions" style="margin-bottom:6px;gap:10px">
+      <span class="subtle" style="font-size:13px">Open requests with no quotes, waiting more than</span>
+      <select id="admin-stale-hours" onchange="loadAdminDispatch()" style="border:1px solid #cbd9d3;border-radius:8px;padding:8px 10px;font:inherit;font-size:13px">
+        <option value="6">6 hours</option><option value="24" selected>24 hours</option><option value="48">48 hours</option><option value="72">72 hours</option>
+      </select>
+    </div>
+    <div id="admin-dispatch-list" style="margin-top:12px"></div>
+  </div>
 </div>
 
 <div class="panel hidden" data-panel="verification">
@@ -761,6 +785,9 @@ function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t
 // Escape any value that came from the server before it goes into innerHTML —
 // provider names, quote messages, request text, etc. are all user-entered.
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+// Safely embed a string as a single-quoted JS argument inside a double-quoted onclick="" attribute:
+// escapes it for JS-string-literal safety first, then HTML-escapes the result for the attribute.
+function jsAttr(s){return esc(String(s??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,'\\n'))}
 function initials(name){return esc(String(name||'?').split(' ').map(x=>x[0]).slice(0,2).join(''))}
 
 // --- profile avatars: upload your own photo, or pick one of 5 generic icons per role ---
@@ -1692,8 +1719,16 @@ function switchAdminPanel(panelName){
   document.querySelectorAll('#admin .content .panel').forEach(el=>el.classList.toggle('hidden',el.dataset.panel!==panelName));
   if(panelName==='overview') loadAdminOverview();
   else if(panelName==='accounts') loadAdminAccounts();
-  else if(panelName==='dispatch') loadAdminDispatch();
+  else if(panelName==='dispatch') switchDispatchSubTab(adminDispatchSubTab);
   else if(panelName==='verification') loadAdminQueue(adminQueueStatus);
+}
+let adminDispatchSubTab='careplan';
+function switchDispatchSubTab(sub){
+  adminDispatchSubTab=sub;
+  document.querySelectorAll('.dispatch-sub-tab').forEach(b=>b.classList.toggle('active',b.dataset.sub===sub));
+  document.querySelectorAll('.dispatch-sub').forEach(el=>el.classList.toggle('hidden',el.dataset.sub!==sub));
+  if(sub==='careplan') loadAdminCarePlanAccounts();
+  else loadAdminDispatch();
 }
 function statusPillHTML(text,tone){ return `<span class="status-pill ${tone}">${esc(text)}</span>`; }
 async function loadAdminOverview(){
@@ -1713,7 +1748,7 @@ async function loadAdminOverview(){
       </div>
       <div class="section-row"><h3 style="margin:0">Homeowner plans</h3></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">
-        <span class="tag">Basic: ${hp.free||0}</span><span class="tag">Plus: ${hp.plus||0}</span><span class="tag">Premium: ${hp.premium||0}</span>
+        <span class="tag">Free: ${hp.free||0}</span><span class="tag">Plus: ${hp.plus||0}</span><span class="tag">Premium: ${hp.premium||0}</span>
       </div>
       <div class="section-row"><h3 style="margin:0">Provider plans</h3></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">
@@ -1745,7 +1780,7 @@ function renderAdminAccounts(accounts){
 }
 function adminAccountRowHTML(a){
   const planOptions = a.role==='homeowner'
-    ? ['free','plus','premium'].map(k=>`<option value="${k}" ${a.subscription===k?'selected':''}>${k==='free'?'Basic':k[0].toUpperCase()+k.slice(1)}</option>`).join('')
+    ? ['free','plus','premium'].map(k=>`<option value="${k}" ${a.subscription===k?'selected':''}>${k==='free'?'Free':k[0].toUpperCase()+k.slice(1)}</option>`).join('')
     : ['free','pro'].map(k=>`<option value="${k}" ${a.providerPlan===k?'selected':''}>${k==='free'?'Free':'Pro'}</option>`).join('');
   const extraMeta = a.role==='homeowner'
     ? `${a.community?esc(a.community)+' · ':''}Care Plan: ${a.carePlanServiceCount||0} service${a.carePlanServiceCount===1?'':'s'}`
@@ -1802,13 +1837,71 @@ function renderAdminDispatch(requests){
         ${dispatched}
       </div>
       <div class="admin-row-actions">
-        <button class="primary" onclick="openAdminAssignModal('${r.id}',${JSON.stringify(r.title)})">Dispatch a provider</button>
+        <button class="primary" onclick="openAdminAssignModal('${r.id}','${jsAttr(r.title)}')">Dispatch a provider</button>
       </div>
     </div>`;
   }).join('');
 }
+async function loadAdminCarePlanAccounts(){
+  const el=document.getElementById('admin-careplan-list'); if(!el)return;
+  el.innerHTML='<div class="notice">Loading…</div>';
+  try{
+    const d=await api('/admin/care-plan-accounts');
+    renderAdminCarePlanAccounts(d.accounts||[]);
+  }catch(e){ el.innerHTML=`<div class="notice">${esc(e.message)}</div>`; }
+}
+function carePlanStatusPill(status){
+  if(status==='completed') return statusPillHTML('Completed','ok');
+  if(status==='scheduled') return statusPillHTML('Scheduled','warn');
+  return statusPillHTML('Upcoming','neutral');
+}
+function renderAdminCarePlanAccounts(accounts){
+  const el=document.getElementById('admin-careplan-list'); if(!el)return;
+  if(!accounts.length){ el.innerHTML='<div class="notice">No homeowners on a Home Care Plan yet.</div>'; return; }
+  el.innerHTML=accounts.map(a=>`
+    <div class="careplan-account">
+      <div class="careplan-account-head">
+        <div class="name">${esc(a.name)} ${statusPillHTML(a.subscription==='premium'?'Premium':'Plus','neutral')}</div>
+        <div class="meta">${esc(a.email)}${a.community?' · '+esc(a.community):''}</div>
+      </div>
+      ${(a.services||[]).map(s=>carePlanServiceRowHTML(a.id,s)).join('')}
+    </div>`).join('');
+}
+function carePlanServiceRowHTML(homeownerId,s){
+  const rowId=homeownerId+'__'+s.serviceKey;
+  return `<div class="careplan-service-row" id="cpv-row-${rowId}">
+    <div class="careplan-service-main">
+      <div class="svc">${esc(s.serviceName)} ${carePlanStatusPill(s.status)}</div>
+      <div class="meta">${s.providerName?('Assigned: '+esc(s.providerName)):'No provider assigned yet'}</div>
+    </div>
+    <div class="careplan-service-actions">
+      <select id="cpv-status-${rowId}">
+        <option value="upcoming" ${s.status==='upcoming'?'selected':''}>Upcoming</option>
+        <option value="scheduled" ${s.status==='scheduled'?'selected':''}>Scheduled</option>
+        <option value="completed" ${s.status==='completed'?'selected':''}>Completed</option>
+      </select>
+      <input type="date" id="cpv-date-${rowId}" value="${s.scheduledDate||''}">
+      <button class="secondary" onclick="saveCarePlanVisit('${homeownerId}','${s.serviceKey}')">Save</button>
+      <button class="secondary" onclick="openCarePlanAssignPicker('${homeownerId}','${s.serviceKey}','${jsAttr(s.serviceName)}')">${s.providerName?'Change provider':'Assign provider'}</button>
+    </div>
+  </div>`;
+}
+async function saveCarePlanVisit(homeownerId,serviceKey){
+  const rowId=homeownerId+'__'+serviceKey;
+  const status=document.getElementById('cpv-status-'+rowId).value;
+  const scheduledDate=document.getElementById('cpv-date-'+rowId).value||null;
+  try{
+    await api('/admin/care-plan-visits',{method:'POST',body:JSON.stringify({homeownerId,serviceKey,status,scheduledDate})});
+    toast('Saved.');
+    await loadAdminCarePlanAccounts();
+  }catch(e){ toast(e.message); }
+}
 let adminAssignRequestId=null;
+let adminAssignMode='request'; // 'request' | 'careplan'
+let adminAssignCarePlan=null; // {homeownerId, serviceKey}
 async function openAdminAssignModal(requestId,title){
+  adminAssignMode='request';
+  adminAssignCarePlan=null;
   adminAssignRequestId=requestId;
   document.getElementById('adminAssignTitle').textContent='Assign: '+title;
   document.getElementById('adminAssignNote').value='';
@@ -1818,6 +1911,22 @@ async function openAdminAssignModal(requestId,title){
   document.getElementById('adminAssignModal').classList.add('show');
   try{
     const d=await api('/admin/requests/'+requestId+'/candidates');
+    renderAdminAssignCandidates(d.candidates||[]);
+  }catch(e){ list.innerHTML=`<div class="notice">${esc(e.message)}</div>`; }
+}
+async function openCarePlanAssignPicker(homeownerId,serviceKey,serviceName){
+  adminAssignMode='careplan';
+  adminAssignRequestId=null;
+  adminAssignCarePlan={homeownerId,serviceKey};
+  document.getElementById('adminAssignTitle').textContent='Assign: '+serviceName;
+  document.getElementById('adminAssignNote').value='';
+  const err=document.getElementById('adminAssignError'); if(err)err.classList.add('hidden');
+  const list=document.getElementById('adminAssignCandidates');
+  list.innerHTML='<div class="notice">Loading candidates…</div>';
+  document.getElementById('adminAssignModal').classList.add('show');
+  try{
+    const params=new URLSearchParams({serviceKey,homeownerId});
+    const d=await api('/admin/care-plan-candidates?'+params.toString());
     renderAdminAssignCandidates(d.candidates||[]);
   }catch(e){ list.innerHTML=`<div class="notice">${esc(e.message)}</div>`; }
 }
@@ -1833,16 +1942,24 @@ function renderAdminAssignCandidates(candidates){
       <div class="admin-row-actions"><button class="primary" onclick="submitAdminAssign('${c.id}')">Assign</button></div>
     </div>`).join('');
 }
-function closeAdminAssignModal(){ document.getElementById('adminAssignModal').classList.remove('show'); adminAssignRequestId=null; }
+function closeAdminAssignModal(){ document.getElementById('adminAssignModal').classList.remove('show'); adminAssignRequestId=null; adminAssignCarePlan=null; }
 async function submitAdminAssign(providerId){
-  if(!adminAssignRequestId)return;
   const note=document.getElementById('adminAssignNote').value.trim();
   const err=document.getElementById('adminAssignError');
   try{
-    await api('/admin/requests/'+adminAssignRequestId+'/assign',{method:'POST',body:JSON.stringify({providerId,note})});
-    closeAdminAssignModal();
-    toast('Provider dispatched.');
-    await loadAdminDispatch();
+    if(adminAssignMode==='careplan'){
+      if(!adminAssignCarePlan)return;
+      await api('/admin/care-plan-visits',{method:'POST',body:JSON.stringify({homeownerId:adminAssignCarePlan.homeownerId,serviceKey:adminAssignCarePlan.serviceKey,providerId,note})});
+      closeAdminAssignModal();
+      toast('Provider assigned.');
+      await loadAdminCarePlanAccounts();
+    }else{
+      if(!adminAssignRequestId)return;
+      await api('/admin/requests/'+adminAssignRequestId+'/assign',{method:'POST',body:JSON.stringify({providerId,note})});
+      closeAdminAssignModal();
+      toast('Provider dispatched.');
+      await loadAdminDispatch();
+    }
   }catch(e){ if(err){err.textContent=e.message;err.classList.remove('hidden')} }
 }
 async function renderMessages(role,d){
