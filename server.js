@@ -276,7 +276,7 @@ const AVATAR_ICON_IDS=['h1','h2','h3','h4','h5','p1','p2','p3','p4','p5'];
 // --- provider verification / background-check workflow ---
 const VERIFICATION_DOC_RE=/^data:(image\/(png|jpe?g|webp)|application\/pdf);base64,[A-Za-z0-9+/=]+$/;
 const VERIFICATION_MAX_DOC_BYTES=5_500_000; // ~4MB file once base64-encoded
-const VERIFICATION_MAX_DOCS=5;
+const VERIFICATION_MAX_DOCS=6;
 // No real screening vendor is wired up (needs a signed vendor account + API keys we don't have,
 // and this sandbox can't reach the internet to test one anyway). This just records that a check
 // was requested so it shows up in the admin queue. To go live: sign up with a vendor that offers
@@ -289,11 +289,10 @@ async function initiateBackgroundCheck(provider){
 }
 
 const CARE_SERVICE_INFO={
-  landscaping:{name:'Landscaping',price:89,billing:'mo'},
-  pest:{name:'Pest Control',price:39,billing:'mo'},
-  cleaning:{name:'Home Cleaning',price:129,billing:'mo'},
-  pool:{name:'Pool Cleaning',price:99,billing:'mo'},
-  holiday_lighting:{name:'Holiday Lighting',price:65,billing:'season'}
+  landscaping:{name:'Landscaping',price:110,billing:'mo'},
+  pest:{name:'Pest Control',price:70,billing:'mo'},
+  cleaning:{name:'Home Cleaning',price:275,billing:'mo'},
+  pool:{name:'Pool Cleaning',price:210,billing:'mo'}
 };
 // Monthly total is now driven by each item's admin-set priceCents (once active), not the catalog
 // price — the catalog price only remains as a marketing "starting around" figure and an admin
@@ -311,7 +310,7 @@ const PROVIDER_PLAN_INFO={free:{label:'Free',priceCents:0,rank:0},pro:{label:'Pr
 function normalizeHomeownerPlanKey(v){ return v==='pro' ? 'premium' : (v||'free'); }
 // Maps a Home Care Plan service key to the closest provider-facing service category, so the admin's
 // "assign a provider" picker can rank providers who actually offer that kind of work first.
-const CARE_SERVICE_TO_PROVIDER_TYPE={landscaping:'Lawn & Landscaping',pest:'Pest Control',cleaning:'House Cleaning',pool:'Pool Service',holiday_lighting:'Handyman'};
+const CARE_SERVICE_TO_PROVIDER_TYPE={landscaping:'Lawn & Landscaping',pest:'Pest Control',cleaning:'House Cleaning',pool:'Pool Service'};
 function fmtDate(d){ return new Date(d).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}); }
 
 function welcomeEmailHtml(u){
@@ -1357,6 +1356,10 @@ const server=http.createServer(async (req,res)=>{
       const docsIn=Array.isArray(b.documents)?b.documents:[];
       if(!docsIn.length) return send(res,400,{error:'Upload at least one document.'});
       if(docsIn.length>VERIFICATION_MAX_DOCS) return send(res,400,{error:`You can upload up to ${VERIFICATION_MAX_DOCS} documents.`});
+      const requiredTypes = entityType==='business' ? ['business_license','insurance_cert'] : ['government_id'];
+      const presentTypes = new Set(docsIn.map(d=>String((d&&d.type)||'')));
+      const missingTypes = requiredTypes.filter(t=>!presentTypes.has(t));
+      if(missingTypes.length) return send(res,400,{error:`Upload required: ${missingTypes.join(', ')}.`});
       const documents=[];
       for(const d of docsIn){
         const dataUrl=String((d&&d.dataUrl)||'');
