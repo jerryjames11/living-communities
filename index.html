@@ -39,7 +39,7 @@ button{font:inherit;cursor:pointer}
 .float-1{top:8%;left:-6%}
 .float-2{bottom:8%;right:-6%}
 .float-icon{width:38px;height:38px;border-radius:50%;flex:0 0 auto;background:var(--mint);display:grid;place-items:center;overflow:hidden}
-.float-icon.shield{background:var(--mint);color:var(--green)}
+.float-icon.shield,.float-icon.check{background:var(--mint);color:var(--green)}
 
 /* ---------- generic sections ---------- */
 .section{padding:48px 6%}
@@ -206,8 +206,7 @@ button{font:inherit;cursor:pointer}
 .cardrow{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .care-layout{display:grid;grid-template-columns:1fr 300px;gap:18px;align-items:start}
 .care-list{display:flex;flex-direction:column;gap:12px}
-.care-card{background:#fff;border:1.5px solid var(--line);border-radius:16px;padding:14px 16px;display:flex;gap:14px;align-items:flex-start;cursor:pointer;transition:border-color .12s}
-.care-card:hover{border-color:#b9cec4}
+.care-card{background:#fff;border:1.5px solid var(--line);border-radius:16px;padding:14px 16px;display:flex;gap:14px;align-items:flex-start;transition:border-color .12s}
 .care-card.selected{border-color:var(--green);background:#f6faf8}
 .care-checkbox{width:22px;height:22px;border-radius:7px;border:1.5px solid #c7d6cf;flex:0 0 auto;margin-top:2px;display:grid;place-items:center;color:#fff;font-size:13px;font-weight:800}
 .care-checkbox.checked{background:var(--green);border-color:var(--green)}
@@ -218,6 +217,11 @@ button{font:inherit;cursor:pointer}
 .care-body .desc{color:var(--muted);font-size:13px;margin-top:3px;line-height:1.5}
 .care-price{font-weight:800;color:var(--ink);white-space:nowrap;text-align:right}
 .care-price small{display:block;font-weight:600;color:var(--muted);font-size:11.5px}
+.care-status{margin-top:7px}
+.care-status .svc-price{font-weight:800;color:var(--ink);font-size:14px;display:inline}
+.care-actions{display:flex;flex-direction:column;gap:6px;align-items:stretch;flex:0 0 auto;min-width:132px}
+.care-actions button{white-space:nowrap;font-size:12.5px;padding:8px 12px}
+.care-actions .linklike{background:none;border:none;color:var(--muted);text-decoration:underline;cursor:pointer;font:inherit;font-size:12.5px;padding:2px 0}
 .care-summary{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px;position:sticky;top:20px}
 .care-summary h3{margin:0 0 4px}
 .care-summary .total{font-size:32px;font-weight:800;margin:10px 0 2px}
@@ -313,8 +317,8 @@ button{font:inherit;cursor:pointer}
 </div>
 <div class="hero-visual">
   <div class="photo-slot hero-photo" data-label="images/hero-house.jpg — a bright home exterior" style="aspect-ratio:5/4"><img src="images/hero-house.jpg" alt="Home exterior" onerror="this.closest('.photo-slot').classList.add('missing')"></div>
-  <div class="floatcard float-1"><div class="float-icon"><div class="avatar-slot" data-label="" style="width:38px;height:38px"><img src="images/badge-pro.jpg" alt="" onerror="this.closest('.avatar-slot').classList.add('missing')"><span class="avatar-fallback">✓</span></div></div><div><b>Trusted Professionals</b><small>Background-checked and reviewed</small></div></div>
-  <div class="floatcard float-2"><div class="float-icon shield"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3l6 2.5v4.3c0 4-2.6 6.7-6 7.7-3.4-1-6-3.7-6-7.7V5.5L10 3z"/><path d="M7.3 10l2 2 3.4-4"/></svg></div><div><b>Quality You Can Count On</b><small>Satisfaction guaranteed</small></div></div>
+  <div class="floatcard float-1"><div class="float-icon check"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7.2"/><path d="M6.8 10.2l2.1 2.1 4.3-4.6"/></svg></div><div><b>We've Got It Handled</b><small>Every request finds a pro</small></div></div>
+  <div class="floatcard float-2"><div class="float-icon shield"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12"/><path d="M12 6l4 4-4 4"/></svg></div><div><b>Simple, Start to Finish</b><small>Request, match, done</small></div></div>
 </div>
 </section>
 
@@ -357,13 +361,14 @@ button{font:inherit;cursor:pointer}
     <h2 style="margin:6px 0 10px">Home Care Plan: one flat monthly bill. Every recurring service handled.</h2>
     <p class="lead" style="margin-bottom:18px">Included with Plus and Premium. Stop juggling five different providers and five different bills — pick the recurring services your home needs and we line up trusted local pros, all on one simple monthly charge, plus a private chat with homes near you.</p>
     <ul class="careplan-checklist">
-      <li><span><svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3c-7 0-13 5-13 12 0 1 .2 2 .2 2s7.8-1 10.8-5c2-2.5 2.5-6 2-9z"/><path d="M5 16C8.5 11.5 12.5 8 17 3"/></svg></span>Landscaping<b>$89/mo</b></li>
-      <li><span><svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="5" r="1.5"/><ellipse cx="10" cy="9.5" rx="2.3" ry="2.8"/><ellipse cx="10" cy="14.5" rx="2.8" ry="3.2"/><path d="M7.5 8l-3-1.5M7.8 10h-3.3M8 12l-2.7 2M12.5 8l3-1.5M12.2 10h3.3M12 12l2.7 2"/></svg></span>Pest Control<b>$39/mo</b></li>
-      <li><span><svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2L9 11"/><path d="M9 11l-5.5 7"/><path d="M9 11l-3 6.5"/><path d="M9 11l-0.3 7"/><path d="M9 11l2.3 6.2"/></svg></span>Home Cleaning<b>$129/mo</b></li>
-      <li><span><svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7.5c1.4-1.2 2.8-1.2 4.2 0s2.8 1.2 4.2 0 2.8-1.2 4.2 0 2.8 1.2 4.2 0"/><path d="M2 12.5c1.4-1.2 2.8-1.2 4.2 0s2.8 1.2 4.2 0 2.8-1.2 4.2 0 2.8 1.2 4.2 0"/></svg></span>Pool Cleaning<b>$99/mo</b></li>
-      <li><span><svg width="17" height="17" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2c.4 3 1.3 5.4 2.4 6.6C13.6 9.7 16 10.6 19 11c-3 .4-5.4 1.3-6.6 2.4C11.3 14.6 10.4 17 10 20c-.4-3-1.3-5.4-2.4-6.6C6.4 12.3 4 11.4 1 11c3-.4 5.4-1.3 6.6-2.4C8.7 7.4 9.6 5 10 2z"/></svg></span>Holiday Lighting<b>seasonal</b></li>
+      <li><span><svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3c-7 0-13 5-13 12 0 1 .2 2 .2 2s7.8-1 10.8-5c2-2.5 2.5-6 2-9z"/><path d="M5 16C8.5 11.5 12.5 8 17 3"/></svg></span>Landscaping<b>$59–$119/mo</b></li>
+      <li><span><svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="5" r="1.5"/><ellipse cx="10" cy="9.5" rx="2.3" ry="2.8"/><ellipse cx="10" cy="14.5" rx="2.8" ry="3.2"/><path d="M7.5 8l-3-1.5M7.8 10h-3.3M8 12l-2.7 2M12.5 8l3-1.5M12.2 10h3.3M12 12l2.7 2"/></svg></span>Pest Control<b>$9–$69/mo</b></li>
+      <li><span><svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2L9 11"/><path d="M9 11l-5.5 7"/><path d="M9 11l-3 6.5"/><path d="M9 11l-0.3 7"/><path d="M9 11l2.3 6.2"/></svg></span>Home Cleaning<b>$99–$159/mo</b></li>
+      <li><span><svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7.5c1.4-1.2 2.8-1.2 4.2 0s2.8 1.2 4.2 0 2.8-1.2 4.2 0 2.8 1.2 4.2 0"/><path d="M2 12.5c1.4-1.2 2.8-1.2 4.2 0s2.8 1.2 4.2 0 2.8-1.2 4.2 0 2.8 1.2 4.2 0"/></svg></span>Pool Cleaning<b>$69–$129/mo</b></li>
+      <li><span><svg width="17" height="17" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2c.4 3 1.3 5.4 2.4 6.6C13.6 9.7 16 10.6 19 11c-3 .4-5.4 1.3-6.6 2.4C11.3 14.6 10.4 17 10 20c-.4-3-1.3-5.4-2.4-6.6C6.4 12.3 4 11.4 1 11c3-.4 5.4-1.3 6.6-2.4C8.7 7.4 9.6 5 10 2z"/></svg></span>Holiday Lighting<b>$35–$95 seasonal</b></li>
     </ul>
-    <div style="margin-top:22px;display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+    <p class="subtle" style="font-size:12.5px;margin-top:10px">Ranges shown — final pricing is confirmed after a home visit or consultation.</p>
+    <div style="margin-top:18px;display:flex;gap:12px;flex-wrap:wrap;align-items:center">
       <button class="primary" onclick="openCarePlanPage()">Build Your Plan</button>
       <span class="subtle" style="font-size:13px">Requires Plus or Premium · add or remove services anytime</span>
     </div>
@@ -372,8 +377,8 @@ button{font:inherit;cursor:pointer}
     <div class="care-summary" style="position:static">
       <h3>Example plan</h3>
       <div class="subtle" style="font-size:13px">Landscaping + Pest Control + Cleaning</div>
-      <div class="total">$257<small>/mo</small></div>
-      <div class="subtle" style="font-size:12.5px;margin-top:6px">Cancel or change anytime.</div>
+      <div class="total">≈$257<small>/mo</small></div>
+      <div class="subtle" style="font-size:12.5px;margin-top:6px">Estimated — confirmed after a visit. Cancel or change anytime.</div>
     </div>
   </div>
 </div>
@@ -642,19 +647,18 @@ button{font:inherit;cursor:pointer}
 </div>
 <div class="care-layout" id="careLayout">
   <div class="care-list">
-    <div class="care-card" id="care-card-landscaping" onclick="toggleCareService('landscaping')"><div class="care-checkbox"></div><div class="care-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3c-7 0-13 5-13 12 0 1 .2 2 .2 2s7.8-1 10.8-5c2-2.5 2.5-6 2-9z"/><path d="M5 16C8.5 11.5 12.5 8 17 3"/></svg></div><div class="care-body"><div class="name">Landscaping</div><div class="desc">Weekly mow, edge & blow. Final price confirmed after a quick property check for larger lots.</div></div><div class="care-price">$89<small>/mo</small></div></div>
-    <div class="care-card" id="care-card-pest" onclick="toggleCareService('pest')"><div class="care-checkbox"></div><div class="care-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="5" r="1.5"/><ellipse cx="10" cy="9.5" rx="2.3" ry="2.8"/><ellipse cx="10" cy="14.5" rx="2.8" ry="3.2"/><path d="M7.5 8l-3-1.5M7.8 10h-3.3M8 12l-2.7 2M12.5 8l3-1.5M12.2 10h3.3M12 12l2.7 2"/></svg></div><div class="care-body"><div class="name">Pest Control</div><div class="desc">Quarterly treatment inside & out, with free call-backs between visits.</div></div><div class="care-price">$39<small>/mo</small></div></div>
-    <div class="care-card" id="care-card-cleaning" onclick="toggleCareService('cleaning')"><div class="care-checkbox"></div><div class="care-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2L9 11"/><path d="M9 11l-5.5 7"/><path d="M9 11l-3 6.5"/><path d="M9 11l-0.3 7"/><path d="M9 11l2.3 6.2"/></svg></div><div class="care-body"><div class="name">Home Cleaning</div><div class="desc">A full clean every two weeks — kitchens, baths, floors, dusting.</div></div><div class="care-price">$129<small>/mo</small></div></div>
-    <div class="care-card" id="care-card-pool" onclick="toggleCareService('pool')"><div class="care-checkbox"></div><div class="care-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7.5c1.4-1.2 2.8-1.2 4.2 0s2.8 1.2 4.2 0 2.8-1.2 4.2 0 2.8 1.2 4.2 0"/><path d="M2 12.5c1.4-1.2 2.8-1.2 4.2 0s2.8 1.2 4.2 0 2.8-1.2 4.2 0 2.8 1.2 4.2 0"/></svg></div><div class="care-body"><div class="name">Pool Cleaning</div><div class="desc">Weekly cleaning, chemical balance, and an equipment check.</div></div><div class="care-price">$99<small>/mo</small></div></div>
-    <div class="care-card" id="care-card-holiday_lighting" onclick="toggleCareService('holiday_lighting')"><div class="care-checkbox"></div><div class="care-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2c.4 3 1.3 5.4 2.4 6.6C13.6 9.7 16 10.6 19 11c-3 .4-5.4 1.3-6.6 2.4C11.3 14.6 10.4 17 10 20c-.4-3-1.3-5.4-2.4-6.6C6.4 12.3 4 11.4 1 11c3-.4 5.4-1.3 6.6-2.4C8.7 7.4 9.6 5 10 2z"/></svg></div><div class="care-body"><div class="name">Holiday Lighting</div><div class="desc">We install in November and take it down in January. Billed once per season, not monthly.</div></div><div class="care-price">$65<small>seasonal</small></div></div>
+    <div class="care-card" id="care-card-landscaping"><div class="care-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3c-7 0-13 5-13 12 0 1 .2 2 .2 2s7.8-1 10.8-5c2-2.5 2.5-6 2-9z"/><path d="M5 16C8.5 11.5 12.5 8 17 3"/></svg></div><div class="care-body"><div class="name">Landscaping</div><div class="desc">Weekly mow, edge & blow. Final price confirmed after a quick property check for larger lots.</div><div class="care-status" id="care-status-landscaping"></div></div><div class="care-actions" id="care-actions-landscaping"></div></div>
+    <div class="care-card" id="care-card-pest"><div class="care-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="5" r="1.5"/><ellipse cx="10" cy="9.5" rx="2.3" ry="2.8"/><ellipse cx="10" cy="14.5" rx="2.8" ry="3.2"/><path d="M7.5 8l-3-1.5M7.8 10h-3.3M8 12l-2.7 2M12.5 8l3-1.5M12.2 10h3.3M12 12l2.7 2"/></svg></div><div class="care-body"><div class="name">Pest Control</div><div class="desc">Quarterly treatment inside & out, with free call-backs between visits.</div><div class="care-status" id="care-status-pest"></div></div><div class="care-actions" id="care-actions-pest"></div></div>
+    <div class="care-card" id="care-card-cleaning"><div class="care-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2L9 11"/><path d="M9 11l-5.5 7"/><path d="M9 11l-3 6.5"/><path d="M9 11l-0.3 7"/><path d="M9 11l2.3 6.2"/></svg></div><div class="care-body"><div class="name">Home Cleaning</div><div class="desc">A full clean every two weeks — kitchens, baths, floors, dusting.</div><div class="care-status" id="care-status-cleaning"></div></div><div class="care-actions" id="care-actions-cleaning"></div></div>
+    <div class="care-card" id="care-card-pool"><div class="care-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7.5c1.4-1.2 2.8-1.2 4.2 0s2.8 1.2 4.2 0 2.8-1.2 4.2 0 2.8 1.2 4.2 0"/><path d="M2 12.5c1.4-1.2 2.8-1.2 4.2 0s2.8 1.2 4.2 0 2.8-1.2 4.2 0 2.8 1.2 4.2 0"/></svg></div><div class="care-body"><div class="name">Pool Cleaning</div><div class="desc">Weekly cleaning, chemical balance, and an equipment check.</div><div class="care-status" id="care-status-pool"></div></div><div class="care-actions" id="care-actions-pool"></div></div>
+    <div class="care-card" id="care-card-holiday_lighting"><div class="care-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2c.4 3 1.3 5.4 2.4 6.6C13.6 9.7 16 10.6 19 11c-3 .4-5.4 1.3-6.6 2.4C11.3 14.6 10.4 17 10 20c-.4-3-1.3-5.4-2.4-6.6C6.4 12.3 4 11.4 1 11c3-.4 5.4-1.3 6.6-2.4C8.7 7.4 9.6 5 10 2z"/></svg></div><div class="care-body"><div class="name">Holiday Lighting</div><div class="desc">We install in November and take it down in January. Billed once per season, not monthly.</div><div class="care-status" id="care-status-holiday_lighting"></div></div><div class="care-actions" id="care-actions-holiday_lighting"></div></div>
   </div>
   <div class="care-summary">
     <h3>Your plan</h3>
-    <div class="subtle" style="font-size:13px">Cancel or change anytime.</div>
+    <div class="subtle" style="font-size:13px">Pricing is confirmed after a visit — nothing is billed until you accept a quote.</div>
     <div class="total" id="care-monthly-total">$0/mo</div>
-    <div class="seasonal-row hidden" id="care-seasonal-row"></div>
+    <div class="subtle" style="font-size:12px;margin-top:2px">Active services</div>
     <div class="seasonal-row hidden" id="care-next-billing-row"></div>
-    <button class="primary" style="width:100%" id="carePlanSubmitBtn" disabled onclick="submitCarePlan()">Select a service to continue</button>
   </div>
 </div>
 </div>
@@ -937,7 +941,7 @@ async function signup(){
       if(STRIPE_ENABLED){ openCheckoutModal(pp); }
       else { try{await api('/subscription',{method:'POST',body:JSON.stringify({plan:pp})});currentUser.subscription=pp}catch(e){} }
     }
-    if(pendingCareServices&&pendingCareServices.length){const svc=pendingCareServices;pendingCareServices=null;openCareCheckout(svc)}
+    if(pendingCareServiceKey){const k=pendingCareServiceKey;pendingCareServiceKey=null;requestCareService(k)}
   }catch(e){err.textContent=e.message;err.classList.remove('hidden')}
 }
 function choosePlan(plan){
@@ -1031,9 +1035,9 @@ async function selectPlan(plan){
   }
   openCheckoutModal(plan);
 }
-let checkoutMode='plan'; // 'plan' | 'careplan'
+let checkoutMode='plan'; // 'plan' | 'careplan-accept' | 'providerplan'
 let pendingCheckoutPlan=null;
-let pendingCheckoutCareServices=null;
+let pendingAcceptServiceKey=null;
 function resetCheckoutFields(){
   ['ckName','ckCardNumber','ckExpiry','ckCvc','ckZip'].forEach(id=>{const el=document.getElementById(id); if(el)el.value=''});
   document.getElementById('checkoutError').classList.add('hidden');
@@ -1048,13 +1052,14 @@ function openCheckoutModal(plan){
   ensureCardElementMounted();
   document.getElementById('checkoutModal').classList.add('show');
 }
-function openCareCheckout(services){
-  checkoutMode='careplan';
-  pendingCheckoutCareServices=services;
-  const monthly=careMonthlyTotal(services), seasonal=careSeasonalTotal(services);
-  let priceText=`$${monthly}/mo`; if(seasonal) priceText+=` + $${seasonal} seasonal`;
-  document.getElementById('checkout-plan-name').innerHTML=`Home Care Plan<small>${services.length} service${services.length===1?'':'s'} selected</small>`;
-  document.getElementById('checkout-plan-price').textContent=priceText;
+// Only reached when accepting a quote and Stripe billing is turned on — demo mode skips the card
+// step entirely and activates the service directly.
+function openCareAcceptCheckout(serviceKey){
+  checkoutMode='careplan-accept';
+  pendingAcceptServiceKey=serviceKey;
+  const item=careItemFor(serviceKey), svc=careServiceByKey(serviceKey);
+  document.getElementById('checkout-plan-name').innerHTML=`${esc(svc.name)}<small>Home Care Plan service</small>`;
+  document.getElementById('checkout-plan-price').textContent=`$${((item.priceCents||0)/100).toFixed(2)}/mo`;
   resetCheckoutFields();
   ensureCardElementMounted();
   document.getElementById('checkoutModal').classList.add('show');
@@ -1086,11 +1091,11 @@ async function submitCheckout(){
       if(result.error) return fail(result.error.message);
       paymentMethodId=result.setupIntent.payment_method;
     }
-    if(checkoutMode==='careplan'){
-      const d=await api('/care-plan',{method:'POST',body:JSON.stringify({services:pendingCheckoutCareServices,paymentMethodId})});
+    if(checkoutMode==='careplan-accept'){
+      const d=await api('/care-plan/accept',{method:'POST',body:JSON.stringify({serviceKey:pendingAcceptServiceKey,paymentMethodId})});
       currentUser=d.user;
       closeCheckout();
-      toast('Your Home Care Plan is active!');
+      toast('Service is now active!');
       renderCareBuilder();
       updateCarePlanSideitem();
     } else if(checkoutMode==='providerplan'){
@@ -1112,6 +1117,8 @@ async function submitCheckout(){
   }catch(e){fail(e.message)}
   finally{btn.disabled=false;btn.textContent='Subscribe'}
 }
+// price here is a "starting around" catalog figure only — actual pricing is admin-set per account
+// after a visit or consultation. Ranges shown to homeowners are this figure ±$30.
 const CARE_PLAN_SERVICES=[
   {key:'landscaping',icon:'leaf',name:'Landscaping',desc:'Weekly mow, edge & blow. Final price confirmed after a quick property check for larger lots.',price:89,billing:'mo'},
   {key:'pest',icon:'bug',name:'Pest Control',desc:'Quarterly treatment inside & out, with free call-backs between visits.',price:39,billing:'mo'},
@@ -1120,24 +1127,56 @@ const CARE_PLAN_SERVICES=[
   {key:'holiday_lighting',icon:'sparkle',name:'Holiday Lighting',desc:'We install in November and take it down in January. Billed once per season, not monthly.',price:65,billing:'season'}
 ];
 function careServiceByKey(key){return CARE_PLAN_SERVICES.find(s=>s.key===key)}
-function careMonthlyTotal(services){return (services||[...selectedCareServices]).reduce((sum,k)=>{const s=careServiceByKey(k);return s&&s.billing==='mo'?sum+s.price:sum},0)}
-function careSeasonalTotal(services){return (services||[...selectedCareServices]).reduce((sum,k)=>{const s=careServiceByKey(k);return s&&s.billing==='season'?sum+s.price:sum},0)}
-let selectedCareServices=new Set();
+function carePriceRangeText(key){const s=careServiceByKey(key); const lo=Math.max(1,s.price-30), hi=s.price+30; return `$${lo}–$${hi}${s.billing==='season'?' seasonal':'/mo'}`}
+function careItemFor(key){return currentUser&&currentUser.carePlanItems?currentUser.carePlanItems.find(i=>i.key===key):null}
+function careActiveMonthlyTotal(){return ((currentUser&&currentUser.carePlanItems)||[]).filter(i=>i.status==='active').reduce((sum,i)=>{const s=careServiceByKey(i.key); return s&&s.billing==='mo'?sum+(i.priceCents||0)/100:sum},0)}
 let carePlanOrigin='homeowner';
-let pendingCareServices=null;
-function toggleCareService(key){
-  if(selectedCareServices.has(key)) selectedCareServices.delete(key); else selectedCareServices.add(key);
-  renderCareBuilder();
-}
+let pendingCareServiceKey=null;
 function openCarePlanPage(role){
   carePlanOrigin=role||'homeowner';
-  selectedCareServices=new Set((currentUser&&currentUser.carePlanServices)||[]);
   show('carebuilder');
   renderCareBuilder();
 }
 function backFromCarePlan(){ if(authToken&&currentUser){ show(carePlanOrigin); } else { show('home'); } }
+// Requesting a service is instant and free — it just puts it on an admin's radar for pricing.
+// No selection state, no submit button: each card acts for itself.
+async function requestCareService(key){
+  if(!authToken||!currentUser){ pendingCareServiceKey=key; openSignup('homeowner'); return; }
+  const desired=[...new Set([...(currentUser.carePlanItems||[]).map(i=>i.key),key])];
+  try{
+    const d=await api('/care-plan',{method:'POST',body:JSON.stringify({services:desired})});
+    currentUser=d.user;
+    toast("Request sent — we'll follow up with pricing after a visit.");
+    renderCareBuilder(); updateCarePlanSideitem();
+  }catch(e){
+    if(e.data&&e.data.needsCommunityPlan){ toast(e.message); setTimeout(()=>openPlansPage(carePlanOrigin),300); }
+    else toast(e.message);
+  }
+}
+async function withdrawCareService(key){
+  const desired=(currentUser.carePlanItems||[]).map(i=>i.key).filter(k=>k!==key);
+  try{ const d=await api('/care-plan',{method:'POST',body:JSON.stringify({services:desired})}); currentUser=d.user; toast('Request withdrawn.'); renderCareBuilder(); updateCarePlanSideitem(); }
+  catch(e){ toast(e.message); }
+}
+async function cancelActiveCareService(key){
+  const s=careServiceByKey(key);
+  if(!confirm(`Cancel ${s.name}? Billing for it stops immediately.`))return;
+  const desired=(currentUser.carePlanItems||[]).map(i=>i.key).filter(k=>k!==key);
+  try{ const d=await api('/care-plan',{method:'POST',body:JSON.stringify({services:desired})}); currentUser=d.user; toast('Service canceled.'); renderCareBuilder(); updateCarePlanSideitem(); }
+  catch(e){ toast(e.message); }
+}
+async function acceptCareQuote(key){
+  if(STRIPE_ENABLED){ openCareAcceptCheckout(key); return; }
+  try{ const d=await api('/care-plan/accept',{method:'POST',body:JSON.stringify({serviceKey:key})}); currentUser=d.user; toast('Service is now active!'); renderCareBuilder(); updateCarePlanSideitem(); }
+  catch(e){ toast(e.message); }
+}
+async function declineCareQuote(key){
+  if(!confirm('Decline this quote? You can always request it again later.'))return;
+  try{ const d=await api('/care-plan/decline',{method:'POST',body:JSON.stringify({serviceKey:key})}); currentUser=d.user; toast('Quote declined.'); renderCareBuilder(); updateCarePlanSideitem(); }
+  catch(e){ toast(e.message); }
+}
 function renderCareBuilder(){
-  const hasExistingNow=!!(currentUser&&currentUser.carePlanServices&&currentUser.carePlanServices.length);
+  const hasExistingNow=!!(currentUser&&currentUser.carePlanItems&&currentUser.carePlanItems.length);
   const gated=!!(authToken&&currentUser&&currentUser.role==='homeowner'&&currentUser.subscription==='free'&&!hasExistingNow);
   const gateEl=document.getElementById('careGate'), layoutEl=document.getElementById('careLayout');
   if(gateEl) gateEl.classList.toggle('hidden',!gated);
@@ -1145,17 +1184,27 @@ function renderCareBuilder(){
   if(gated) return;
   CARE_PLAN_SERVICES.forEach(s=>{
     const card=document.getElementById('care-card-'+s.key);
-    if(!card)return;
-    card.classList.toggle('selected',selectedCareServices.has(s.key));
-    const box=card.querySelector('.care-checkbox'); if(box) box.classList.toggle('checked',selectedCareServices.has(s.key));
+    const statusEl=document.getElementById('care-status-'+s.key);
+    const actionsEl=document.getElementById('care-actions-'+s.key);
+    if(!card||!statusEl||!actionsEl)return;
+    const item=careItemFor(s.key);
+    card.classList.toggle('selected',!!item);
+    if(!item){
+      statusEl.innerHTML=`<span class="tag">Starting around ${carePriceRangeText(s.key)}</span>`;
+      actionsEl.innerHTML=`<button class="primary" onclick="requestCareService('${s.key}')">Request This Service</button>`;
+    }else if(item.status==='requested'){
+      statusEl.innerHTML=`<span class="tag status-open">Awaiting quote</span>`;
+      actionsEl.innerHTML=`<button class="linklike" onclick="withdrawCareService('${s.key}')">Withdraw request</button>`;
+    }else if(item.status==='quoted'){
+      statusEl.innerHTML=`<span class="tag status-completed">Quoted</span> <span class="svc-price">$${((item.priceCents||0)/100).toFixed(2)}${s.billing==='season'?' seasonal':'/mo'}</span>`;
+      actionsEl.innerHTML=`<button class="primary" onclick="acceptCareQuote('${s.key}')">Accept</button><button class="linklike" onclick="declineCareQuote('${s.key}')">Decline</button>`;
+    }else{
+      statusEl.innerHTML=`<span class="tag status-scheduled">Active</span> <span class="svc-price">$${((item.priceCents||0)/100).toFixed(2)}${s.billing==='season'?' seasonal':'/mo'}</span>`;
+      actionsEl.innerHTML=`<button class="linklike" onclick="cancelActiveCareService('${s.key}')">Cancel service</button>`;
+    }
   });
-  const monthly=careMonthlyTotal(), seasonal=careSeasonalTotal();
-  const monthlyEl=document.getElementById('care-monthly-total'); if(monthlyEl) monthlyEl.textContent='$'+monthly+'/mo';
-  const seasonalRow=document.getElementById('care-seasonal-row');
-  if(seasonalRow){
-    if(seasonal){seasonalRow.textContent='+ $'+seasonal+' one-time this fall for holiday lighting';seasonalRow.classList.remove('hidden')}
-    else{seasonalRow.classList.add('hidden')}
-  }
+  const monthly=careActiveMonthlyTotal();
+  const monthlyEl=document.getElementById('care-monthly-total'); if(monthlyEl) monthlyEl.textContent='$'+monthly.toFixed(2)+'/mo';
   const nextBillingRow=document.getElementById('care-next-billing-row');
   if(nextBillingRow){
     const nb=currentUser&&currentUser.carePlanNextBilling;
@@ -1165,35 +1214,12 @@ function renderCareBuilder(){
       nextBillingRow.classList.remove('hidden');
     }else{ nextBillingRow.classList.add('hidden'); }
   }
-  const hasExisting=!!(currentUser&&currentUser.carePlanServices&&currentUser.carePlanServices.length);
-  const currentSet=new Set((currentUser&&currentUser.carePlanServices)||[]);
-  const changed=selectedCareServices.size!==currentSet.size||[...selectedCareServices].some(k=>!currentSet.has(k));
-  const btn=document.getElementById('carePlanSubmitBtn');
-  if(!btn)return;
-  if(selectedCareServices.size===0){
-    btn.textContent=hasExisting?'Cancel My Plan':'Select a service to continue';
-    btn.disabled=!hasExisting;
-  } else if(!changed&&hasExisting){
-    btn.textContent='Current Plan';btn.disabled=true;
-  } else {
-    btn.textContent=hasExisting?'Update My Plan':'Subscribe to My Plan';btn.disabled=false;
-  }
-}
-async function submitCarePlan(){
-  const services=[...selectedCareServices];
-  if(services.length===0){
-    if(!authToken||!currentUser){toast('Select at least one service.');return}
-    if(!confirm('Cancel your Home Care Plan? This removes all recurring services.'))return;
-    try{const d=await api('/care-plan',{method:'POST',body:JSON.stringify({services:[]})});currentUser=d.user;toast('Home Care Plan canceled.');renderCareBuilder();updateCarePlanSideitem()}catch(e){toast(e.message)}
-    return;
-  }
-  if(!authToken||!currentUser){ pendingCareServices=services; openSignup('homeowner'); return; }
-  openCareCheckout(services);
 }
 function updateCarePlanSideitem(){
   const el=document.getElementById('ho-careplan-sidelabel'); if(!el)return;
   const active=currentUser&&currentUser.carePlanServices&&currentUser.carePlanServices.length;
-  el.textContent = active ? 'Home Care Plan · Active' : 'Home Care Plan';
+  const pending=currentUser&&currentUser.carePlanItems&&currentUser.carePlanItems.some(i=>i.status!=='active');
+  el.textContent = active ? 'Home Care Plan · Active' : (pending ? 'Home Care Plan · Pending' : 'Home Care Plan');
 }
 
 // --- My Home: Maintenance / Neighborhood tabs ---
@@ -1893,7 +1919,9 @@ function carePlanStatusPill(status){
 function renderAdminCarePlanAccounts(accounts){
   const el=document.getElementById('admin-careplan-list'); if(!el)return;
   if(!accounts.length){ el.innerHTML='<div class="notice">No homeowners on a Home Care Plan yet.</div>'; return; }
-  el.innerHTML=accounts.map(a=>`
+  const pendingCount=accounts.reduce((n,a)=>n+(a.services||[]).filter(s=>s.pricingStatus!=='active').length,0);
+  const banner=pendingCount?`<div class="notice" style="margin-bottom:12px;background:#fdf3e2;color:#96701c">${pendingCount} service${pendingCount===1?'':'s'} need${pendingCount===1?'s':''} pricing</div>`:'';
+  el.innerHTML=banner+accounts.map(a=>`
     <div class="careplan-account">
       <div class="careplan-account-head">
         <div class="name">${esc(a.name)} ${statusPillHTML(a.subscription==='premium'?'Premium':'Plus','neutral')}</div>
@@ -1904,9 +1932,23 @@ function renderAdminCarePlanAccounts(accounts){
 }
 function carePlanServiceRowHTML(homeownerId,s){
   const rowId=homeownerId+'__'+s.serviceKey;
+  if(s.pricingStatus!=='active'){
+    const isQuoted=s.pricingStatus==='quoted';
+    const prefill=s.priceCents?(s.priceCents/100):(s.catalogPrice||'');
+    return `<div class="careplan-service-row" id="cpv-row-${rowId}">
+      <div class="careplan-service-main">
+        <div class="svc">${esc(s.serviceName)} <span class="tag ${isQuoted?'status-completed':'status-open'}">${isQuoted?'Quoted — awaiting homeowner':'Needs pricing'}</span></div>
+        <div class="meta">${isQuoted?('Sent at $'+((s.priceCents||0)/100).toFixed(2)+'/mo'):('Catalog starting point ~$'+(s.catalogPrice||'—')+'/mo')}</div>
+      </div>
+      <div class="careplan-service-actions">
+        <input type="number" min="1" step="1" placeholder="$/mo" id="cpv-price-${rowId}" value="${prefill}" style="width:90px">
+        <button class="primary" onclick="setCarePlanQuote('${homeownerId}','${s.serviceKey}')">${isQuoted?'Update Quote':'Send Quote'}</button>
+      </div>
+    </div>`;
+  }
   return `<div class="careplan-service-row" id="cpv-row-${rowId}">
     <div class="careplan-service-main">
-      <div class="svc">${esc(s.serviceName)} ${carePlanStatusPill(s.status)}</div>
+      <div class="svc">${esc(s.serviceName)} ${carePlanStatusPill(s.status)} <span class="tag status-scheduled">$${((s.priceCents||0)/100).toFixed(2)}/mo</span></div>
       <div class="meta">${s.providerName?('Assigned: '+esc(s.providerName)):'No provider assigned yet'}</div>
     </div>
     <div class="careplan-service-actions">
@@ -1920,6 +1962,16 @@ function carePlanServiceRowHTML(homeownerId,s){
       <button class="secondary" onclick="openCarePlanAssignPicker('${homeownerId}','${s.serviceKey}','${jsAttr(s.serviceName)}')">${s.providerName?'Change provider':'Assign provider'}</button>
     </div>
   </div>`;
+}
+async function setCarePlanQuote(homeownerId,serviceKey){
+  const rowId=homeownerId+'__'+serviceKey;
+  const val=parseFloat(document.getElementById('cpv-price-'+rowId).value);
+  if(!val||val<=0){ toast('Enter a valid monthly price.'); return; }
+  try{
+    await api(`/admin/care-plan-accounts/${homeownerId}/quote`,{method:'POST',body:JSON.stringify({serviceKey,priceCents:Math.round(val*100)})});
+    toast('Quote sent.');
+    await loadAdminCarePlanAccounts();
+  }catch(e){ toast(e.message); }
 }
 async function saveCarePlanVisit(homeownerId,serviceKey){
   const rowId=homeownerId+'__'+serviceKey;

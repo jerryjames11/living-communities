@@ -52,7 +52,8 @@ function tooManyAttempts(ip){
 // --- row -> API-shape mappers (DB stays snake_case; the frontend expects the original camelCase shape) ---
 function mapUser(r){
   if(!r) return null;
-  const u={id:r.id,role:r.role,name:r.name,email:r.email,passwordHash:r.password_hash,salt:r.salt,phone:r.phone,createdAt:toISO(r.created_at),subscription:r.subscription,carePlanServices:r.care_plan_services||[],avatarKind:r.avatar_kind||null,avatarValue:r.avatar_value||null,address:r.address,lat:r.lat!=null?Number(r.lat):null,lng:r.lng!=null?Number(r.lng):null,suspended:!!r.suspended};
+  const carePlanItems=r.care_plan_items||[];
+  const u={id:r.id,role:r.role,name:r.name,email:r.email,passwordHash:r.password_hash,salt:r.salt,phone:r.phone,createdAt:toISO(r.created_at),subscription:r.subscription,carePlanItems,carePlanServices:carePlanItems.filter(i=>i.status==='active').map(i=>i.key),avatarKind:r.avatar_kind||null,avatarValue:r.avatar_value||null,address:r.address,lat:r.lat!=null?Number(r.lat):null,lng:r.lng!=null?Number(r.lng):null,suspended:!!r.suspended};
   if(r.role==='homeowner'){ u.community=r.community; u.carePlanNextBilling=r.care_plan_next_billing?new Date(r.care_plan_next_billing).toISOString().slice(0,10):null; }
   else if(r.role==='provider'){
     u.serviceTypes=r.service_types||[]; u.rating=r.rating!=null?Number(r.rating):null; u.reviewCount=r.review_count||0; u.verified=!!r.verified; u.businessDescription=r.business_description; u.providerPlan=r.provider_plan||'free'; u.quotesUsed=r.quotes_sent_this_period||0; u.convosUsed=r.new_conversations_this_period||0;
@@ -294,7 +295,11 @@ const CARE_SERVICE_INFO={
   pool:{name:'Pool Cleaning',price:99,billing:'mo'},
   holiday_lighting:{name:'Holiday Lighting',price:65,billing:'season'}
 };
-function carePlanMonthlyTotal(services){ return (services||[]).reduce((sum,k)=>{const s=CARE_SERVICE_INFO[k]; return s&&s.billing==='mo'?sum+s.price:sum},0); }
+// Monthly total is now driven by each item's admin-set priceCents (once active), not the catalog
+// price — the catalog price only remains as a marketing "starting around" figure and an admin
+// pre-fill suggestion when quoting.
+function carePlanMonthlyTotal(items){ return (items||[]).filter(i=>i.status==='active'&&CARE_SERVICE_INFO[i.key]&&CARE_SERVICE_INFO[i.key].billing==='mo').reduce((sum,i)=>sum+(i.priceCents||0),0)/100; }
+function carePlanActiveDetails(items){ return (items||[]).filter(i=>i.status==='active'&&CARE_SERVICE_INFO[i.key]).map(i=>({key:i.key,name:CARE_SERVICE_INFO[i.key].name,billing:CARE_SERVICE_INFO[i.key].billing,price:(i.priceCents||0)/100})); }
 // Plan catalogs used by the admin account panel: labels/prices for the invoice email, and a rank
 // order so we can tell an upgrade (send an invoice) from a downgrade or lateral change (don't).
 const HOMEOWNER_PLAN_INFO={free:{label:'Free',priceCents:0,rank:0},plus:{label:'Plus',priceCents:999,rank:1},premium:{label:'Premium',priceCents:2499,rank:2}};
@@ -334,16 +339,26 @@ function newMessageEmailHtml(recipientName,senderName,body){
      <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px;background:#eaf4ef;border-radius:10px;padding:12px 14px">${esc_(body).slice(0,200)}</p>
      ${btn('Reply',APP_URL)}`);
 }
-function carePlanReminderEmailHtml(u,amount,billingDate){
+// details: [{key,name,billing,price}] — every ACTIVE, priced service, so the homeowner sees exactly
+// what they're being charged for, not just a total.
+function carePlanItemRowsHtml(details){
+  return details.map(d=>`<tr><td style="padding:6px 0;color:#3f4f4a">${esc_(d.name)}</td><td style="padding:6px 0;text-align:right;color:#3f4f4a">$${d.price.toFixed(2)}/${d.billing==='season'?'season':'mo'}</td></tr>`).join('');
+}
+function carePlanReminderEmailHtml(u,details,amount,billingDate){
   return emailShell('Your Home Care Plan renews soon',
     `<h2 style="margin:0 0 10px;color:#17352f">Your plan renews in 7 days</h2>
-     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Your Home Care Plan will renew on <b>${fmtDate(billingDate)}</b> and your card on file will be charged <b>$${amount}</b>. No action needed — manage or cancel anytime from your dashboard.</p>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Your Home Care Plan will renew on <b>${fmtDate(billingDate)}</b>. Here's what your card on file will be charged for:</p>
+     <table style="width:100%;border-collapse:collapse;margin-top:10px;font-size:13.5px">${carePlanItemRowsHtml(details)}</table>
+     <p style="color:#17352f;font-weight:800;margin-top:10px;font-size:14px;border-top:1px solid #e4e9e6;padding-top:10px">Total: $${Number(amount).toFixed(2)}</p>
+     <p style="color:#6d7b77;line-height:1.6;font-size:12.5px;margin-top:12px">No action needed — manage or cancel anytime from your dashboard.</p>
      ${btn('Manage My Plan',APP_URL)}`);
 }
-function carePlanBilledEmailHtml(u,amount,billingDate){
+function carePlanBilledEmailHtml(u,details,amount,billingDate){
   return emailShell('Your card was charged',
     `<h2 style="margin:0 0 10px;color:#17352f">Payment received</h2>
-     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Your card on file was charged <b>$${amount}</b> for your Home Care Plan, renewing on ${fmtDate(billingDate)}. This is a demo charge — no real payment was processed.</p>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Your card on file was charged for your Home Care Plan, renewing ${fmtDate(billingDate)}. This is a demo charge — no real payment was processed.</p>
+     <table style="width:100%;border-collapse:collapse;margin-top:10px;font-size:13.5px">${carePlanItemRowsHtml(details)}</table>
+     <p style="color:#17352f;font-weight:800;margin-top:10px;font-size:14px;border-top:1px solid #e4e9e6;padding-top:10px">Total: $${Number(amount).toFixed(2)}</p>
      ${btn('View Billing',APP_URL)}`);
 }
 function adminPlanInvoiceEmailHtml(u,planLabel,priceCents,invoiceNo){
@@ -372,14 +387,35 @@ function planChangedEmailHtml(u,planLabel,priceCents){
         : `Your account was switched to <b>${esc_(planLabel)}</b> at <b>$${(priceCents/100).toFixed(2)}/mo</b>, billed to the card on file.`}</p>
      ${btn('View My Plan',APP_URL)}`);
 }
-function carePlanUpdatedEmailHtml(u,services,monthlyTotal){
-  const rows=services.map(s=>`<tr><td style="padding:6px 0;color:#3f4f4a">${esc_(s.name)}</td><td style="padding:6px 0;text-align:right;color:#3f4f4a">$${s.price}/${s.billing==='season'?'season':'mo'}</td></tr>`).join('');
-  return emailShell('Your Home Care Plan was updated',
-    `<h2 style="margin:0 0 10px;color:#17352f">Your Home Care Plan was updated</h2>
-     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Here's what's on your plan now:</p>
-     <table style="width:100%;border-collapse:collapse;margin-top:10px;font-size:13.5px">${rows}</table>
-     <p style="color:#17352f;font-weight:800;margin-top:10px;font-size:14px">≈$${monthlyTotal}/mo</p>
+function carePlanRequestedEmailHtml(u,serviceNames){
+  return emailShell('We received your Home Care Plan request',
+    `<h2 style="margin:0 0 10px;color:#17352f">Got it — pricing coming soon</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">You requested <b>${esc_(serviceNames.join(', '))}</b> on your Home Care Plan. Our team will follow up to schedule a quick visit or consultation, then send you exact pricing to review before anything is billed.</p>
+     ${btn('View My Plan',APP_URL)}`);
+}
+function adminCarePlanQuoteNeededEmailHtml(homeowner,serviceNames){
+  return emailShell('Care Plan pricing needed',
+    `<h2 style="margin:0 0 10px;color:#17352f">${esc_(homeowner.name)} needs a Care Plan quote</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px"><b>${esc_(homeowner.name)}</b> (${esc_(homeowner.email)}) requested <b>${esc_(serviceNames.join(', '))}</b>. Schedule a visit or consultation, then set pricing from the admin panel.</p>
+     ${btn('Set Pricing in Admin',APP_URL+'/#admin')}`);
+}
+function carePlanQuoteReadyEmailHtml(u,serviceName,priceCents){
+  return emailShell('Your Care Plan quote is ready',
+    `<h2 style="margin:0 0 10px;color:#17352f">Your ${esc_(serviceName)} quote is ready</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Based on your visit, <b>${esc_(serviceName)}</b> is <b>$${(priceCents/100).toFixed(2)}/mo</b>. Review it and accept from your dashboard to start service — nothing is billed until you accept.</p>
+     ${btn('Review & Accept',APP_URL)}`);
+}
+function carePlanServiceActivatedEmailHtml(u,serviceName,priceCents,monthlyTotal){
+  return emailShell(`${serviceName} is active`,
+    `<h2 style="margin:0 0 10px;color:#17352f">${esc_(serviceName)} is now active</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">You accepted <b>${esc_(serviceName)}</b> at <b>$${(priceCents/100).toFixed(2)}/mo</b>. Your Home Care Plan now totals <b>$${Number(monthlyTotal).toFixed(2)}/mo</b>.</p>
      ${btn('Manage My Plan',APP_URL)}`);
+}
+function carePlanServiceCanceledEmailHtml(u,serviceNames){
+  return emailShell('A Home Care Plan service was removed',
+    `<h2 style="margin:0 0 10px;color:#17352f">Removed from your plan</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px"><b>${esc_(serviceNames.join(', '))}</b> ${serviceNames.length>1?'were':'was'} removed from your Home Care Plan and billing for ${serviceNames.length>1?'them':'it'} has stopped.</p>
+     ${btn('View My Plan',APP_URL)}`);
 }
 function carePlanCanceledEmailHtml(u){
   return emailShell('Your Home Care Plan was canceled',
@@ -514,19 +550,20 @@ async function runBillingCheck(){
   // below) — this simulated check only ever touches demo-mode (no Stripe key) subscribers.
   const rows=await q("SELECT * FROM users WHERE role='homeowner' AND care_plan_next_billing IS NOT NULL AND care_plan_stripe_subscription_id IS NULL");
   for(const r of rows){
-    const services=r.care_plan_services||[];
-    if(!services.length) continue;
+    const mu=mapUser(r);
+    const details=carePlanActiveDetails(mu.carePlanItems);
+    if(!details.length) continue;
     const nextBilling=new Date(r.care_plan_next_billing).toISOString().slice(0,10);
-    const amount=carePlanMonthlyTotal(services);
+    const amount=carePlanMonthlyTotal(mu.carePlanItems);
     if(!amount) continue;
     const reminderSentFor=r.care_plan_reminder_sent_for?new Date(r.care_plan_reminder_sent_for).toISOString().slice(0,10):null;
     if(nextBilling===in7Str && reminderSentFor!==nextBilling){
-      await sendEmail({to:r.email,type:'care_plan_reminder',subject:'Your Home Care Plan renews in 7 days',html:carePlanReminderEmailHtml(r,amount,nextBilling),userId:r.id});
+      await sendEmail({to:r.email,type:'care_plan_reminder',subject:'Your Home Care Plan renews in 7 days',html:carePlanReminderEmailHtml(mu,details,amount,nextBilling),userId:r.id});
       await pool.query('UPDATE users SET care_plan_reminder_sent_for=$1 WHERE id=$2',[nextBilling,r.id]);
       reminders++;
     }
     if(nextBilling<=todayStr){
-      await sendEmail({to:r.email,type:'care_plan_billed',subject:'Your card was charged for your Home Care Plan',html:carePlanBilledEmailHtml(r,amount,nextBilling),userId:r.id});
+      await sendEmail({to:r.email,type:'care_plan_billed',subject:'Your card was charged for your Home Care Plan',html:carePlanBilledEmailHtml(mu,details,amount,nextBilling),userId:r.id});
       const newNext=new Date(nextBilling+'T00:00:00Z'); newNext.setUTCMonth(newNext.getUTCMonth()+1);
       await pool.query('UPDATE users SET care_plan_next_billing=$1, care_plan_reminder_sent_for=NULL WHERE id=$2',[newNext.toISOString().slice(0,10),r.id]);
       charges++;
@@ -644,7 +681,8 @@ async function initSchema(){
     CREATE INDEX IF NOT EXISTS idx_jobs_provider ON jobs(provider_id);
   `);
   // Migration-safe: adds columns/tables for databases whose schema predates these features.
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS care_plan_services text[] DEFAULT '{}'`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS care_plan_services text[] DEFAULT '{}'`); // legacy — superseded by care_plan_items below, kept only so old rows aren't lost
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS care_plan_items jsonb DEFAULT '[]'::jsonb`); // [{key,status:'requested'|'quoted'|'active',priceCents,quotedAt,acceptedAt}]
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS lat double precision`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS lng double precision`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS geocoded_at timestamptz`);
@@ -712,6 +750,20 @@ async function initSchema(){
     );
     CREATE INDEX IF NOT EXISTS idx_neighborhood_posts_created ON neighborhood_posts(created_at DESC);
   `);
+  // One-time move to admin-priced Care Plan services: every account still on the old flat-rate
+  // text[] column (and not yet migrated into care_plan_items) gets re-quoted — each of their
+  // services drops back to 'requested' with no price, and billing pauses immediately (any real
+  // Stripe subscription for it is cancelled) until an admin sets a new price and the homeowner
+  // accepts it. Guarded by "care_plan_items is still empty" so this only ever runs once per row.
+  const legacyRows = await pool.query("SELECT id, care_plan_services, care_plan_stripe_subscription_id FROM users WHERE role='homeowner' AND care_plan_services<>'{}' AND care_plan_items='[]'::jsonb");
+  for(const r of legacyRows.rows){
+    if(stripeConfigured() && r.care_plan_stripe_subscription_id){
+      await stripeRequest('DELETE','subscriptions/'+r.care_plan_stripe_subscription_id).catch(()=>{});
+    }
+    const items=(r.care_plan_services||[]).map(k=>({key:k,status:'requested',priceCents:null,quotedAt:null,acceptedAt:null}));
+    await pool.query('UPDATE users SET care_plan_items=$1::jsonb, care_plan_next_billing=NULL, care_plan_reminder_sent_for=NULL, care_plan_stripe_subscription_id=NULL WHERE id=$2',[JSON.stringify(items),r.id]);
+  }
+  if(legacyRows.rows.length) console.log(`[care-plan] re-quoted ${legacyRows.rows.length} existing account(s) onto admin pricing — billing paused pending new quotes.`);
 }
 async function seedIfEmpty(){
   const {rows} = await pool.query('SELECT count(*)::int AS n FROM users');
@@ -878,7 +930,7 @@ const server=http.createServer(async (req,res)=>{
             if(subId && subId===row.care_plan_stripe_subscription_id){
               const nextBilling=periodEnd?new Date(periodEnd*1000).toISOString().slice(0,10):null;
               await pool.query('UPDATE users SET care_plan_next_billing=$1, care_plan_reminder_sent_for=NULL WHERE id=$2',[nextBilling,row.id]);
-              await sendEmail({to:row.email,type:'care_plan_billed',subject:'Your card was charged for your Home Care Plan',html:carePlanBilledEmailHtml(row,amount,nextBilling||new Date()),userId:row.id});
+              await sendEmail({to:row.email,type:'care_plan_billed',subject:'Your card was charged for your Home Care Plan',html:carePlanBilledEmailHtml(mapUser(row),carePlanActiveDetails(mapUser(row).carePlanItems),amount,nextBilling||new Date()),userId:row.id});
             } else if(subId && subId===row.stripe_subscription_id){
               await sendEmail({to:row.email,type:'subscription_billed',subject:'Your Living Communities plan was renewed',html:emailShell('Plan renewed',`<h2 style="margin:0 0 10px;color:#17352f">Payment received</h2><p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Your card on file was charged $${amount} for your ${esc_(row.subscription)} plan.</p>`),userId:row.id});
             } else if(subId && subId===row.provider_plan_stripe_subscription_id){
@@ -896,7 +948,7 @@ const server=http.createServer(async (req,res)=>{
           const sub=event.data.object;
           const row=await q1('SELECT * FROM users WHERE stripe_customer_id=$1',[sub.customer]);
           if(row){
-            if(sub.id===row.care_plan_stripe_subscription_id) await pool.query('UPDATE users SET care_plan_services=$1, care_plan_next_billing=NULL, care_plan_stripe_subscription_id=NULL WHERE id=$2',[[],row.id]);
+            if(sub.id===row.care_plan_stripe_subscription_id) await pool.query("UPDATE users SET care_plan_items='[]'::jsonb, care_plan_next_billing=NULL, care_plan_stripe_subscription_id=NULL WHERE id=$1",[row.id]);
             if(sub.id===row.stripe_subscription_id) await pool.query("UPDATE users SET subscription='free', stripe_subscription_id=NULL WHERE id=$1",[row.id]);
             if(sub.id===row.provider_plan_stripe_subscription_id) await pool.query("UPDATE users SET provider_plan='free', provider_plan_stripe_subscription_id=NULL WHERE id=$1",[row.id]);
           }
@@ -1109,57 +1161,122 @@ const server=http.createServer(async (req,res)=>{
       }
       return send(res,200,{subscription:b.plan,user:safeUser(mapUser(row))});
     }
+    // Rebuilds the homeowner's Stripe subscription (or cancels it) to exactly match their current
+    // ACTIVE, priced items — called any time the active set or a price changes. In demo mode there's
+    // no equivalent call; care_plan_next_billing is managed directly by the caller instead.
+    async function syncCarePlanStripe(homeownerRow, paymentMethodId){
+      const activeItems=(homeownerRow.care_plan_items||[]).filter(i=>i.status==='active'&&CARE_SERVICE_INFO[i.key]);
+      const existingSubId=homeownerRow.care_plan_stripe_subscription_id;
+      if(!activeItems.length){
+        if(existingSubId) await stripeRequest('DELETE','subscriptions/'+existingSubId).catch(()=>{});
+        return {nextBilling:null,subId:null,customerId:homeownerRow.stripe_customer_id||null};
+      }
+      const customerId=await ensureStripeCustomer(mapUser(homeownerRow));
+      // A fresh card is only collected when accepting a new quote. Resyncing after just dropping a
+      // service (other active items remain) reuses the card already on file instead of demanding one.
+      let pmId=paymentMethodId;
+      if(!pmId){
+        const customer=await stripeRequest('GET','customers/'+customerId);
+        pmId=customer.invoice_settings?.default_payment_method||customer.default_source||null;
+        if(!pmId) throw Object.assign(new Error('Payment method required'),{httpStatus:400});
+      }
+      const items=activeItems.map(i=>({unitAmount:i.priceCents,name:CARE_SERVICE_INFO[i.key].name,interval:CARE_SERVICE_INFO[i.key].billing==='season'?'year':'month'}));
+      const sub=await stripeSubscribe(customerId,pmId,existingSubId,items);
+      return {nextBilling:sub.current_period_end?new Date(sub.current_period_end*1000).toISOString().slice(0,10):null,subId:sub.id,customerId};
+    }
+    // Sets the homeowner's WISHLIST of Care Plan services — no pricing, no payment, no billing
+    // happens here. Newly-added keys land as 'requested' and wait on an admin quote; keys dropped
+    // that were 'active' stop being billed immediately (their Stripe line item / demo cycle amount
+    // drops out). Keys that are already 'requested'/'quoted'/'active' and stay selected are left
+    // untouched — re-selecting something already in flight doesn't reset its progress.
     if(p==='/api/care-plan' && req.method==='POST'){
       if(u.role!=='homeowner')return send(res,403,{error:'Only homeowners can manage a Home Care Plan'});
       const b=await body(req);
-      const services=Array.isArray(b.services)?b.services.filter(s=>CARE_SERVICE_INFO[s]):[];
-      const hadPlan=u.carePlanServices&&u.carePlanServices.length>0;
-      const hasPlan=services.length>0;
-      // Home Care Plan is a Plus/Premium perk — canceling down to zero services is always allowed
-      // (so downgrading Community Plan never leaves someone stuck paying for Home Care Plan).
-      if(hasPlan && u.subscription==='free'){
+      const desiredKeys=Array.isArray(b.services)?[...new Set(b.services.filter(s=>CARE_SERVICE_INFO[s]))]:[];
+      const currentItems=u.carePlanItems||[];
+      const currentKeys=new Set(currentItems.map(i=>i.key));
+      const desiredSet=new Set(desiredKeys);
+      const addedKeys=desiredKeys.filter(k=>!currentKeys.has(k));
+      const removedItems=currentItems.filter(i=>!desiredSet.has(i.key));
+      const removedActiveNames=removedItems.filter(i=>i.status==='active'&&CARE_SERVICE_INFO[i.key]).map(i=>CARE_SERVICE_INFO[i.key].name);
+      // Home Care Plan is a Plus/Premium perk — dropping services back down is always allowed (so
+      // downgrading Community Plan never leaves someone stuck paying for Home Care Plan), but adding
+      // a brand-new one requires Plus/Premium.
+      if(addedKeys.length && u.subscription==='free'){
         return send(res,403,{error:'Home Care Plan is included with the Plus and Premium Community plans. Upgrade to build your plan.',upgradeRequired:true,needsCommunityPlan:true});
       }
+      const newItems=[
+        ...currentItems.filter(i=>desiredSet.has(i.key)),
+        ...addedKeys.map(k=>({key:k,status:'requested',priceCents:null,quotedAt:null,acceptedAt:null})),
+      ];
+      const stillHasActive=newItems.some(i=>i.status==='active');
       let row;
-      if(!hasPlan){
-        // canceled — stop billing
-        if(stripeConfigured()){
-          const existing=await q1('SELECT care_plan_stripe_subscription_id FROM users WHERE id=$1',[u.id]);
-          if(existing?.care_plan_stripe_subscription_id) await stripeRequest('DELETE','subscriptions/'+existing.care_plan_stripe_subscription_id).catch(()=>{});
-        }
-        row=await q1('UPDATE users SET care_plan_services=$1, care_plan_next_billing=NULL, care_plan_reminder_sent_for=NULL, care_plan_stripe_subscription_id=NULL WHERE id=$2 RETURNING *',[services,u.id]);
-      }else if(stripeConfigured()){
-        if(!b.paymentMethodId) return send(res,400,{error:'Payment method required'});
+      if(stripeConfigured() && removedActiveNames.length){
+        // An active (billed) item was dropped — resync Stripe to the new active set immediately.
+        const current=await q1('SELECT * FROM users WHERE id=$1',[u.id]);
         try{
-          const customerId=await ensureStripeCustomer(u);
-          // Stripe has no "seasonal" billing interval — Holiday Lighting's one-time-per-season
-          // charge is approximated here as a yearly recurring line item.
-          const items=services.map(k=>({unitAmount:Math.round(CARE_SERVICE_INFO[k].price*100),name:CARE_SERVICE_INFO[k].name,interval:CARE_SERVICE_INFO[k].billing==='season'?'year':'month'}));
-          const existing=await q1('SELECT care_plan_stripe_subscription_id FROM users WHERE id=$1',[u.id]);
-          const sub=await stripeSubscribe(customerId,b.paymentMethodId,existing?.care_plan_stripe_subscription_id,items);
-          const nextBilling=sub.current_period_end?new Date(sub.current_period_end*1000).toISOString().slice(0,10):null;
-          row=await q1('UPDATE users SET care_plan_services=$1, care_plan_next_billing=$2, care_plan_reminder_sent_for=NULL, care_plan_stripe_subscription_id=$3, stripe_customer_id=$4 WHERE id=$5 RETURNING *',[services,nextBilling,sub.id,customerId,u.id]);
-        }catch(e){ return sendStripeError(res,e); }
-      }else if(!hadPlan){
-        // brand-new subscription (demo mode) — start a 30-day billing cycle from today
-        const next=new Date(); next.setDate(next.getDate()+30);
-        row=await q1('UPDATE users SET care_plan_services=$1, care_plan_next_billing=$2, care_plan_reminder_sent_for=NULL WHERE id=$3 RETURNING *',[services,next.toISOString().slice(0,10),u.id]);
+          const {nextBilling,subId}=await syncCarePlanStripe({...current,care_plan_items:newItems}, null);
+          row=await q1('UPDATE users SET care_plan_items=$1::jsonb, care_plan_next_billing=$2, care_plan_reminder_sent_for=NULL, care_plan_stripe_subscription_id=$3 WHERE id=$4 RETURNING *',[JSON.stringify(newItems),nextBilling,subId,u.id]);
+        }catch(e){ if(e.httpStatus) return send(res,e.httpStatus,{error:e.message}); return sendStripeError(res,e); }
+      }else if(!stillHasActive && removedActiveNames.length){
+        // Dropped down to zero active items — stop billing entirely (demo mode: no Stripe to sync).
+        row=await q1('UPDATE users SET care_plan_items=$1::jsonb, care_plan_next_billing=NULL, care_plan_reminder_sent_for=NULL, care_plan_stripe_subscription_id=NULL WHERE id=$2 RETURNING *',[JSON.stringify(newItems),u.id]);
       }else{
-        // adding/removing services on an existing demo-mode plan — billing date unchanged
-        row=await q1('UPDATE users SET care_plan_services=$1 WHERE id=$2 RETURNING *',[services,u.id]);
+        row=await q1('UPDATE users SET care_plan_items=$1::jsonb WHERE id=$2 RETURNING *',[JSON.stringify(newItems),u.id]);
       }
-      const beforeSet=new Set(u.carePlanServices||[]);
-      const afterSet=new Set(services);
-      const servicesChanged = beforeSet.size!==afterSet.size || [...beforeSet].some(s=>!afterSet.has(s));
-      if(servicesChanged){
-        if(hasPlan){
-          const svcDetails=services.map(k=>CARE_SERVICE_INFO[k]);
-          sendEmail({to:row.email,type:'care_plan_updated',subject:'Your Home Care Plan was updated',html:carePlanUpdatedEmailHtml(mapUser(row),svcDetails,carePlanMonthlyTotal(services)),userId:row.id}).catch(()=>{});
-        } else if(hadPlan){
-          sendEmail({to:row.email,type:'care_plan_canceled',subject:'Your Home Care Plan was canceled',html:carePlanCanceledEmailHtml(mapUser(row)),userId:row.id}).catch(()=>{});
-        }
+      if(addedKeys.length){
+        const addedNames=addedKeys.map(k=>CARE_SERVICE_INFO[k].name);
+        sendEmail({to:row.email,type:'care_plan_requested',subject:'We received your Home Care Plan request',html:carePlanRequestedEmailHtml(mapUser(row),addedNames),userId:row.id}).catch(()=>{});
+        if(ADMIN_NOTIFY_EMAIL) sendEmail({to:ADMIN_NOTIFY_EMAIL,type:'admin_care_plan_quote_needed',subject:`Care Plan pricing needed: ${row.name}`,html:adminCarePlanQuoteNeededEmailHtml(mapUser(row),addedNames)}).catch(()=>{});
       }
-      return send(res,200,{carePlanServices:services,user:safeUser(mapUser(row))});
+      if(!newItems.length && removedItems.length){
+        sendEmail({to:row.email,type:'care_plan_canceled',subject:'Your Home Care Plan was canceled',html:carePlanCanceledEmailHtml(mapUser(row)),userId:row.id}).catch(()=>{});
+      }else if(removedActiveNames.length){
+        sendEmail({to:row.email,type:'care_plan_service_canceled',subject:'A Home Care Plan service was removed',html:carePlanServiceCanceledEmailHtml(mapUser(row),removedActiveNames),userId:row.id}).catch(()=>{});
+      }
+      return send(res,200,{user:safeUser(mapUser(row))});
+    }
+    // Homeowner accepts an admin-set price — this is the only place billing actually starts (or
+    // grows) for a service.
+    if(p==='/api/care-plan/accept' && req.method==='POST'){
+      if(u.role!=='homeowner')return send(res,403,{error:'Only homeowners can manage a Home Care Plan'});
+      const b=await body(req);
+      const serviceKey=String(b.serviceKey||'');
+      const items=u.carePlanItems||[];
+      const item=items.find(i=>i.key===serviceKey);
+      if(!item||item.status!=='quoted') return send(res,400,{error:'No pending quote for that service'});
+      const newItems=items.map(i=>i.key===serviceKey?{...i,status:'active',acceptedAt:new Date().toISOString()}:i);
+      let row;
+      if(stripeConfigured()){
+        const current=await q1('SELECT * FROM users WHERE id=$1',[u.id]);
+        try{
+          const {nextBilling,subId,customerId}=await syncCarePlanStripe({...current,care_plan_items:newItems}, b.paymentMethodId);
+          row=await q1('UPDATE users SET care_plan_items=$1::jsonb, care_plan_next_billing=$2, care_plan_reminder_sent_for=NULL, care_plan_stripe_subscription_id=$3, stripe_customer_id=$4 WHERE id=$5 RETURNING *',[JSON.stringify(newItems),nextBilling,subId,customerId,u.id]);
+        }catch(e){ if(e.httpStatus) return send(res,e.httpStatus,{error:e.message}); return sendStripeError(res,e); }
+      }else if(!u.carePlanNextBilling){
+        // First-ever active item in demo mode — start a fresh 30-day billing cycle.
+        const next=new Date(); next.setDate(next.getDate()+30);
+        row=await q1('UPDATE users SET care_plan_items=$1::jsonb, care_plan_next_billing=$2, care_plan_reminder_sent_for=NULL WHERE id=$3 RETURNING *',[JSON.stringify(newItems),next.toISOString().slice(0,10),u.id]);
+      }else{
+        // Already mid-cycle — this item just joins the existing recurring charge.
+        row=await q1('UPDATE users SET care_plan_items=$1::jsonb WHERE id=$2 RETURNING *',[JSON.stringify(newItems),u.id]);
+      }
+      const svc=CARE_SERVICE_INFO[serviceKey];
+      sendEmail({to:row.email,type:'care_plan_service_activated',subject:`${svc.name} is now active on your Home Care Plan`,html:carePlanServiceActivatedEmailHtml(mapUser(row),svc.name,item.priceCents,carePlanMonthlyTotal(newItems)),userId:row.id}).catch(()=>{});
+      return send(res,200,{user:safeUser(mapUser(row))});
+    }
+    // Homeowner declines a price they don't want — the service drops off their plan entirely; they
+    // can always re-request it (and get a fresh quote) later.
+    if(p==='/api/care-plan/decline' && req.method==='POST'){
+      if(u.role!=='homeowner')return send(res,403,{error:'Only homeowners can manage a Home Care Plan'});
+      const b=await body(req);
+      const serviceKey=String(b.serviceKey||'');
+      const items=u.carePlanItems||[];
+      const item=items.find(i=>i.key===serviceKey);
+      if(!item||item.status!=='quoted') return send(res,400,{error:'No pending quote for that service'});
+      const newItems=items.filter(i=>i.key!==serviceKey);
+      const row=await q1('UPDATE users SET care_plan_items=$1::jsonb WHERE id=$2 RETURNING *',[JSON.stringify(newItems),u.id]);
+      return send(res,200,{user:safeUser(mapUser(row))});
     }
     if(p==='/api/provider-plan' && req.method==='POST'){
       if(u.role!=='provider')return send(res,403,{error:'Only providers have a Pro Provider plan'});
@@ -1342,7 +1459,7 @@ const server=http.createServer(async (req,res)=>{
         q("SELECT verification_status, count(*)::int AS n FROM users WHERE role='provider' GROUP BY verification_status"),
         q("SELECT count(*)::int AS n FROM requests WHERE status='open'"),
         q("SELECT count(*)::int AS n FROM requests r WHERE r.status='open' AND r.created_at < now() - interval '24 hours' AND NOT EXISTS (SELECT 1 FROM quotes qq WHERE qq.request_id=r.id)"),
-        q("SELECT count(*)::int AS n FROM users WHERE role='homeowner' AND care_plan_services<>'{}'"),
+        q("SELECT count(*)::int AS n FROM users WHERE role='homeowner' AND EXISTS (SELECT 1 FROM jsonb_array_elements(care_plan_items) x WHERE x->>'status'='active')"),
         q("SELECT count(*)::int AS n FROM users WHERE suspended=true"),
       ]);
       const toObj=(rows,key)=>Object.fromEntries(rows.map(r=>[r[key]||'unknown',r.n]));
@@ -1486,7 +1603,9 @@ const server=http.createServer(async (req,res)=>{
     // being taken care of, not just whether a one-off request got a quote.
     if(p==='/api/admin/care-plan-accounts' && req.method==='GET'){
       if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
-      const rows=await q("SELECT * FROM users WHERE role='homeowner' AND care_plan_services<>'{}' ORDER BY name ASC");
+      // care_plan_items<>'[]' catches every account with a service in ANY stage — requested/quoted/
+      // active — not just active ones, so the pending-pricing queue below has something to work with.
+      const rows=await q("SELECT * FROM users WHERE role='homeowner' AND care_plan_items<>'[]'::jsonb ORDER BY name ASC");
       const homeownerIds=rows.map(r=>r.id);
       const visits = homeownerIds.length ? await q('SELECT * FROM care_plan_visits WHERE homeowner_id = ANY($1::text[])',[homeownerIds]) : [];
       const providerIds=[...new Set(visits.map(v=>v.provider_id).filter(Boolean))];
@@ -1496,11 +1615,18 @@ const server=http.createServer(async (req,res)=>{
       const visitMap=Object.fromEntries(visits.map(v=>[visitKey(v.homeowner_id,v.service_key),v]));
       const accounts=rows.map(r=>{
         const mu=mapUser(r);
-        const services=(mu.carePlanServices||[]).filter(sk=>CARE_SERVICE_INFO[sk]).map(sk=>{
+        const services=(mu.carePlanItems||[]).filter(i=>CARE_SERVICE_INFO[i.key]).map(item=>{
+          const sk=item.key;
           const v=visitMap[visitKey(r.id,sk)];
           return {
             serviceKey:sk,
             serviceName:CARE_SERVICE_INFO[sk].name,
+            catalogPrice:CARE_SERVICE_INFO[sk].price,
+            pricingStatus:item.status, // 'requested' | 'quoted' | 'active'
+            priceCents:item.priceCents,
+            quotedAt:item.quotedAt,
+            acceptedAt:item.acceptedAt,
+            // Dispatch/fulfillment fields — only meaningful once a service is active and paid for.
             status: v?v.status:'upcoming',
             scheduledDate: v?(v.scheduled_date?new Date(v.scheduled_date).toISOString().slice(0,10):null):null,
             providerId: v?v.provider_id:null,
@@ -1511,6 +1637,28 @@ const server=http.createServer(async (req,res)=>{
         return {id:mu.id,name:mu.name,email:mu.email,community:mu.community,subscription:normalizeHomeownerPlanKey(mu.subscription),services};
       });
       return send(res,200,{accounts});
+    }
+    // Admin sets (or revises) the price for a requested/quoted service — this is the only way a
+    // homeowner's Care Plan pricing ever gets set. Doesn't touch already-active items; changing the
+    // price on something already billing is a separate concern we haven't built yet.
+    if(p.startsWith('/api/admin/care-plan-accounts/') && p.endsWith('/quote') && req.method==='POST'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const homeownerId=p.split('/')[4];
+      const b=await body(req);
+      const serviceKey=String(b.serviceKey||'');
+      const priceCents=Math.round(Number(b.priceCents));
+      if(!CARE_SERVICE_INFO[serviceKey]) return send(res,400,{error:'Unknown service'});
+      if(!Number.isFinite(priceCents)||priceCents<=0) return send(res,400,{error:'Enter a valid price.'});
+      const homeowner=await q1("SELECT * FROM users WHERE id=$1 AND role='homeowner'",[homeownerId]);
+      if(!homeowner) return send(res,404,{error:'Homeowner not found'});
+      const items=homeowner.care_plan_items||[];
+      const item=items.find(i=>i.key===serviceKey);
+      if(!item) return send(res,404,{error:'This homeowner has not requested that service.'});
+      if(item.status==='active') return send(res,400,{error:'This service is already active — adjust it directly with the homeowner instead.'});
+      const newItems=items.map(i=>i.key===serviceKey?{...i,status:'quoted',priceCents,quotedAt:new Date().toISOString()}:i);
+      const row=await q1('UPDATE users SET care_plan_items=$1::jsonb WHERE id=$2 RETURNING *',[JSON.stringify(newItems),homeownerId]);
+      sendEmail({to:row.email,type:'care_plan_quote_ready',subject:`Your ${CARE_SERVICE_INFO[serviceKey].name} quote is ready`,html:carePlanQuoteReadyEmailHtml(mapUser(row),CARE_SERVICE_INFO[serviceKey].name,priceCents),userId:row.id}).catch(()=>{});
+      return send(res,200,{ok:true});
     }
     if(p==='/api/admin/care-plan-candidates' && req.method==='GET'){
       if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
@@ -1540,7 +1688,7 @@ const server=http.createServer(async (req,res)=>{
       if(!CARE_SERVICE_INFO[serviceKey]) return send(res,400,{error:'Unknown service'});
       const homeowner=await q1("SELECT * FROM users WHERE id=$1 AND role='homeowner'",[homeownerId]);
       if(!homeowner) return send(res,404,{error:'Homeowner not found'});
-      if(!(homeowner.care_plan_services||[]).includes(serviceKey)) return send(res,400,{error:'This homeowner does not have that service on their plan'});
+      if(!mapUser(homeowner).carePlanServices.includes(serviceKey)) return send(res,400,{error:'This homeowner does not have that service active on their plan'});
       const existing=await q1('SELECT * FROM care_plan_visits WHERE homeowner_id=$1 AND service_key=$2',[homeownerId,serviceKey]);
       const has=k=>Object.prototype.hasOwnProperty.call(b,k);
       let providerId = existing ? existing.provider_id : null;
