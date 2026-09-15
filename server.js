@@ -97,7 +97,7 @@ function adminAccountView(u){
   if(!u) return null;
   const base={id:u.id,role:u.role,name:u.name,email:u.email,phone:u.phone,createdAt:u.createdAt,suspended:!!u.suspended};
   if(u.role==='homeowner'){
-    return {...base,community:u.community,subscription:u.subscription,carePlanServiceCount:(u.carePlanServices||[]).length,carePlanNextBilling:u.carePlanNextBilling};
+    return {...base,community:u.community,subscription:normalizeHomeownerPlanKey(u.subscription),carePlanServiceCount:(u.carePlanServices||[]).length,carePlanNextBilling:u.carePlanNextBilling};
   }
   if(u.role==='provider'){
     return {...base,serviceTypes:u.serviceTypes,providerPlan:u.providerPlan,rating:u.rating,reviewCount:u.reviewCount,verified:u.verified,verificationStatus:u.verificationStatus,entityType:u.entityType,backgroundCheckStatus:u.backgroundCheckStatus};
@@ -137,6 +137,10 @@ function haversineMiles(lat1,lon1,lat2,lon2){
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 const EMAIL_FROM = process.env.EMAIL_FROM || 'Living Communities <onboarding@resend.dev>';
 const APP_URL = process.env.APP_URL || 'http://localhost:' + PORT;
+// Optional: where "a provider needs review" style admin alerts go. Falls back to ADMIN_EMAIL
+// (the bootstrap admin account's address) so this works with zero extra config; set
+// ADMIN_NOTIFY_EMAIL separately if admin alerts should go somewhere else (e.g. a shared inbox).
+const ADMIN_NOTIFY_EMAIL = process.env.ADMIN_NOTIFY_EMAIL || process.env.ADMIN_EMAIL || '';
 const INTERNAL_JOB_KEY = process.env.INTERNAL_JOB_KEY || '';
 
 // --- payments (Stripe REST API — https://stripe.com; no SDK dependency, just fetch) ---
@@ -295,6 +299,11 @@ function carePlanMonthlyTotal(services){ return (services||[]).reduce((sum,k)=>{
 // order so we can tell an upgrade (send an invoice) from a downgrade or lateral change (don't).
 const HOMEOWNER_PLAN_INFO={free:{label:'Free',priceCents:0,rank:0},plus:{label:'Plus',priceCents:999,rank:1},premium:{label:'Premium',priceCents:2499,rank:2}};
 const PROVIDER_PLAN_INFO={free:{label:'Free',priceCents:0,rank:0},pro:{label:'Pro Provider',priceCents:PROVIDER_PLAN_PRICE_CENTS,rank:1}};
+// The self-service /api/subscription route has historically stored the homeowner Premium tier as
+// 'pro' (a leftover naming mismatch with the admin panel's 'premium'). Normalize on read so both
+// old and new rows resolve to the same HOMEOWNER_PLAN_INFO entry everywhere admin code looks up a
+// homeowner's plan label/price — the self-service write path itself is untouched.
+function normalizeHomeownerPlanKey(v){ return v==='pro' ? 'premium' : (v||'free'); }
 // Maps a Home Care Plan service key to the closest provider-facing service category, so the admin's
 // "assign a provider" picker can rank providers who actually offer that kind of work first.
 const CARE_SERVICE_TO_PROVIDER_TYPE={landscaping:'Lawn & Landscaping',pest:'Pest Control',cleaning:'House Cleaning',pool:'Pool Service',holiday_lighting:'Handyman'};
@@ -354,6 +363,143 @@ function adminPlanInvoiceEmailHtml(u,planLabel,priceCents,invoiceNo){
      <p style="color:#6d7b77;line-height:1.6;font-size:12.5px;margin-top:16px">Charged to the card on file going forward. Questions about this change? Reply to this email or reach out from your dashboard.</p>
      ${btn('View My Plan',APP_URL)}`);
 }
+function planChangedEmailHtml(u,planLabel,priceCents){
+  const isFree=priceCents<=0;
+  return emailShell(isFree?'Your plan was changed':'Your plan is confirmed',
+    `<h2 style="margin:0 0 10px;color:#17352f">${isFree?'Plan updated':'You\'re on the '+esc_(planLabel)+' plan'}</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">${isFree
+        ? `Your account is now on the <b>${esc_(planLabel)}</b> plan. No further charges will be made.`
+        : `Your account was switched to <b>${esc_(planLabel)}</b> at <b>$${(priceCents/100).toFixed(2)}/mo</b>, billed to the card on file.`}</p>
+     ${btn('View My Plan',APP_URL)}`);
+}
+function carePlanUpdatedEmailHtml(u,services,monthlyTotal){
+  const rows=services.map(s=>`<tr><td style="padding:6px 0;color:#3f4f4a">${esc_(s.name)}</td><td style="padding:6px 0;text-align:right;color:#3f4f4a">$${s.price}/${s.billing==='season'?'season':'mo'}</td></tr>`).join('');
+  return emailShell('Your Home Care Plan was updated',
+    `<h2 style="margin:0 0 10px;color:#17352f">Your Home Care Plan was updated</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Here's what's on your plan now:</p>
+     <table style="width:100%;border-collapse:collapse;margin-top:10px;font-size:13.5px">${rows}</table>
+     <p style="color:#17352f;font-weight:800;margin-top:10px;font-size:14px">≈$${monthlyTotal}/mo</p>
+     ${btn('Manage My Plan',APP_URL)}`);
+}
+function carePlanCanceledEmailHtml(u){
+  return emailShell('Your Home Care Plan was canceled',
+    `<h2 style="margin:0 0 10px;color:#17352f">Your Home Care Plan was canceled</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">All recurring services on your Home Care Plan were removed and billing for them has stopped.</p>
+     ${btn('View My Dashboard',APP_URL)}`);
+}
+function accountSuspendedEmailHtml(u){
+  return emailShell('Your account was suspended',
+    `<h2 style="margin:0 0 10px;color:#17352f">Your account has been suspended</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Your Living Communities account (${esc_(u.email)}) has been suspended and you've been signed out. If you think this is a mistake, reply to this email and we'll take a look.</p>`);
+}
+function accountReactivatedEmailHtml(u){
+  return emailShell('Your account is active again',
+    `<h2 style="margin:0 0 10px;color:#17352f">Welcome back</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Your account has been reactivated. You can log back in whenever you're ready.</p>
+     ${btn('Log In',APP_URL)}`);
+}
+function verificationApprovedEmailHtml(u){
+  return emailShell('You\'re verified',
+    `<h2 style="margin:0 0 10px;color:#17352f">You're verified ✅</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Your provider account is now verified. A verified badge now shows on your profile, which homeowners trust more when comparing quotes.</p>
+     ${btn('View My Profile',APP_URL)}`);
+}
+function verificationRejectedEmailHtml(u,notes){
+  return emailShell('Update needed on your verification',
+    `<h2 style="margin:0 0 10px;color:#17352f">We couldn't verify your account yet</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Here's what needs fixing:</p>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px;background:#fbe4e1;border-radius:10px;padding:12px 14px">${esc_(notes)}</p>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Once it's fixed, resubmit your documents from your dashboard.</p>
+     ${btn('Resubmit Verification',APP_URL)}`);
+}
+function verificationSubmittedEmailHtml(u){
+  return emailShell('Verification submitted',
+    `<h2 style="margin:0 0 10px;color:#17352f">Got it — under review</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">We received your verification documents. Our team typically reviews these within a couple of business days. We'll email you as soon as there's a decision.</p>`);
+}
+function adminNewVerificationEmailHtml(provider){
+  return emailShell('New verification pending',
+    `<h2 style="margin:0 0 10px;color:#17352f">A provider needs review</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px"><b>${esc_(provider.name)}</b> (${esc_(provider.email)}) submitted verification documents and is waiting on a decision.</p>
+     ${btn('Review in Admin',APP_URL+'/#admin')}`);
+}
+function adminNewSignupEmailHtml(u){
+  return emailShell('New signup',
+    `<h2 style="margin:0 0 10px;color:#17352f">New ${esc_(u.role)}: ${esc_(u.name)}</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">${esc_(u.name)} (${esc_(u.email)}) just created a ${esc_(u.role)} account.</p>
+     ${btn('View in Admin',APP_URL+'/#admin')}`);
+}
+function adminPlanCancelledEmailHtml(u,planLabel){
+  return emailShell('Plan downgraded to Free',
+    `<h2 style="margin:0 0 10px;color:#17352f">${esc_(u.name)} dropped to Free</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px"><b>${esc_(u.name)}</b> (${esc_(u.email)}) downgraded from ${esc_(planLabel)} to the Free plan.</p>
+     ${btn('View in Admin',APP_URL+'/#admin')}`);
+}
+function adminPaymentFailedEmailHtml(u){
+  return emailShell('A payment failed',
+    `<h2 style="margin:0 0 10px;color:#17352f">Payment failed</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">A card charge failed for <b>${esc_(u.name)}</b> (${esc_(u.email)}). They've been emailed to update their payment method.</p>
+     ${btn('View in Admin',APP_URL+'/#admin')}`);
+}
+function adminLowRatingReviewEmailHtml(provider,homeownerName,rating,text){
+  const stars='★'.repeat(rating)+'☆'.repeat(5-rating);
+  return emailShell('Low rating posted',
+    `<h2 style="margin:0 0 10px;color:#17352f">${stars} for ${esc_(provider.name)}</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px"><b>${esc_(homeownerName)}</b> left <b>${esc_(provider.name)}</b> (${esc_(provider.email)}) a ${rating}-star review.</p>
+     ${text?`<p style="color:#3f4f4a;line-height:1.6;font-size:14.5px;background:#fbe4e1;border-radius:10px;padding:12px 14px">"${esc_(text)}"</p>`:''}
+     ${btn('View in Admin',APP_URL+'/#admin')}`);
+}
+function adminJobCancelledEmailHtml(job,homeownerName,providerName){
+  return emailShell('Job cancelled',
+    `<h2 style="margin:0 0 10px;color:#17352f">"${esc_(job.title)}" was cancelled</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Between <b>${esc_(homeownerName)}</b> and <b>${esc_(providerName)}</b>.</p>
+     ${btn('View in Admin',APP_URL+'/#admin')}`);
+}
+function adminBackgroundCheckRequestedEmailHtml(provider){
+  return emailShell('Background check requested',
+    `<h2 style="margin:0 0 10px;color:#17352f">${esc_(provider.name)} requested a background check</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px"><b>${esc_(provider.name)}</b> (${esc_(provider.email)}) opted into a background check when submitting verification. No vendor is wired up yet — this needs manual follow-up.</p>
+     ${btn('View in Admin',APP_URL+'/#admin')}`);
+}
+function adminDigestEmailHtml(stats){
+  const row=(label,val)=>`<tr><td style="padding:6px 0;color:#3f4f4a">${esc_(label)}</td><td style="padding:6px 0;text-align:right;color:#17352f;font-weight:700">${val}</td></tr>`;
+  return emailShell('Your daily admin digest',
+    `<h2 style="margin:0 0 10px;color:#17352f">Daily digest</h2>
+     <table style="width:100%;border-collapse:collapse;margin-top:10px;font-size:13.5px">
+       ${row('New homeowners (24h)',stats.newHomeowners)}
+       ${row('New providers (24h)',stats.newProviders)}
+       ${row('Open requests',stats.openRequests)}
+       ${row('Stale requests (24h+, no quotes)',stats.staleRequests)}
+       ${row('Verification queue (pending)',stats.pendingVerifications)}
+       ${row('Suspended accounts',stats.suspendedAccounts)}
+     </table>
+     ${btn('Open Admin Dashboard',APP_URL+'/#admin')}`);
+}
+function jobCompletedEmailHtml(homeowner,job){
+  return emailShell('Job completed',
+    `<h2 style="margin:0 0 10px;color:#17352f">"${esc_(job.title)}" is complete</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Your provider marked this job as completed. Take a minute to leave a review — it helps other homeowners in your community.</p>
+     ${btn('Leave a Review',APP_URL)}`);
+}
+function jobCancelledEmailHtml(recipientName,job){
+  return emailShell('Job cancelled',
+    `<h2 style="margin:0 0 10px;color:#17352f">"${esc_(job.title)}" was cancelled</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">This job has been marked as cancelled. No further action is needed.</p>
+     ${btn('View My Dashboard',APP_URL)}`);
+}
+function newReviewEmailHtml(provider,rating,text){
+  const stars='★'.repeat(rating)+'☆'.repeat(5-rating);
+  return emailShell('You got a new review',
+    `<h2 style="margin:0 0 10px;color:#17352f">New review: ${stars}</h2>
+     ${text?`<p style="color:#3f4f4a;line-height:1.6;font-size:14.5px;background:#eaf4ef;border-radius:10px;padding:12px 14px">"${esc_(text)}"</p>`:''}
+     ${btn('View My Profile',APP_URL)}`);
+}
+function carePlanVisitAssignedEmailHtml(provider,homeownerName,serviceName,note){
+  return emailShell('New recurring service assigned',
+    `<h2 style="margin:0 0 10px;color:#17352f">You were assigned a recurring service</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Our team connected you with <b>${esc_(homeownerName)}</b> for their <b>${esc_(serviceName)}</b> Home Care Plan service.${note?(' Note: '+esc_(note)):''}</p>
+     ${btn('View My Dashboard',APP_URL)}`);
+}
 
 // Simulated monthly billing for Home Care Plan: sends a reminder 7 days before the next_billing
 // date, and a "card was charged" email (mock — no real payment) on/after that date, then rolls
@@ -387,6 +533,27 @@ async function runBillingCheck(){
     }
   }
   return {reminders,charges,checked:rows.length};
+}
+
+// Admin digest — a single rollup email instead of pinging on every event. Meant to be triggered
+// once a day (or however often you like) by the same external cron/pinger that hits
+// run-billing-check, via /api/internal/run-admin-digest.
+async function runAdminDigest(){
+  if(!ADMIN_NOTIFY_EMAIL) return {sent:false,reason:'no ADMIN_NOTIFY_EMAIL/ADMIN_EMAIL configured'};
+  const [newHomeowners,newProviders,openReqs,staleReqs,pendingVerif,suspendedCount]=await Promise.all([
+    q1("SELECT count(*)::int AS n FROM users WHERE role='homeowner' AND created_at > now() - interval '24 hours'"),
+    q1("SELECT count(*)::int AS n FROM users WHERE role='provider' AND created_at > now() - interval '24 hours'"),
+    q1("SELECT count(*)::int AS n FROM requests WHERE status='open'"),
+    q1("SELECT count(*)::int AS n FROM requests r WHERE r.status='open' AND r.created_at < now() - interval '24 hours' AND NOT EXISTS (SELECT 1 FROM quotes qq WHERE qq.request_id=r.id)"),
+    q1("SELECT count(*)::int AS n FROM users WHERE role='provider' AND verification_status='pending'"),
+    q1("SELECT count(*)::int AS n FROM users WHERE suspended=true"),
+  ]);
+  const stats={
+    newHomeowners:newHomeowners.n, newProviders:newProviders.n, openRequests:openReqs.n,
+    staleRequests:staleReqs.n, pendingVerifications:pendingVerif.n, suspendedAccounts:suspendedCount.n,
+  };
+  await sendEmail({to:ADMIN_NOTIFY_EMAIL,type:'admin_digest',subject:'Your daily admin digest',html:adminDigestEmailHtml(stats)});
+  return {sent:true,stats};
 }
 
 async function initSchema(){
@@ -661,6 +828,7 @@ const server=http.createServer(async (req,res)=>{
       const u=mapUser(row);
       const token=crypto.randomBytes(24).toString('hex'); sessions.set(token,u.id);
       sendEmail({to:u.email,type:'welcome',subject:'Welcome to Living Communities',html:welcomeEmailHtml(u),userId:u.id}).catch(()=>{});
+      if(ADMIN_NOTIFY_EMAIL) sendEmail({to:ADMIN_NOTIFY_EMAIL,type:'admin_new_signup',subject:`New ${role}: ${u.name}`,html:adminNewSignupEmailHtml(u)}).catch(()=>{});
       return send(res,201,{token,user:safeUser(u)});
     }
     if(p==='/api/auth/me' && req.method==='GET'){
@@ -674,6 +842,14 @@ const server=http.createServer(async (req,res)=>{
       const key=req.headers['x-internal-key']||'';
       if(!INTERNAL_JOB_KEY || key!==INTERNAL_JOB_KEY) return send(res,401,{error:'Unauthorized'});
       const result=await runBillingCheck();
+      return send(res,200,{ok:true,...result});
+    }
+    // Same shared-secret pattern as run-billing-check above — point an external cron/pinger at this
+    // once a day (or whatever cadence you like) to get the admin rollup email.
+    if(p==='/api/internal/run-admin-digest' && req.method==='POST'){
+      const key=req.headers['x-internal-key']||'';
+      if(!INTERNAL_JOB_KEY || key!==INTERNAL_JOB_KEY) return send(res,401,{error:'Unauthorized'});
+      const result=await runAdminDigest();
       return send(res,200,{ok:true,...result});
     }
 
@@ -712,7 +888,10 @@ const server=http.createServer(async (req,res)=>{
         } else if(event.type==='invoice.payment_failed'){
           const inv=event.data.object;
           const row=await q1('SELECT * FROM users WHERE stripe_customer_id=$1',[inv.customer]);
-          if(row) await sendEmail({to:row.email,type:'payment_failed',subject:'Your payment could not be processed',html:emailShell('Payment failed',`<h2 style="margin:0 0 10px;color:#17352f">We couldn't charge your card</h2><p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Please update your payment method from your dashboard to keep your plan active.</p>`),userId:row.id});
+          if(row){
+            await sendEmail({to:row.email,type:'payment_failed',subject:'Your payment could not be processed',html:emailShell('Payment failed',`<h2 style="margin:0 0 10px;color:#17352f">We couldn't charge your card</h2><p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Please update your payment method from your dashboard to keep your plan active.</p>`),userId:row.id});
+            if(ADMIN_NOTIFY_EMAIL) sendEmail({to:ADMIN_NOTIFY_EMAIL,type:'admin_payment_failed',subject:`Payment failed: ${row.name}`,html:adminPaymentFailedEmailHtml(mapUser(row))}).catch(()=>{});
+          }
         } else if(event.type==='customer.subscription.deleted'){
           const sub=event.data.object;
           const row=await q1('SELECT * FROM users WHERE stripe_customer_id=$1',[sub.customer]);
@@ -866,8 +1045,17 @@ const server=http.createServer(async (req,res)=>{
       if(job.homeowner_id!==u.id&&job.provider_id!==u.id)return send(res,403,{error:'Not authorized'});
       const b=await body(req);
       let row=job;
-      if(['scheduled','in_progress','completed','cancelled'].includes(b.status)){
+      if(['scheduled','in_progress','completed','cancelled'].includes(b.status) && b.status!==job.status){
         row=await q1('UPDATE jobs SET status=$1 WHERE id=$2 RETURNING *',[b.status,jid]);
+        if(b.status==='completed'){
+          const homeowner=await q1('SELECT * FROM users WHERE id=$1',[row.homeowner_id]);
+          if(homeowner) sendEmail({to:homeowner.email,type:'job_completed',subject:`"${row.title}" is complete`,html:jobCompletedEmailHtml(homeowner,mapJob(row)),userId:homeowner.id}).catch(()=>{});
+        } else if(b.status==='cancelled'){
+          const [homeowner,provider]=await Promise.all([q1('SELECT * FROM users WHERE id=$1',[row.homeowner_id]),q1('SELECT * FROM users WHERE id=$1',[row.provider_id])]);
+          if(homeowner) sendEmail({to:homeowner.email,type:'job_cancelled',subject:`"${row.title}" was cancelled`,html:jobCancelledEmailHtml(homeowner.name,mapJob(row)),userId:homeowner.id}).catch(()=>{});
+          if(provider) sendEmail({to:provider.email,type:'job_cancelled',subject:`"${row.title}" was cancelled`,html:jobCancelledEmailHtml(provider.name,mapJob(row)),userId:provider.id}).catch(()=>{});
+          if(ADMIN_NOTIFY_EMAIL) sendEmail({to:ADMIN_NOTIFY_EMAIL,type:'admin_job_cancelled',subject:`Job cancelled: "${row.title}"`,html:adminJobCancelledEmailHtml(mapJob(row),homeowner?.name||'—',provider?.name||'—')}).catch(()=>{});
+        }
       }
       return send(res,200,{job:mapJob(row)});
     }
@@ -882,6 +1070,11 @@ const server=http.createServer(async (req,res)=>{
         [id('review'),job.id,u.id,job.provider_id,rating,String(b.text||'').slice(0,2000)]);
       const agg=await q1('SELECT count(*)::int AS n, avg(rating) AS avg FROM reviews WHERE provider_id=$1',[job.provider_id]);
       await pool.query('UPDATE users SET review_count=$1, rating=$2 WHERE id=$3',[agg.n,Math.round(Number(agg.avg)*10)/10,job.provider_id]);
+      const providerRow=await q1('SELECT * FROM users WHERE id=$1',[job.provider_id]);
+      if(providerRow){
+        sendEmail({to:providerRow.email,type:'new_review',subject:`You got a new ${rating}-star review`,html:newReviewEmailHtml(providerRow,rating,row.text),userId:providerRow.id}).catch(()=>{});
+        if(rating<=2 && ADMIN_NOTIFY_EMAIL) sendEmail({to:ADMIN_NOTIFY_EMAIL,type:'admin_low_rating_review',subject:`Low rating for ${providerRow.name}`,html:adminLowRatingReviewEmailHtml(mapUser(providerRow),u.name,rating,row.text)}).catch(()=>{});
+      }
       return send(res,201,{review:mapReview(row)});
     }
     if(p==='/api/subscription' && req.method==='POST'){
@@ -906,6 +1099,14 @@ const server=http.createServer(async (req,res)=>{
         row=await q1('UPDATE users SET subscription=$1 WHERE id=$2 RETURNING *',[b.plan,u.id]);
       }
       await pool.query('INSERT INTO subscriptions (id,user_id,plan,status) VALUES ($1,$2,$3,$4)',[id('sub'),u.id,b.plan,'active']);
+      if(b.plan!==(u.subscription||'free')){
+        const info=HOMEOWNER_PLAN_INFO[normalizeHomeownerPlanKey(b.plan)];
+        sendEmail({to:row.email,type:'subscription_changed',subject:`Your plan is now ${info.label}`,html:planChangedEmailHtml(mapUser(row),info.label,info.priceCents),userId:row.id}).catch(()=>{});
+        if(b.plan==='free' && ADMIN_NOTIFY_EMAIL){
+          const oldInfo=HOMEOWNER_PLAN_INFO[normalizeHomeownerPlanKey(u.subscription)];
+          sendEmail({to:ADMIN_NOTIFY_EMAIL,type:'admin_plan_cancelled',subject:`${row.name} downgraded to Free`,html:adminPlanCancelledEmailHtml(mapUser(row),oldInfo.label)}).catch(()=>{});
+        }
+      }
       return send(res,200,{subscription:b.plan,user:safeUser(mapUser(row))});
     }
     if(p==='/api/care-plan' && req.method==='POST'){
@@ -947,6 +1148,17 @@ const server=http.createServer(async (req,res)=>{
         // adding/removing services on an existing demo-mode plan — billing date unchanged
         row=await q1('UPDATE users SET care_plan_services=$1 WHERE id=$2 RETURNING *',[services,u.id]);
       }
+      const beforeSet=new Set(u.carePlanServices||[]);
+      const afterSet=new Set(services);
+      const servicesChanged = beforeSet.size!==afterSet.size || [...beforeSet].some(s=>!afterSet.has(s));
+      if(servicesChanged){
+        if(hasPlan){
+          const svcDetails=services.map(k=>CARE_SERVICE_INFO[k]);
+          sendEmail({to:row.email,type:'care_plan_updated',subject:'Your Home Care Plan was updated',html:carePlanUpdatedEmailHtml(mapUser(row),svcDetails,carePlanMonthlyTotal(services)),userId:row.id}).catch(()=>{});
+        } else if(hadPlan){
+          sendEmail({to:row.email,type:'care_plan_canceled',subject:'Your Home Care Plan was canceled',html:carePlanCanceledEmailHtml(mapUser(row)),userId:row.id}).catch(()=>{});
+        }
+      }
       return send(res,200,{carePlanServices:services,user:safeUser(mapUser(row))});
     }
     if(p==='/api/provider-plan' && req.method==='POST'){
@@ -970,6 +1182,14 @@ const server=http.createServer(async (req,res)=>{
         }catch(e){ return sendStripeError(res,e); }
       }else{
         row=await q1("UPDATE users SET provider_plan='pro' WHERE id=$1 RETURNING *",[u.id]);
+      }
+      if(plan!==(u.providerPlan||'free')){
+        const info=PROVIDER_PLAN_INFO[plan];
+        sendEmail({to:row.email,type:'provider_plan_changed',subject:`Your plan is now ${info.label}`,html:planChangedEmailHtml(mapUser(row),info.label,info.priceCents),userId:row.id}).catch(()=>{});
+        if(plan==='free' && ADMIN_NOTIFY_EMAIL){
+          const oldInfo=PROVIDER_PLAN_INFO[u.providerPlan||'free'];
+          sendEmail({to:ADMIN_NOTIFY_EMAIL,type:'admin_plan_cancelled',subject:`${row.name} downgraded to Free`,html:adminPlanCancelledEmailHtml(mapUser(row),oldInfo.label)}).catch(()=>{});
+        }
       }
       return send(res,200,{user:safeUser(mapUser(row))});
     }
@@ -1039,6 +1259,11 @@ const server=http.createServer(async (req,res)=>{
         [entityType, JSON.stringify(documents), bgStatus, wantsBackgroundCheck?new Date():null, u.id]
       );
       if(wantsBackgroundCheck) initiateBackgroundCheck(mapUser(row)); // stub — see function comment
+      sendEmail({to:row.email,type:'verification_submitted',subject:'Verification submitted',html:verificationSubmittedEmailHtml(mapUser(row)),userId:row.id}).catch(()=>{});
+      if(ADMIN_NOTIFY_EMAIL){
+        sendEmail({to:ADMIN_NOTIFY_EMAIL,type:'admin_new_verification',subject:`New verification pending: ${row.name}`,html:adminNewVerificationEmailHtml(mapUser(row))}).catch(()=>{});
+        if(wantsBackgroundCheck) sendEmail({to:ADMIN_NOTIFY_EMAIL,type:'admin_background_check_requested',subject:`Background check requested: ${row.name}`,html:adminBackgroundCheckRequestedEmailHtml(mapUser(row))}).catch(()=>{});
+      }
       return send(res,200,{user:safeUser(mapUser(row))});
     }
     if(p==='/api/profile/address' && req.method==='POST'){
@@ -1100,6 +1325,11 @@ const server=http.createServer(async (req,res)=>{
         `UPDATE users SET verified=$1, verification_status=$2, verification_notes=$3, verification_reviewed_at=now() WHERE id=$4 RETURNING *`,
         [verified, verified?'verified':'rejected', notes||null, pid]
       );
+      if(verified){
+        sendEmail({to:row.email,type:'verification_approved',subject:"You're verified",html:verificationApprovedEmailHtml(mapUser(row)),userId:row.id}).catch(()=>{});
+      }else{
+        sendEmail({to:row.email,type:'verification_rejected',subject:'Update needed on your verification',html:verificationRejectedEmailHtml(mapUser(row),notes),userId:row.id}).catch(()=>{});
+      }
       return send(res,200,{provider:safeUser(mapUser(row))});
     }
 
@@ -1151,6 +1381,11 @@ const server=http.createServer(async (req,res)=>{
       const b=await body(req);
       const suspended=!!b.suspended;
       const row=await q1('UPDATE users SET suspended=$1 WHERE id=$2 RETURNING *',[suspended,aid]);
+      if(suspended){
+        sendEmail({to:row.email,type:'account_suspended',subject:'Your account was suspended',html:accountSuspendedEmailHtml(mapUser(row)),userId:row.id}).catch(()=>{});
+      }else{
+        sendEmail({to:row.email,type:'account_reactivated',subject:'Your account is active again',html:accountReactivatedEmailHtml(mapUser(row)),userId:row.id}).catch(()=>{});
+      }
       return send(res,200,{account:adminAccountView(mapUser(row))});
     }
     if(p.startsWith('/api/admin/accounts/') && p.endsWith('/subscription') && req.method==='POST'){
@@ -1163,7 +1398,7 @@ const server=http.createServer(async (req,res)=>{
       if(target.role==='homeowner'){
         const plan=['free','plus','premium'].includes(b.subscription)?b.subscription:null;
         if(!plan) return send(res,400,{error:'subscription must be free, plus, or premium'});
-        const oldPlan=target.subscription||'free';
+        const oldPlan=normalizeHomeownerPlanKey(target.subscription);
         row=await q1('UPDATE users SET subscription=$1 WHERE id=$2 RETURNING *',[plan,aid]);
         planInfo=HOMEOWNER_PLAN_INFO[plan];
         isUpgrade=planInfo.rank>(HOMEOWNER_PLAN_INFO[oldPlan]?.rank??0);
@@ -1273,7 +1508,7 @@ const server=http.createServer(async (req,res)=>{
             note: v?v.note:null,
           };
         });
-        return {id:mu.id,name:mu.name,email:mu.email,community:mu.community,subscription:mu.subscription,services};
+        return {id:mu.id,name:mu.name,email:mu.email,community:mu.community,subscription:normalizeHomeownerPlanKey(mu.subscription),services};
       });
       return send(res,200,{accounts});
     }
@@ -1330,13 +1565,14 @@ const server=http.createServer(async (req,res)=>{
       );
       let providerName=null;
       if(row.provider_id){
-        const pr=await q1('SELECT name FROM users WHERE id=$1',[row.provider_id]);
+        const pr=await q1('SELECT id,name,email FROM users WHERE id=$1',[row.provider_id]);
         if(pr){
           providerName=pr.name;
           if(providerChanged){
             const svcName=CARE_SERVICE_INFO[serviceKey].name;
             await pool.query('INSERT INTO messages (id,sender_id,recipient_id,participants,body,read) VALUES ($1,$2,$3,$4,$5,$6)',
               [id('msg'),u.id,row.provider_id,[u.id,row.provider_id],`An admin assigned you to a recurring Home Care Plan service: ${svcName} for ${homeowner.name}.${note?(' Note: '+note):''}`,false]);
+            sendEmail({to:pr.email||'',type:'care_plan_visit_assigned',subject:`New recurring service: ${svcName}`,html:carePlanVisitAssignedEmailHtml(pr,homeowner.name,svcName,note)}).catch(()=>{});
           }
         }
       }
