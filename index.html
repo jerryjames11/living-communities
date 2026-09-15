@@ -33,13 +33,13 @@ button{font:inherit;cursor:pointer}
 .actions{display:flex;gap:12px;margin-top:20px;flex-wrap:wrap}
 .hero-visual{position:relative}
 .hero-photo{border-radius:26px;overflow:hidden;box-shadow:0 30px 60px -20px #17352f2e}
-.floatcard{position:absolute;background:#fff;border-radius:16px;padding:12px 16px;box-shadow:0 16px 34px #17352f22;display:flex;align-items:center;gap:11px;font-size:13px;max-width:210px}
-.floatcard b{display:block;font-size:13.5px}
-.floatcard small{color:var(--muted);font-size:11.5px}
+.floatcard{position:absolute;background:var(--mint);border:1px solid #cfe4da;border-radius:16px;padding:12px 16px;box-shadow:0 16px 34px #17352f22;display:flex;align-items:center;gap:11px;font-size:13px;max-width:210px}
+.floatcard b{display:block;font-size:13.5px;color:var(--green-dark)}
+.floatcard small{color:var(--green);font-size:11.5px}
 .float-1{top:8%;left:-6%}
 .float-2{bottom:8%;right:-6%}
-.float-icon{width:38px;height:38px;border-radius:50%;flex:0 0 auto;background:var(--mint);display:grid;place-items:center;overflow:hidden}
-.float-icon.shield,.float-icon.check{background:var(--mint);color:var(--green)}
+.float-icon{width:38px;height:38px;border-radius:50%;flex:0 0 auto;background:var(--green);display:grid;place-items:center;overflow:hidden}
+.float-icon.shield,.float-icon.check{background:var(--green);color:#fff}
 
 /* ---------- generic sections ---------- */
 .section{padding:48px 6%}
@@ -316,7 +316,7 @@ button{font:inherit;cursor:pointer}
   <div class="actions"><button class="primary" onclick="openSignup('homeowner')">Get Started</button><button class="secondary" onclick="scrollToSection('how-it-works')">How It Works</button></div>
 </div>
 <div class="hero-visual">
-  <div class="photo-slot hero-photo" data-label="images/hero-house.jpg — a bright home exterior" style="aspect-ratio:5/4"><img src="images/hero-house.jpg" alt="Home exterior" onerror="this.closest('.photo-slot').classList.add('missing')"></div>
+  <div class="photo-slot hero-photo" data-label="images/hero-house.jpg, a bright home exterior" style="aspect-ratio:5/4"><img src="images/hero-house.jpg" alt="Home exterior" onerror="this.closest('.photo-slot').classList.add('missing')"></div>
   <div class="floatcard float-1"><div class="float-icon check"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7.2"/><path d="M6.8 10.2l2.1 2.1 4.3-4.6"/></svg></div><div><b>We've Got It Handled</b><small>Every request finds a pro</small></div></div>
   <div class="floatcard float-2"><div class="float-icon shield"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12"/><path d="M12 6l4 4-4 4"/></svg></div><div><b>Simple, Start to Finish</b><small>Request, match, done</small></div></div>
 </div>
@@ -327,7 +327,7 @@ button{font:inherit;cursor:pointer}
 <h2>Home services, simplified.</h2>
 <p class="lead">From small fixes to big projects, we make it easy to get the help you need.</p>
 <div class="steps3">
-  <div class="step-card"><div class="photo-slot step-photo" data-label="images/step-describe.jpg"><img src="images/step-describe.jpg" alt="" onerror="this.closest('.photo-slot').classList.add('missing')"></div><div class="step-body"><div class="step-num">1. Describe Your Need</div><h3>Tell us what's going on</h3><p>Tell us what you need done in just a few steps — no broadcasting your personal details.</p></div></div>
+  <div class="step-card"><div class="photo-slot step-photo" data-label="images/step-describe.jpg"><img src="images/step-describe.jpg" alt="" onerror="this.closest('.photo-slot').classList.add('missing')"></div><div class="step-body"><div class="step-num">1. Describe Your Need</div><h3>Tell us what's going on</h3><p>Tell us what you need done in just a few steps. No broadcasting your personal details.</p></div></div>
   <div class="step-card"><div class="photo-slot step-photo" data-label="images/step-matched.jpg"><img src="images/step-matched.jpg" alt="" onerror="this.closest('.photo-slot').classList.add('missing')"></div><div class="step-body"><div class="step-num">2. Get Matched</div><h3>Compare local pros</h3><p>We connect you with trusted, local professionals who respond with real quotes.</p></div></div>
   <div class="step-card"><div class="photo-slot step-photo" data-label="images/step-relax.jpg"><img src="images/step-relax.jpg" alt="" onerror="this.closest('.photo-slot').classList.add('missing')"></div><div class="step-body"><div class="step-num">3. Relax & Enjoy</div><h3>Sit back</h3><p>Sit back while we handle the rest with care and quality.</p></div></div>
 </div>
@@ -359,7 +359,7 @@ button{font:inherit;cursor:pointer}
   <div class="careplan-copy">
     <div class="eyebrow">A Plus &amp; Premium perk</div>
     <h2 style="margin:6px 0 10px">Home Care Plan: one flat monthly bill. Every recurring service handled.</h2>
-    <p class="lead" style="margin-bottom:18px">Included with Plus and Premium. Stop juggling five different providers and five different bills — pick the recurring services your home needs and we line up trusted local pros, all on one simple monthly charge, plus a private chat with homes near you.</p>
+    <p class="lead" style="margin-bottom:18px">Included with Plus and Premium. Stop juggling five different providers and five different bills. Pick the recurring services your home needs and we line up trusted local pros, all on one simple monthly charge, plus a private chat with homes near you.</p>
     <ul class="careplan-checklist">
       <li><span><svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3c-7 0-13 5-13 12 0 1 .2 2 .2 2s7.8-1 10.8-5c2-2.5 2.5-6 2-9z"/><path d="M5 16C8.5 11.5 12.5 8 17 3"/></svg></span>Landscaping<b>$59–$119/mo</b></li>
       <li><span><svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="5" r="1.5"/><ellipse cx="10" cy="9.5" rx="2.3" ry="2.8"/><ellipse cx="10" cy="14.5" rx="2.8" ry="3.2"/><path d="M7.5 8l-3-1.5M7.8 10h-3.3M8 12l-2.7 2M12.5 8l3-1.5M12.2 10h3.3M12 12l2.7 2"/></svg></span>Pest Control<b>$9–$69/mo</b></li>
@@ -367,7 +367,7 @@ button{font:inherit;cursor:pointer}
       <li><span><svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7.5c1.4-1.2 2.8-1.2 4.2 0s2.8 1.2 4.2 0 2.8-1.2 4.2 0 2.8 1.2 4.2 0"/><path d="M2 12.5c1.4-1.2 2.8-1.2 4.2 0s2.8 1.2 4.2 0 2.8-1.2 4.2 0 2.8 1.2 4.2 0"/></svg></span>Pool Cleaning<b>$69–$129/mo</b></li>
       <li><span><svg width="17" height="17" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2c.4 3 1.3 5.4 2.4 6.6C13.6 9.7 16 10.6 19 11c-3 .4-5.4 1.3-6.6 2.4C11.3 14.6 10.4 17 10 20c-.4-3-1.3-5.4-2.4-6.6C6.4 12.3 4 11.4 1 11c3-.4 5.4-1.3 6.6-2.4C8.7 7.4 9.6 5 10 2z"/></svg></span>Holiday Lighting<b>$35–$95 seasonal</b></li>
     </ul>
-    <p class="subtle" style="font-size:12.5px;margin-top:10px">Ranges shown — final pricing is confirmed after a home visit or consultation.</p>
+    <p class="subtle" style="font-size:12.5px;margin-top:10px">Ranges shown. Final pricing is confirmed after a home visit or consultation.</p>
     <div style="margin-top:18px;display:flex;gap:12px;flex-wrap:wrap;align-items:center">
       <button class="primary" onclick="openCarePlanPage()">Build Your Plan</button>
       <span class="subtle" style="font-size:13px">Requires Plus or Premium · add or remove services anytime</span>
@@ -378,7 +378,7 @@ button{font:inherit;cursor:pointer}
       <h3>Example plan</h3>
       <div class="subtle" style="font-size:13px">Landscaping + Pest Control + Cleaning</div>
       <div class="total">≈$257<small>/mo</small></div>
-      <div class="subtle" style="font-size:12.5px;margin-top:6px">Estimated — confirmed after a visit. Cancel or change anytime.</div>
+      <div class="subtle" style="font-size:12.5px;margin-top:6px">Estimated, confirmed after a visit. Cancel or change anytime.</div>
     </div>
   </div>
 </div>
@@ -386,7 +386,7 @@ button{font:inherit;cursor:pointer}
 
 <section class="band" id="about">
 <h2>Your HOA manages the community.<br>We help you manage your home.</h2>
-<p>Living Communities is designed to complement — not replace — your HOA, giving every resident a simple way to find trusted local help.</p>
+<p>Living Communities is designed to complement, not replace, your HOA, giving every resident a simple way to find trusted local help.</p>
 </section>
 
 <section class="section center" id="contact">
@@ -636,26 +636,26 @@ button{font:inherit;cursor:pointer}
   <div class="logo" style="margin-left:4px">Living <span>Communities</span></div>
 </div>
 <div class="app">
-<div class="dash-titlebar"><div><h1>Build Your Home Care Plan</h1><p class="subtle">Pick the recurring services you want — we line up trusted local pros and bill you once a month.</p></div></div>
+<div class="dash-titlebar"><div><h1>Build Your Home Care Plan</h1><p class="subtle">Pick the recurring services you want. We line up trusted local pros and bill you once a month.</p></div></div>
 <div class="care-gate hidden" id="careGate">
   <div style="width:52px;height:52px;border-radius:50%;background:var(--mint);display:grid;place-items:center;margin:0 auto 16px">
     <svg width="24" height="24" viewBox="0 0 20 20" fill="none" stroke="var(--green)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3l1.4 3.4L15 7l-2.6 2.4.7 3.6L10 11.2 6.9 13l.7-3.6L5 7l3.6-.6L10 3z"/></svg>
   </div>
   <h3 style="margin:0 0 8px;font-size:19px;text-align:center">Home Care Plan is a Plus &amp; Premium perk</h3>
-  <p class="subtle" style="margin:0 0 22px;font-size:14px;line-height:1.6;text-align:center;max-width:440px">Upgrade your Community Plan to Plus or Premium to build a recurring Home Care Plan — landscaping, cleaning, pest control and more, all on one monthly bill.</p>
+  <p class="subtle" style="margin:0 0 22px;font-size:14px;line-height:1.6;text-align:center;max-width:440px">Upgrade your Community Plan to Plus or Premium to build a recurring Home Care Plan: landscaping, cleaning, pest control and more, all on one monthly bill.</p>
   <button class="primary" onclick="openPlansPage('homeowner')">Upgrade to Plus →</button>
 </div>
 <div class="care-layout" id="careLayout">
   <div class="care-list">
     <div class="care-card" id="care-card-landscaping"><div class="care-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3c-7 0-13 5-13 12 0 1 .2 2 .2 2s7.8-1 10.8-5c2-2.5 2.5-6 2-9z"/><path d="M5 16C8.5 11.5 12.5 8 17 3"/></svg></div><div class="care-body"><div class="name">Landscaping</div><div class="desc">Weekly mow, edge & blow. Final price confirmed after a quick property check for larger lots.</div><div class="care-status" id="care-status-landscaping"></div></div><div class="care-actions" id="care-actions-landscaping"></div></div>
     <div class="care-card" id="care-card-pest"><div class="care-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="5" r="1.5"/><ellipse cx="10" cy="9.5" rx="2.3" ry="2.8"/><ellipse cx="10" cy="14.5" rx="2.8" ry="3.2"/><path d="M7.5 8l-3-1.5M7.8 10h-3.3M8 12l-2.7 2M12.5 8l3-1.5M12.2 10h3.3M12 12l2.7 2"/></svg></div><div class="care-body"><div class="name">Pest Control</div><div class="desc">Quarterly treatment inside & out, with free call-backs between visits.</div><div class="care-status" id="care-status-pest"></div></div><div class="care-actions" id="care-actions-pest"></div></div>
-    <div class="care-card" id="care-card-cleaning"><div class="care-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2L9 11"/><path d="M9 11l-5.5 7"/><path d="M9 11l-3 6.5"/><path d="M9 11l-0.3 7"/><path d="M9 11l2.3 6.2"/></svg></div><div class="care-body"><div class="name">Home Cleaning</div><div class="desc">A full clean every two weeks — kitchens, baths, floors, dusting.</div><div class="care-status" id="care-status-cleaning"></div></div><div class="care-actions" id="care-actions-cleaning"></div></div>
+    <div class="care-card" id="care-card-cleaning"><div class="care-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2L9 11"/><path d="M9 11l-5.5 7"/><path d="M9 11l-3 6.5"/><path d="M9 11l-0.3 7"/><path d="M9 11l2.3 6.2"/></svg></div><div class="care-body"><div class="name">Home Cleaning</div><div class="desc">A full clean every two weeks: kitchens, baths, floors, dusting.</div><div class="care-status" id="care-status-cleaning"></div></div><div class="care-actions" id="care-actions-cleaning"></div></div>
     <div class="care-card" id="care-card-pool"><div class="care-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7.5c1.4-1.2 2.8-1.2 4.2 0s2.8 1.2 4.2 0 2.8-1.2 4.2 0 2.8 1.2 4.2 0"/><path d="M2 12.5c1.4-1.2 2.8-1.2 4.2 0s2.8 1.2 4.2 0 2.8-1.2 4.2 0 2.8 1.2 4.2 0"/></svg></div><div class="care-body"><div class="name">Pool Cleaning</div><div class="desc">Weekly cleaning, chemical balance, and an equipment check.</div><div class="care-status" id="care-status-pool"></div></div><div class="care-actions" id="care-actions-pool"></div></div>
     <div class="care-card" id="care-card-holiday_lighting"><div class="care-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2c.4 3 1.3 5.4 2.4 6.6C13.6 9.7 16 10.6 19 11c-3 .4-5.4 1.3-6.6 2.4C11.3 14.6 10.4 17 10 20c-.4-3-1.3-5.4-2.4-6.6C6.4 12.3 4 11.4 1 11c3-.4 5.4-1.3 6.6-2.4C8.7 7.4 9.6 5 10 2z"/></svg></div><div class="care-body"><div class="name">Holiday Lighting</div><div class="desc">We install in November and take it down in January. Billed once per season, not monthly.</div><div class="care-status" id="care-status-holiday_lighting"></div></div><div class="care-actions" id="care-actions-holiday_lighting"></div></div>
   </div>
   <div class="care-summary">
     <h3>Your plan</h3>
-    <div class="subtle" style="font-size:13px">Pricing is confirmed after a visit — nothing is billed until you accept a quote.</div>
+    <div class="subtle" style="font-size:13px">Pricing is confirmed after a visit. Nothing is billed until you accept a quote.</div>
     <div class="total" id="care-monthly-total">$0/mo</div>
     <div class="subtle" style="font-size:12px;margin-top:2px">Active services</div>
     <div class="seasonal-row hidden" id="care-next-billing-row"></div>
@@ -667,7 +667,7 @@ button{font:inherit;cursor:pointer}
 <div id="checkoutModal" class="modal"><div class="modalbox">
  <div class="modalhead"><div><div class="eyebrow">Confirm your plan</div><h2>Payment details</h2></div><button class="close" onclick="closeCheckout()">×</button></div>
  <div class="checkout-summary"><div id="checkout-plan-name">Plus plan<small>Billed monthly</small></div><div id="checkout-plan-price">$9.99/mo</div></div>
- <div class="notice" id="checkoutSecurityNotice"><svg class="icn" width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="9" width="11" height="7.5" rx="1.5"/><path d="M6.5 9V6.3a3.5 3.5 0 017 0V9"/></svg> This is a demo checkout — no real charge is made and no card details are stored.</div>
+ <div class="notice" id="checkoutSecurityNotice"><svg class="icn" width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="9" width="11" height="7.5" rx="1.5"/><path d="M6.5 9V6.3a3.5 3.5 0 017 0V9"/></svg> This is a demo checkout. No real charge is made and no card details are stored.</div>
  <div class="field"><label>NAME ON CARD</label><input id="ckName" placeholder="Jane Doe"></div>
  <div id="ckDemoFields">
    <div class="field"><label>CARD NUMBER</label><input id="ckCardNumber" placeholder="4242 4242 4242 4242" inputmode="numeric" maxlength="19" oninput="formatCardInput(this)"></div>
@@ -703,7 +703,7 @@ button{font:inherit;cursor:pointer}
  <div class="field"><label>EMAIL</label><input id="signupEmail" type="email" placeholder="you@example.com"></div>
  <div class="field"><label>PASSWORD</label><input id="signupPassword" type="password" placeholder="At least 8 characters"></div>
  <div class="field"><label>PHONE</label><input id="signupPhone" placeholder="(214) 555-0100"></div>
- <div id="signupHomeownerFields"><div class="field"><label>COMMUNITY / CITY</label><input id="signupCommunity" placeholder="Richardson Community"></div><div class="field"><label>HOME ADDRESS <span class="subtle" style="font-weight:600;text-transform:none">(optional — unlocks Neighborhood on a Home Care Plan)</span></label><input id="signupAddress" placeholder="123 Main St, Richardson, TX"></div></div>
+ <div id="signupHomeownerFields"><div class="field"><label>COMMUNITY / CITY</label><input id="signupCommunity" placeholder="Richardson Community"></div><div class="field"><label>HOME ADDRESS <span class="subtle" style="font-weight:600;text-transform:none">(optional: unlocks Neighborhood on a Home Care Plan)</span></label><input id="signupAddress" placeholder="123 Main St, Richardson, TX"></div></div>
  <div id="signupProviderFields" class="hidden">
    <div class="field"><label>SERVICES OFFERED</label><input id="signupServiceTypes" placeholder="Plumbing, Handyman"></div>
    <div class="field"><label>BUSINESS DESCRIPTION</label><textarea id="signupBusinessDescription" placeholder="Tell homeowners what you do..."></textarea></div>
@@ -790,7 +790,7 @@ function updateCheckoutFormMode(){
   demo.classList.toggle('hidden',STRIPE_ENABLED);
   strp.classList.toggle('hidden',!STRIPE_ENABLED);
   const lockIcon='<svg class="icn" width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="9" width="11" height="7.5" rx="1.5"/><path d="M6.5 9V6.3a3.5 3.5 0 017 0V9"/></svg> ';
-  if(notice) notice.innerHTML = lockIcon + (STRIPE_ENABLED ? 'Payments are securely processed by Stripe. Your card details never touch our server.' : 'This is a demo checkout — no real charge is made and no card details are stored.');
+  if(notice) notice.innerHTML = lockIcon + (STRIPE_ENABLED ? 'Payments are securely processed by Stripe. Your card details never touch our server.' : 'This is a demo checkout. No real charge is made and no card details are stored.');
 }
 function ensureCardElementMounted(){
   if(STRIPE_ENABLED && cardElement && !cardElement._mounted){ cardElement.mount('#card-element'); cardElement._mounted=true; }
@@ -1122,7 +1122,7 @@ async function submitCheckout(){
 const CARE_PLAN_SERVICES=[
   {key:'landscaping',icon:'leaf',name:'Landscaping',desc:'Weekly mow, edge & blow. Final price confirmed after a quick property check for larger lots.',price:89,billing:'mo'},
   {key:'pest',icon:'bug',name:'Pest Control',desc:'Quarterly treatment inside & out, with free call-backs between visits.',price:39,billing:'mo'},
-  {key:'cleaning',icon:'broom',name:'Home Cleaning',desc:'A full clean every two weeks — kitchens, baths, floors, dusting.',price:129,billing:'mo'},
+  {key:'cleaning',icon:'broom',name:'Home Cleaning',desc:'A full clean every two weeks: kitchens, baths, floors, dusting.',price:129,billing:'mo'},
   {key:'pool',icon:'pool',name:'Pool Cleaning',desc:'Weekly cleaning, chemical balance, and an equipment check.',price:99,billing:'mo'},
   {key:'holiday_lighting',icon:'sparkle',name:'Holiday Lighting',desc:'We install in November and take it down in January. Billed once per season, not monthly.',price:65,billing:'season'}
 ];
@@ -1146,7 +1146,7 @@ async function requestCareService(key){
   try{
     const d=await api('/care-plan',{method:'POST',body:JSON.stringify({services:desired})});
     currentUser=d.user;
-    toast("Request sent — we'll follow up with pricing after a visit.");
+    toast("Request sent. We'll follow up with pricing after a visit.");
     renderCareBuilder(); updateCarePlanSideitem();
   }catch(e){
     if(e.data&&e.data.needsCommunityPlan){ toast(e.message); setTimeout(()=>openPlansPage(carePlanOrigin),300); }
@@ -1251,7 +1251,7 @@ async function loadNeighborhood(){
     if(d.needsAddress){
       el.innerHTML=`<div class="nb-upsell">
         <h3 style="margin:0 0 8px;font-size:17px">Add your home address</h3>
-        <p class="subtle" style="margin:0 0 18px;font-size:13.5px;line-height:1.6">We use it only to find homes within 0.25 mi of you — it's never shown to neighbors.</p>
+        <p class="subtle" style="margin:0 0 18px;font-size:13.5px;line-height:1.6">We use it only to find homes within 0.25 mi of you. It's never shown to neighbors.</p>
         <div class="field" style="text-align:left"><label>HOME ADDRESS</label><input id="nbAddressInput" placeholder="123 Main St, Richardson, TX"></div>
         <div id="nbAddressError" class="notice hidden" style="text-align:left;margin-top:8px"></div>
         <button class="primary" style="margin-top:12px" onclick="saveNeighborhoodAddress(this)">Save Address</button>
@@ -1474,8 +1474,8 @@ function renderHoJobs(d){
 }
 function renderHoProfile(d){
   const el=document.getElementById('ho-profile-view'); if(!el)return; const u=d.user;
-  const geoStatus = u.address ? (u.lat!=null ? '<span style="color:var(--green)">✓ located</span>' : '<span style="color:#b3432e">could not locate — try a more complete address</span>') : '';
-  el.innerHTML=`<div class="request"><div class="avatar-slot" style="width:56px;height:56px;overflow:hidden">${avatarInnerHTML(u,56)}</div><div class="requestrow" style="flex-direction:column;align-items:flex-start;gap:6px"><div><b style="font-size:16px">${esc(u.name)}</b><div class="statusline">${esc(u.community||'')} · Plan: ${esc(u.subscription)}</div></div><p style="margin:6px 0 0">Email: ${esc(u.email)}<br>Phone: ${esc(u.phone||'—')}</p></div></div>
+  const geoStatus = u.address ? (u.lat!=null ? '<span style="color:var(--green)">✓ located</span>' : '<span style="color:#b3432e">could not locate. Try a more complete address</span>') : '';
+  el.innerHTML=`<div class="request"><div class="avatar-slot" style="width:56px;height:56px;overflow:hidden">${avatarInnerHTML(u,56)}</div><div class="requestrow" style="flex-direction:column;align-items:flex-start;gap:6px"><div><b style="font-size:16px">${esc(u.name)}</b><div class="statusline">${esc(u.community||'')} · Plan: ${esc(u.subscription)}</div></div><p style="margin:6px 0 0">Email: ${esc(u.email)}<br>Phone: ${esc(u.phone||'N/A')}</p></div></div>
   <div class="request" style="margin-top:14px">
     <div class="requestrow" style="flex-direction:column;align-items:flex-start;gap:8px;width:100%">
       <b style="font-size:14.5px">Home Address</b>
@@ -1514,7 +1514,7 @@ function renderPrFeed(d){
   if(!open.length){
     el.innerHTML = radius!=null
       ? `<div class="notice">No open requests within ${radius} mi of ${esc(d.user.address||'your service area')} right now. <a onclick="switchPanel('provider','profile')" style="color:var(--green);font-weight:700;cursor:pointer">Widen your service area →</a></div>`
-      : '<div class="notice">No new opportunities right now — check back soon.</div>';
+      : '<div class="notice">No new opportunities right now. Check back soon.</div>';
     return;
   }
   el.innerHTML=open.map(r=>`<div class="request">${photoSlotHTML(serviceImage(r.serviceType),null,'req-thumb')}<div class="provider" style="flex:1"><div><span class="tag">${esc(r.serviceType.toUpperCase())}</span><h3 style="margin:8px 0 4px">${esc(r.title)}</h3><p style="color:var(--muted);font-size:14px;margin:0 0 6px">${esc(r.description||'')}</p><small style="color:var(--muted)"><svg class="icn" width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 18s6-5.6 6-10.2A6 6 0 104 7.8C4 12.4 10 18 10 18z"/><circle cx="10" cy="7.6" r="2"/></svg> ${esc(d.user.community||'Local area')}${r.distanceMi!=null?' · '+r.distanceMi+' mi away':''} · ${esc(r.urgency||'Flexible')}</small></div><div class="mini-actions"><button class="secondary" onclick="messageHomeowner('${esc(r.homeownerId)}')">Message</button><button class="primary" onclick="openQuoteSubmit('${esc(r.id)}')">I Can Help</button></div></div></div>`).join('');
@@ -1543,7 +1543,7 @@ function renderPrJobs(d,statuses,elId){
 }
 const PROVIDER_FREE_MAX_RADIUS_MI = 50;
 function providerServiceAreaHTML(u){
-  const geoStatus = u.address ? (u.lat!=null ? '<span style="color:var(--green)">✓ located</span>' : '<span style="color:#b3432e">could not locate — try a more specific city or ZIP</span>') : '';
+  const geoStatus = u.address ? (u.lat!=null ? '<span style="color:var(--green)">✓ located</span>' : '<span style="color:#b3432e">could not locate. Try a more specific city or ZIP</span>') : '';
   const isPro = u.providerPlan==='pro';
   const maxRadius = isPro ? 200 : PROVIDER_FREE_MAX_RADIUS_MI;
   const radius = Math.min(u.serviceRadiusMi || (isPro?25:PROVIDER_FREE_MAX_RADIUS_MI), maxRadius);
@@ -1554,7 +1554,7 @@ function providerServiceAreaHTML(u){
     <div class="requestrow" style="flex-direction:column;align-items:flex-start;gap:8px;width:100%">
       <b style="font-size:14.5px">Service Area</b>
       <div class="subtle" style="font-size:12.5px;margin-top:-4px">Filter your Request Feed to jobs near you. ${geoStatus}</div>
-      <div class="field" style="width:100%;margin:6px 0 0"><input id="providerAreaCityZip" value="${esc(u.address||'')}" placeholder="City, State or ZIP — e.g. Richardson, TX or 75080"></div>
+      <div class="field" style="width:100%;margin:6px 0 0"><input id="providerAreaCityZip" value="${esc(u.address||'')}" placeholder="City, State or ZIP (e.g. Richardson, TX or 75080)"></div>
       <div style="width:100%;display:flex;align-items:center;gap:12px">
         <input type="range" id="providerAreaRadius" min="5" max="${maxRadius}" step="5" value="${radius}" style="flex:1" oninput="document.getElementById('providerAreaRadiusLabel').textContent=this.value+' mi'">
         <span id="providerAreaRadiusLabel" style="font-weight:700;min-width:52px">${radius} mi</span>
@@ -1586,7 +1586,7 @@ async function clearProviderServiceArea(){
 }
 function renderPrProfile(d){
   const el=document.getElementById('pr-profile-view'); if(!el)return; const u=d.user;
-  el.innerHTML=`<div class="request"><div class="avatar-slot" style="width:56px;height:56px;overflow:hidden">${avatarInnerHTML(u,56)}</div><div class="requestrow" style="flex-direction:column;align-items:flex-start;gap:6px"><div><b style="font-size:16px">${esc(u.name)}</b><div class="statusline">★ ${esc(u.rating||'New')} · ${esc(u.reviewCount||0)} jobs${u.verified?' · Verified':''} · Plan: ${esc(u.subscription)}</div></div><p style="margin:6px 0 0">${esc(u.businessDescription||'')}</p><p style="margin:4px 0 0">Services: ${esc((u.serviceTypes||[]).join(', '))}<br>Phone: ${esc(u.phone||'—')}</p></div></div>` + providerVerificationHTML(u) + providerServiceAreaHTML(u) + avatarEditorHTML('provider',u);
+  el.innerHTML=`<div class="request"><div class="avatar-slot" style="width:56px;height:56px;overflow:hidden">${avatarInnerHTML(u,56)}</div><div class="requestrow" style="flex-direction:column;align-items:flex-start;gap:6px"><div><b style="font-size:16px">${esc(u.name)}</b><div class="statusline">★ ${esc(u.rating||'New')} · ${esc(u.reviewCount||0)} jobs${u.verified?' · Verified':''} · Plan: ${esc(u.subscription)}</div></div><p style="margin:6px 0 0">${esc(u.businessDescription||'')}</p><p style="margin:4px 0 0">Services: ${esc((u.serviceTypes||[]).join(', '))}<br>Phone: ${esc(u.phone||'N/A')}</p></div></div>` + providerVerificationHTML(u) + providerServiceAreaHTML(u) + avatarEditorHTML('provider',u);
 }
 
 // --- provider verification / background-check ---
@@ -1616,14 +1616,14 @@ function readVerificationFile(file){
 }
 async function handleVerificationDocChange(input,docType,label){
   const file=input.files&&input.files[0]; if(!file)return;
-  if(file.size>4*1024*1024){ toast('That file is too large — please keep it under 4MB.'); input.value=''; return; }
+  if(file.size>4*1024*1024){ toast('That file is too large. Please keep it under 4MB.'); input.value=''; return; }
   if(!['image/png','image/jpeg','image/webp','application/pdf'].includes(file.type)){ toast('Please upload a PNG, JPEG, WEBP, or PDF file.'); input.value=''; return; }
   try{
     const dataUrl=await readVerificationFile(file);
     verificationDraftDocs[docType]={type:docType,label,dataUrl,fileName:file.name};
     const status=document.getElementById('vdoc-status-'+docType);
     if(status) status.textContent='✓ '+file.name;
-  }catch(e){ toast('Could not read that file — try again.'); }
+  }catch(e){ toast('Could not read that file. Try again.'); }
 }
 function setVerificationEntityType(t){
   verificationDraftEntityType=t;
@@ -1640,7 +1640,7 @@ function providerVerificationHTML(u){
       <button class="secondary" onclick="setVerificationEntityType('business')">I'm a registered business (LLC/Corp)</button>
     </div>`;
   }else if(status==='pending'){
-    body=`<div class="subtle" style="font-size:12.5px">Your documents are with our team for review. We'll email you once it's done — usually within a couple of business days.</div>`;
+    body=`<div class="subtle" style="font-size:12.5px">Your documents are with our team for review. We'll email you once it's done, usually within a couple of business days.</div>`;
   }else if(status==='verified'){
     body=`<div class="subtle" style="font-size:12.5px">You're verified as ${entityType==='business'?'a registered business':'an individual contractor'}. Homeowners see a "Verified" badge on your profile and quotes.</div>`;
   }else{
@@ -1716,7 +1716,7 @@ function renderAdminQueue(providers){
   el.innerHTML=providers.map(p=>{
     const docs=(p.verificationDocuments||[]).map(docPreviewHTML).join('');
     const bg = p.entityType==='individual' ? `<p style="margin:4px 0 0;font-size:12.5px;color:var(--muted)">Background check: ${esc(p.backgroundCheckStatus||'not_requested')}</p>` : '';
-    const submitted = p.verificationSubmittedAt ? new Date(p.verificationSubmittedAt).toLocaleDateString() : '—';
+    const submitted = p.verificationSubmittedAt ? new Date(p.verificationSubmittedAt).toLocaleDateString() : 'N/A';
     const actions = adminQueueStatus==='pending' || p.verificationStatus==='pending' ? `
       <div class="field full"><label>REVIEW NOTES ${p.verificationStatus==='pending'?'(required to reject)':''}</label><textarea id="admin-notes-${p.id}" placeholder="Optional note to the provider..."></textarea></div>
       <div class="mini-actions">
@@ -1726,11 +1726,11 @@ function renderAdminQueue(providers){
     return `<div class="request" style="margin-bottom:14px">
       <div class="requestrow" style="flex-direction:column;align-items:flex-start;gap:8px;width:100%">
         <div style="display:flex;justify-content:space-between;width:100%;align-items:flex-start">
-          <div><b style="font-size:15px">${esc(p.name)}</b><div class="statusline">${esc(p.entityType||'—')} · ${esc(p.email)} · Submitted ${submitted}</div></div>
+          <div><b style="font-size:15px">${esc(p.name)}</b><div class="statusline">${esc(p.entityType||'N/A')} · ${esc(p.email)} · Submitted ${submitted}</div></div>
           ${verificationStatusPill(p)}
         </div>
         <p style="margin:0;font-size:13px">${esc(p.businessDescription||'')}</p>
-        <p style="margin:0;font-size:12.5px;color:var(--muted)">Services: ${esc((p.serviceTypes||[]).join(', ')||'—')}</p>
+        <p style="margin:0;font-size:12.5px;color:var(--muted)">Services: ${esc((p.serviceTypes||[]).join(', ')||'None listed')}</p>
         ${bg}
         <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:4px">${docs||'<span class="subtle" style="font-size:12px">No documents uploaded.</span>'}</div>
         ${actions}
@@ -1822,7 +1822,7 @@ function adminAccountRowHTML(a){
   const planLabel = (planMap[currentPlan]||planMap.free).label+' plan';
   const extraMeta = a.role==='homeowner'
     ? `${a.community?esc(a.community)+' · ':''}Care Plan: ${a.carePlanServiceCount||0} service${a.carePlanServiceCount===1?'':'s'}`
-    : `${esc((a.serviceTypes||[]).join(', ')||'—')}${a.verified?' · Verified':(a.verificationStatus&&a.verificationStatus!=='unverified'?' · '+esc(a.verificationStatus):'')}`;
+    : `${esc((a.serviceTypes||[]).join(', ')||'None listed')}${a.verified?' · Verified':(a.verificationStatus&&a.verificationStatus!=='unverified'?' · '+esc(a.verificationStatus):'')}`;
   return `<div class="admin-row">
     <div class="admin-row-main">
       <div class="name">${esc(a.name)} ${a.suspended?statusPillHTML('Suspended','bad'):statusPillHTML(a.role,'neutral')} ${statusPillHTML(planLabel,currentPlan==='free'?'neutral':'ok')}</div>
@@ -1864,7 +1864,7 @@ async function submitAdminPlanChange(plan){
   try{
     const d=await api('/admin/accounts/'+accountId+'/subscription',{method:'POST',body:JSON.stringify(payload)});
     closeAdminPlanModal();
-    toast(d.invoiceSent?'Plan updated — invoice emailed to the account holder.':'Plan updated.');
+    toast(d.invoiceSent?'Plan updated. Invoice emailed to the account holder.':'Plan updated.');
     await loadAdminAccounts();
   }catch(e){ if(err){err.textContent=e.message;err.classList.remove('hidden')} }
 }
@@ -1887,7 +1887,7 @@ async function loadAdminDispatch(){
 }
 function renderAdminDispatch(requests){
   const el=document.getElementById('admin-dispatch-list'); if(!el)return;
-  if(!requests.length){ el.innerHTML='<div class="notice">Nothing stale right now — every open request already has at least one quote.</div>'; return; }
+  if(!requests.length){ el.innerHTML='<div class="notice">Nothing stale right now. Every open request already has at least one quote.</div>'; return; }
   el.innerHTML=requests.map(r=>{
     const age=Math.max(0,Math.round((Date.now()-new Date(r.createdAt).getTime())/3600000));
     const dispatched = r.dispatchedProviderId ? `<div class="meta" style="color:var(--green);font-weight:700">Already dispatched${r.dispatchedAt?' '+new Date(r.dispatchedAt).toLocaleString():''}</div>` : '';
@@ -1937,8 +1937,8 @@ function carePlanServiceRowHTML(homeownerId,s){
     const prefill=s.priceCents?(s.priceCents/100):(s.catalogPrice||'');
     return `<div class="careplan-service-row" id="cpv-row-${rowId}">
       <div class="careplan-service-main">
-        <div class="svc">${esc(s.serviceName)} <span class="tag ${isQuoted?'status-completed':'status-open'}">${isQuoted?'Quoted — awaiting homeowner':'Needs pricing'}</span></div>
-        <div class="meta">${isQuoted?('Sent at $'+((s.priceCents||0)/100).toFixed(2)+'/mo'):('Catalog starting point ~$'+(s.catalogPrice||'—')+'/mo')}</div>
+        <div class="svc">${esc(s.serviceName)} <span class="tag ${isQuoted?'status-completed':'status-open'}">${isQuoted?'Quoted · awaiting homeowner':'Needs pricing'}</span></div>
+        <div class="meta">${isQuoted?('Sent at $'+((s.priceCents||0)/100).toFixed(2)+'/mo'):('Catalog starting point ~$'+(s.catalogPrice||'N/A')+'/mo')}</div>
       </div>
       <div class="careplan-service-actions">
         <input type="number" min="1" step="1" placeholder="$/mo" id="cpv-price-${rowId}" value="${prefill}" style="width:90px">
@@ -2024,7 +2024,7 @@ function renderAdminAssignCandidates(candidates){
     <div class="admin-row" style="margin-top:0">
       <div class="admin-row-main">
         <div class="name">${esc(c.name)}${c.matchesService?' '+statusPillHTML('Matches service','ok'):''}${c.verified?' '+statusPillHTML('Verified','ok'):''}</div>
-        <div class="meta">${esc((c.serviceTypes||[]).join(', ')||'—')}${c.distanceMi!=null?' · '+c.distanceMi+' mi away':''}${c.rating?' · ★'+Number(c.rating).toFixed(1):''}</div>
+        <div class="meta">${esc((c.serviceTypes||[]).join(', ')||'None listed')}${c.distanceMi!=null?' · '+c.distanceMi+' mi away':''}${c.rating?' · ★'+Number(c.rating).toFixed(1):''}</div>
       </div>
       <div class="admin-row-actions"><button class="primary" onclick="submitAdminAssign('${c.id}')">Assign</button></div>
     </div>`).join('');
