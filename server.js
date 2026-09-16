@@ -106,8 +106,11 @@ function adminAccountView(u){
   return base;
 }
 function mapQuote(r){ return {id:r.id,requestId:r.request_id,providerId:r.provider_id,amountMin:Number(r.amount_min),amountMax:Number(r.amount_max),availability:r.availability,message:r.message,status:r.status,createdAt:toISO(r.created_at)}; }
-function mapMessage(r){ return {id:r.id,senderId:r.sender_id,recipientId:r.recipient_id,participants:r.participants,body:r.body,createdAt:toISO(r.created_at),read:r.read}; }
-function mapJob(r){ return {id:r.id,requestId:r.request_id,homeownerId:r.homeowner_id,providerId:r.provider_id,serviceType:r.service_type,title:r.title,status:r.status,scheduledFor:r.scheduled_for,createdAt:toISO(r.created_at)}; }
+function mapMessage(r){ return {id:r.id,quoteId:r.quote_id,senderId:r.sender_id,recipientId:r.recipient_id,body:r.body,createdAt:toISO(r.created_at),read:r.read}; }
+function mapAnnouncement(r){ return {id:r.id,title:r.title,body:r.body,createdAt:toISO(r.created_at)}; }
+function mapSupportMessage(r){ return {id:r.id,userId:r.user_id,senderRole:r.sender_role,body:r.body,createdAt:toISO(r.created_at),read:r.read}; }
+function isPaidPlan(u){ return u.role==='provider' ? u.providerPlan==='pro' : ['plus','premium'].includes(u.subscription); }
+function mapJob(r){ return {id:r.id,requestId:r.request_id,quoteId:r.quote_id||null,homeownerId:r.homeowner_id,providerId:r.provider_id,serviceType:r.service_type,title:r.title,status:r.status,scheduledFor:r.scheduled_for,createdAt:toISO(r.created_at),receiptDataUrl:r.receipt_data_url||null,receiptNote:r.receipt_note||null,receiptUploadedAt:r.receipt_uploaded_at?toISO(r.receipt_uploaded_at):null}; }
 function mapReview(r){ return {id:r.id,jobId:r.job_id,homeownerId:r.homeowner_id,providerId:r.provider_id,rating:Number(r.rating),text:r.text,createdAt:toISO(r.created_at)}; }
 function safeUser(u){ if(!u) return null; const {passwordHash,salt,...x}=u; return x; }
 
@@ -149,8 +152,8 @@ const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || '';
 const STRIPE_PUBLISHABLE_KEY = process.env.STRIPE_PUBLISHABLE_KEY || '';
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
 function stripeConfigured(){ return !!STRIPE_SECRET_KEY; }
-// $29/mo is a suggested default for the provider paywall plan — change freely, it's just a constant.
-const PROVIDER_PLAN_PRICE_CENTS = 2900;
+// $9.99/mo is a suggested default for the provider paywall plan — change freely, it's just a constant.
+const PROVIDER_PLAN_PRICE_CENTS = 999;
 const PROVIDER_FREE_QUOTE_LIMIT = 3;
 const PROVIDER_FREE_CONVO_LIMIT = 3;
 const PROVIDER_FREE_MAX_RADIUS_MI = 50;
@@ -301,7 +304,7 @@ function carePlanMonthlyTotal(items){ return (items||[]).filter(i=>i.status==='a
 function carePlanActiveDetails(items){ return (items||[]).filter(i=>i.status==='active'&&CARE_SERVICE_INFO[i.key]).map(i=>({key:i.key,name:CARE_SERVICE_INFO[i.key].name,billing:CARE_SERVICE_INFO[i.key].billing,price:(i.priceCents||0)/100})); }
 // Plan catalogs used by the admin account panel: labels/prices for the invoice email, and a rank
 // order so we can tell an upgrade (send an invoice) from a downgrade or lateral change (don't).
-const HOMEOWNER_PLAN_INFO={free:{label:'Free',priceCents:0,rank:0},plus:{label:'Plus',priceCents:999,rank:1},premium:{label:'Premium',priceCents:2499,rank:2}};
+const HOMEOWNER_PLAN_INFO={free:{label:'Free',priceCents:0,rank:0},plus:{label:'Plus',priceCents:999,rank:1},premium:{label:'Premium',priceCents:2999,rank:2}};
 const PROVIDER_PLAN_INFO={free:{label:'Free',priceCents:0,rank:0},pro:{label:'Pro Provider',priceCents:PROVIDER_PLAN_PRICE_CENTS,rank:1}};
 // The self-service /api/subscription route has historically stored the homeowner Premium tier as
 // 'pro' (a leftover naming mismatch with the admin panel's 'premium'). Normalize on read so both
@@ -712,6 +715,42 @@ async function initSchema(){
   await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS dispatched_provider_id text`);
   await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS dispatched_at timestamptz`);
   await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS dispatched_note text`);
+  // Chat is scoped to a quote (one request + one provider), never to a person. quote_id is
+  // required going forward; any pre-existing message with no quote_id is unlinked legacy DM
+  // data from the old person-to-person model and is dropped below, once, on boot.
+  await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS quote_id text REFERENCES quotes(id)`);
+  await pool.query(`DELETE FROM messages WHERE quote_id IS NULL`);
+  // Either side of a quote thread can flag it for admin review.
+  await pool.query(`ALTER TABLE quotes ADD COLUMN IF NOT EXISTS reported boolean DEFAULT false`);
+  await pool.query(`ALTER TABLE quotes ADD COLUMN IF NOT EXISTS reported_by text`);
+  await pool.query(`ALTER TABLE quotes ADD COLUMN IF NOT EXISTS reported_reason text`);
+  await pool.query(`ALTER TABLE quotes ADD COLUMN IF NOT EXISTS reported_at timestamptz`);
+  // A job only counts as done, for the provider, once a receipt closes it out.
+  await pool.query(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS quote_id text REFERENCES quotes(id)`);
+  await pool.query(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS receipt_data_url text`);
+  await pool.query(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS receipt_note text`);
+  await pool.query(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS receipt_uploaded_at timestamptz`);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS announcements (
+      id text PRIMARY KEY,
+      user_id text REFERENCES users(id),
+      title text NOT NULL,
+      body text NOT NULL,
+      created_at timestamptz DEFAULT now()
+    )
+  `);
+  // One thread per user, all messages ordered by time. sender_role is 'user' or 'admin'.
+  // Posting/reading is gated to paid plans at the route level, not here.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS support_messages (
+      id text PRIMARY KEY,
+      user_id text NOT NULL REFERENCES users(id),
+      sender_role text NOT NULL,
+      body text NOT NULL,
+      created_at timestamptz DEFAULT now(),
+      read boolean DEFAULT false
+    )
+  `);
   await pool.query(`
     CREATE TABLE IF NOT EXISTS care_plan_visits (
       id text PRIMARY KEY,
@@ -973,10 +1012,10 @@ const server=http.createServer(async (req,res)=>{
         const reqRows=await q('SELECT * FROM requests WHERE homeowner_id=$1 ORDER BY created_at DESC',[u.id]);
         const qMap=await quotesByRequestId(reqRows.map(r=>r.id));
         const requests=reqRows.map(r=>({...mapRequest(r),quotes:qMap[r.id]||[]}));
-        const messages=await q('SELECT * FROM messages WHERE $1 = ANY(participants) ORDER BY created_at',[u.id]);
+        const announcements=await q('SELECT * FROM announcements WHERE user_id=$1 OR user_id IS NULL ORDER BY created_at DESC LIMIT 50',[u.id]);
         const jobs=await q('SELECT * FROM jobs WHERE homeowner_id=$1 ORDER BY created_at DESC',[u.id]);
         const reviews=await q('SELECT * FROM reviews WHERE homeowner_id=$1',[u.id]);
-        return send(res,200,{user:safeUser(u),requests,messages:messages.map(mapMessage),jobs:jobs.map(mapJob),reviews:reviews.map(mapReview)});
+        return send(res,200,{user:safeUser(u),requests,announcements:announcements.map(mapAnnouncement),jobs:jobs.map(mapJob),reviews:reviews.map(mapReview)});
       }
       if(u.role==='provider'){ const usage=await ensureUsagePeriod(u); u.quotesUsed=usage.quotes; u.convosUsed=usage.convos; }
       // Joins in the homeowner's lat/lng (if they ever geocoded an address) so each request can
@@ -990,10 +1029,11 @@ const server=http.createServer(async (req,res)=>{
         const distanceMi=(u.lat!=null&&u.lng!=null&&r.h_lat!=null&&r.h_lng!=null)?Math.round(haversineMiles(u.lat,u.lng,Number(r.h_lat),Number(r.h_lng))*10)/10:null;
         return {...mapRequest(r),quote:quoteByReq[r.id]||null,distanceMi};
       });
-      const messages=await q('SELECT * FROM messages WHERE $1 = ANY(participants) ORDER BY created_at',[u.id]);
+      const announcements=await q('SELECT * FROM announcements WHERE user_id=$1 OR user_id IS NULL ORDER BY created_at DESC LIMIT 50',[u.id]);
       const jobs=await q('SELECT * FROM jobs WHERE provider_id=$1 ORDER BY created_at DESC',[u.id]);
       const reviews=await q('SELECT * FROM reviews WHERE provider_id=$1',[u.id]);
-      return send(res,200,{user:safeUser(u),requests,messages:messages.map(mapMessage),jobs:jobs.map(mapJob),reviews:reviews.map(mapReview)});
+      const completedJobCount=Number((await q1("SELECT count(*)::int AS c FROM jobs WHERE provider_id=$1 AND status='completed' AND receipt_uploaded_at IS NOT NULL",[u.id])).c);
+      return send(res,200,{user:{...safeUser(u),completedJobCount},requests,announcements:announcements.map(mapAnnouncement),jobs:jobs.map(mapJob),reviews:reviews.map(mapReview)});
     }
 
     if(p==='/api/requests' && req.method==='GET'){
@@ -1056,8 +1096,8 @@ const server=http.createServer(async (req,res)=>{
         await client.query("UPDATE quotes SET status='accepted' WHERE id=$1",[qid]);
         await client.query("UPDATE quotes SET status='declined' WHERE request_id=$1 AND id<>$2",[r.id,qid]);
         const updatedReq=(await client.query("UPDATE requests SET status='scheduled' WHERE id=$1 RETURNING *",[r.id])).rows[0];
-        const job=(await client.query('INSERT INTO jobs (id,request_id,homeowner_id,provider_id,service_type,title,status,scheduled_for) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *',
-          [id('job'),r.id,u.id,quote.provider_id,r.service_type,r.title,'scheduled',quote.availability])).rows[0];
+        const job=(await client.query('INSERT INTO jobs (id,request_id,quote_id,homeowner_id,provider_id,service_type,title,status,scheduled_for) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *',
+          [id('job'),r.id,qid,u.id,quote.provider_id,r.service_type,r.title,'scheduled',quote.availability])).rows[0];
         await client.query('COMMIT');
         const providerRow=await q1('SELECT * FROM users WHERE id=$1',[quote.provider_id]);
         if(providerRow) sendEmail({to:providerRow.email,type:'quote_accepted',subject:`You got the job: "${updatedReq.title}"`,html:quoteAcceptedEmailHtml(providerRow,updatedReq),userId:providerRow.id}).catch(()=>{});
@@ -1065,49 +1105,82 @@ const server=http.createServer(async (req,res)=>{
       }catch(e){ await client.query('ROLLBACK'); throw e; }
       finally{ client.release(); }
     }
-    if(p==='/api/messages' && req.method==='GET'){
-      const other=url.searchParams.get('with');
-      const rows=other
-        ? await q('SELECT * FROM messages WHERE $1 = ANY(participants) AND $2 = ANY(participants) ORDER BY created_at',[u.id,other])
-        : await q('SELECT * FROM messages WHERE $1 = ANY(participants) ORDER BY created_at',[u.id]);
+    // A quote thread: only the homeowner who owns the request, or the provider who sent this
+    // quote, may read/post/report it. Loads request+quote together so both sides of the auth
+    // check are available from one round trip.
+    async function loadQuoteThread(qid){
+      const quote=await q1('SELECT * FROM quotes WHERE id=$1',[qid]); if(!quote)return null;
+      const request=await q1('SELECT * FROM requests WHERE id=$1',[quote.request_id]); if(!request)return null;
+      return {quote,request};
+    }
+    if(p.startsWith('/api/quotes/') && p.endsWith('/messages') && req.method==='GET'){
+      const qid=p.split('/')[3], t=await loadQuoteThread(qid); if(!t)return send(res,404,{error:'Quote not found'});
+      if(u.role!=='admin' && t.request.homeowner_id!==u.id && t.quote.provider_id!==u.id) return send(res,403,{error:'Not authorized'});
+      const rows=await q('SELECT * FROM messages WHERE quote_id=$1 ORDER BY created_at',[qid]);
       return send(res,200,{messages:rows.map(mapMessage)});
     }
-    if(p==='/api/messages' && req.method==='POST'){
-      const b=await body(req), recipient=b.recipientId;
-      const recipientRow=await q1('SELECT * FROM users WHERE id=$1',[recipient]); if(!recipientRow)return send(res,404,{error:'Recipient not found'});
+    if(p.startsWith('/api/quotes/') && p.endsWith('/messages') && req.method==='POST'){
+      const qid=p.split('/')[3], t=await loadQuoteThread(qid); if(!t)return send(res,404,{error:'Quote not found'});
+      const isHomeowner=t.request.homeowner_id===u.id, isProvider=t.quote.provider_id===u.id;
+      if(!isHomeowner && !isProvider) return send(res,403,{error:'Not authorized'});
+      const b=await body(req);
       const text=String(b.body||'').trim().slice(0,2000); if(!text)return send(res,400,{error:'Message cannot be empty'});
+      const recipientId=isHomeowner?t.quote.provider_id:t.request.homeowner_id;
+      const recipientRow=await q1('SELECT * FROM users WHERE id=$1',[recipientId]);
       let isNewConversation=false;
-      if(u.role==='provider' && u.providerPlan!=='pro'){
-        const priorMsg=await q1('SELECT id FROM messages WHERE sender_id=$1 AND recipient_id=$2 LIMIT 1',[u.id,recipient]);
+      if(isProvider && u.providerPlan!=='pro'){
+        const priorMsg=await q1('SELECT id FROM messages WHERE quote_id=$1 AND sender_id=$2 LIMIT 1',[qid,u.id]);
         isNewConversation=!priorMsg;
         if(isNewConversation){
           const usage=await ensureUsagePeriod(u);
           if(usage.convos>=PROVIDER_FREE_CONVO_LIMIT) return send(res,402,{error:"You've started "+PROVIDER_FREE_CONVO_LIMIT+" new conversations this month on the Free plan. Upgrade to Pro Provider to message more homeowners.",upgradeRequired:true});
         }
       }
-      const row=await q1('INSERT INTO messages (id,sender_id,recipient_id,participants,body,read) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *',
-        [id('msg'),u.id,recipient,[u.id,recipient],text,false]);
+      const row=await q1('INSERT INTO messages (id,quote_id,sender_id,recipient_id,participants,body,read) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *',
+        [id('msg'),qid,u.id,recipientId,[u.id,recipientId],text,false]);
       if(isNewConversation) await pool.query('UPDATE users SET new_conversations_this_period=new_conversations_this_period+1 WHERE id=$1',[u.id]);
-      sendEmail({to:recipientRow.email,type:'new_message',subject:`New message from ${u.name}`,html:newMessageEmailHtml(recipientRow.name,u.name,text),userId:recipientRow.id}).catch(()=>{});
+      if(recipientRow) sendEmail({to:recipientRow.email,type:'new_message',subject:`New message from ${u.name}`,html:newMessageEmailHtml(recipientRow.name,u.name,text),userId:recipientRow.id}).catch(()=>{});
       return send(res,201,{message:mapMessage(row)});
+    }
+    if(p.startsWith('/api/quotes/') && p.endsWith('/report') && req.method==='POST'){
+      const qid=p.split('/')[3], t=await loadQuoteThread(qid); if(!t)return send(res,404,{error:'Quote not found'});
+      if(t.request.homeowner_id!==u.id && t.quote.provider_id!==u.id) return send(res,403,{error:'Not authorized'});
+      const b=await body(req);
+      const row=await q1("UPDATE quotes SET reported=true, reported_by=$1, reported_reason=$2, reported_at=now() WHERE id=$3 RETURNING *",[u.id,String(b.reason||'').slice(0,500),qid]);
+      if(ADMIN_NOTIFY_EMAIL) sendEmail({to:ADMIN_NOTIFY_EMAIL,type:'admin_quote_reported',subject:`A conversation was reported: "${t.request.title}"`,html:emailShell('Reported conversation',`<h2 style="margin:0 0 10px;color:#17352f">"${esc_(t.request.title)}" was reported</h2><p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Reported by ${esc_(u.name)}. ${b.reason?esc_(String(b.reason).slice(0,300)):''}</p>${btn('Review in Admin',APP_URL+'/#admin')}`)}).catch(()=>{});
+      return send(res,200,{quote:mapQuote(row)});
     }
     if(p.startsWith('/api/jobs/') && req.method==='PATCH'){
       const jid=p.split('/')[3], job=await q1('SELECT * FROM jobs WHERE id=$1',[jid]); if(!job)return send(res,404,{error:'Job not found'});
       if(job.homeowner_id!==u.id&&job.provider_id!==u.id)return send(res,403,{error:'Not authorized'});
       const b=await body(req);
+      if(b.status==='completed') return send(res,400,{error:'Upload a receipt to mark this job complete.'});
       let row=job;
-      if(['scheduled','in_progress','completed','cancelled'].includes(b.status) && b.status!==job.status){
+      if(['scheduled','in_progress','cancelled'].includes(b.status) && b.status!==job.status){
         row=await q1('UPDATE jobs SET status=$1 WHERE id=$2 RETURNING *',[b.status,jid]);
-        if(b.status==='completed'){
-          const homeowner=await q1('SELECT * FROM users WHERE id=$1',[row.homeowner_id]);
-          if(homeowner) sendEmail({to:homeowner.email,type:'job_completed',subject:`"${row.title}" is complete`,html:jobCompletedEmailHtml(homeowner,mapJob(row)),userId:homeowner.id}).catch(()=>{});
-        } else if(b.status==='cancelled'){
+        if(b.status==='cancelled'){
           const [homeowner,provider]=await Promise.all([q1('SELECT * FROM users WHERE id=$1',[row.homeowner_id]),q1('SELECT * FROM users WHERE id=$1',[row.provider_id])]);
           if(homeowner) sendEmail({to:homeowner.email,type:'job_cancelled',subject:`"${row.title}" was cancelled`,html:jobCancelledEmailHtml(homeowner.name,mapJob(row)),userId:homeowner.id}).catch(()=>{});
           if(provider) sendEmail({to:provider.email,type:'job_cancelled',subject:`"${row.title}" was cancelled`,html:jobCancelledEmailHtml(provider.name,mapJob(row)),userId:provider.id}).catch(()=>{});
           if(ADMIN_NOTIFY_EMAIL) sendEmail({to:ADMIN_NOTIFY_EMAIL,type:'admin_job_cancelled',subject:`Job cancelled: "${row.title}"`,html:adminJobCancelledEmailHtml(mapJob(row),homeowner?.name||'—',provider?.name||'—')}).catch(()=>{});
         }
       }
+      return send(res,200,{job:mapJob(row)});
+    }
+    if(p.startsWith('/api/jobs/') && p.endsWith('/receipt') && req.method==='POST'){
+      const jid=p.split('/')[3], job=await q1('SELECT * FROM jobs WHERE id=$1',[jid]); if(!job)return send(res,404,{error:'Job not found'});
+      if(job.provider_id!==u.id) return send(res,403,{error:'Only the provider on this job can close it out'});
+      if(job.status==='completed') return send(res,400,{error:'This job is already marked complete'});
+      const b=await body(req);
+      const dataUrl=String(b.receiptDataUrl||''), note=String(b.receiptNote||'').trim().slice(0,500);
+      if(!dataUrl && !note) return send(res,400,{error:'Attach a receipt photo/PDF or add a note describing payment.'});
+      if(dataUrl){
+        if(!VERIFICATION_DOC_RE.test(dataUrl)) return send(res,400,{error:'Receipt must be a PNG, JPEG, WEBP, or PDF file.'});
+        if(dataUrl.length>VERIFICATION_MAX_DOC_BYTES) return send(res,400,{error:'Receipt file is too large. Please keep it under 4MB.'});
+      }
+      const row=await q1(`UPDATE jobs SET status='completed', receipt_data_url=$1, receipt_note=$2, receipt_uploaded_at=now() WHERE id=$3 RETURNING *`,[dataUrl||null,note||null,jid]);
+      const homeowner=await q1('SELECT * FROM users WHERE id=$1',[row.homeowner_id]);
+      if(homeowner) sendEmail({to:homeowner.email,type:'job_completed',subject:`"${row.title}" is complete`,html:jobCompletedEmailHtml(homeowner,mapJob(row)),userId:homeowner.id}).catch(()=>{});
       return send(res,200,{job:mapJob(row)});
     }
     if(p==='/api/reviews' && req.method==='POST'){
@@ -1141,7 +1214,7 @@ const server=http.createServer(async (req,res)=>{
         if(!b.paymentMethodId) return send(res,400,{error:'Payment method required'});
         try{
           const customerId=await ensureStripeCustomer(u);
-          const priceCents=b.plan==='plus'?999:2499;
+          const priceCents=b.plan==='plus'?HOMEOWNER_PLAN_INFO.plus.priceCents:HOMEOWNER_PLAN_INFO.premium.priceCents;
           const existing=await q1('SELECT stripe_subscription_id FROM users WHERE id=$1',[u.id]);
           const sub=await stripeSubscribe(customerId,b.paymentMethodId,existing?.stripe_subscription_id,[{unitAmount:priceCents,name:(b.plan==='plus'?'Plus':'Premium')+' plan',interval:'month'}]);
           row=await q1('UPDATE users SET subscription=$1, stripe_subscription_id=$2, stripe_customer_id=$3 WHERE id=$4 RETURNING *',[b.plan,sub.id,customerId,u.id]);
@@ -1535,8 +1608,8 @@ const server=http.createServer(async (req,res)=>{
       let invoiceNo=null;
       if(isUpgrade && planInfo.priceCents>0 && row.email){
         invoiceNo='INV-'+crypto.randomBytes(5).toString('hex').toUpperCase();
-        await pool.query('INSERT INTO messages (id,sender_id,recipient_id,participants,body,read) VALUES ($1,$2,$3,$4,$5,$6)',
-          [id('msg'),u.id,row.id,[u.id,row.id],`An admin upgraded your plan to ${planInfo.label} ($${(planInfo.priceCents/100).toFixed(2)}/mo). An invoice was emailed to you.`,false]);
+        await pool.query('INSERT INTO announcements (id,user_id,title,body) VALUES ($1,$2,$3,$4)',
+          [id('ann'),row.id,'Plan upgraded',`An admin upgraded your plan to ${planInfo.label} ($${(planInfo.priceCents/100).toFixed(2)}/mo). An invoice was emailed to you.`]);
         sendEmail({to:row.email,type:'admin_plan_invoice',subject:`Your invoice for the ${planInfo.label} plan (${invoiceNo})`,html:adminPlanInvoiceEmailHtml(mapUser(row),planInfo.label,planInfo.priceCents,invoiceNo),userId:row.id}).catch(()=>{});
       }
       return send(res,200,{account:adminAccountView(mapUser(row)),invoiceSent:!!invoiceNo,invoiceNo});
@@ -1589,12 +1662,12 @@ const server=http.createServer(async (req,res)=>{
       const row=await q1('UPDATE requests SET dispatched_provider_id=$1, dispatched_at=now(), dispatched_note=$2 WHERE id=$3 RETURNING *',[providerId,note||null,rid]);
       const homeowner=await q1('SELECT * FROM users WHERE id=$1',[r.homeowner_id]);
       const msgToProvider=`An admin connected you with a request: "${r.title}" (${r.service_type}).${note?(' Note: '+note):''} Please review it in your Request Feed and send a quote if you can help.`;
-      await pool.query('INSERT INTO messages (id,sender_id,recipient_id,participants,body,read) VALUES ($1,$2,$3,$4,$5,$6)',
-        [id('msg'),u.id,providerId,[u.id,providerId],msgToProvider,false]);
+      await pool.query('INSERT INTO announcements (id,user_id,title,body) VALUES ($1,$2,$3,$4)',
+        [id('ann'),providerId,'A request needs your help',msgToProvider]);
       if(homeowner){
         const msgToHomeowner=`We reached out directly to ${provider.name}, a trusted local provider, about your request "${r.title}". They'll be in touch shortly.`;
-        await pool.query('INSERT INTO messages (id,sender_id,recipient_id,participants,body,read) VALUES ($1,$2,$3,$4,$5,$6)',
-          [id('msg'),u.id,homeowner.id,[u.id,homeowner.id],msgToHomeowner,false]);
+        await pool.query('INSERT INTO announcements (id,user_id,title,body) VALUES ($1,$2,$3,$4)',
+          [id('ann'),homeowner.id,'We reached out to a provider for you',msgToHomeowner]);
       }
       if(provider.email) sendEmail({to:provider.email,type:'admin_dispatch',subject:`New request for you: "${r.title}"`,html:emailShell('New request',`<h2 style="margin:0 0 10px;color:#17352f">A request needs your help</h2><p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Our team connected you with "${esc_(r.title)}" (${esc_(r.service_type)}). Log in and check your Request Feed to send a quote.</p>`),userId:provider.id}).catch(()=>{});
       return send(res,200,{request:mapRequest(row)});
@@ -1721,8 +1794,8 @@ const server=http.createServer(async (req,res)=>{
           providerName=pr.name;
           if(providerChanged){
             const svcName=CARE_SERVICE_INFO[serviceKey].name;
-            await pool.query('INSERT INTO messages (id,sender_id,recipient_id,participants,body,read) VALUES ($1,$2,$3,$4,$5,$6)',
-              [id('msg'),u.id,row.provider_id,[u.id,row.provider_id],`An admin assigned you to a recurring Home Care Plan service: ${svcName} for ${homeowner.name}.${note?(' Note: '+note):''}`,false]);
+            await pool.query('INSERT INTO announcements (id,user_id,title,body) VALUES ($1,$2,$3,$4)',
+              [id('ann'),row.provider_id,'New recurring service assigned',`You were assigned to a recurring Home Care Plan service: ${svcName} for ${homeowner.name}.${note?(' Note: '+note):''}`]);
             sendEmail({to:pr.email||'',type:'care_plan_visit_assigned',subject:`New recurring service: ${svcName}`,html:carePlanVisitAssignedEmailHtml(pr,homeowner.name,svcName,note)}).catch(()=>{});
           }
         }
@@ -1730,6 +1803,66 @@ const server=http.createServer(async (req,res)=>{
       return send(res,200,{visit:{serviceKey:row.service_key,serviceName:CARE_SERVICE_INFO[row.service_key].name,status:row.status,scheduledDate:row.scheduled_date?new Date(row.scheduled_date).toISOString().slice(0,10):null,providerId:row.provider_id,providerName,note:row.note}});
     }
 
+    if(p==='/api/support/messages' && req.method==='GET'){
+      if(!isPaidPlan(u)) return send(res,403,{error:'Support chat is available on a paid plan.'});
+      const rows=await q('SELECT * FROM support_messages WHERE user_id=$1 ORDER BY created_at',[u.id]);
+      return send(res,200,{messages:rows.map(mapSupportMessage)});
+    }
+    if(p==='/api/support/messages' && req.method==='POST'){
+      if(!isPaidPlan(u)) return send(res,403,{error:'Support chat is available on a paid plan.'});
+      const b=await body(req), text=String(b.body||'').trim().slice(0,2000);
+      if(!text) return send(res,400,{error:'Message cannot be empty'});
+      const row=await q1('INSERT INTO support_messages (id,user_id,sender_role,body) VALUES ($1,$2,$3,$4) RETURNING *',[id('sup'),u.id,'user',text]);
+      if(ADMIN_NOTIFY_EMAIL) sendEmail({to:ADMIN_NOTIFY_EMAIL,type:'admin_support_message',subject:`Support message from ${u.name}`,html:emailShell('Support message',`<h2 style="margin:0 0 10px;color:#17352f">${esc_(u.name)} needs support</h2><p style="color:#3f4f4a;line-height:1.6;font-size:14.5px;background:#eaf4ef;border-radius:10px;padding:12px 14px">${esc_(text).slice(0,300)}</p>${btn('Reply in Admin',APP_URL+'/#admin')}`)}).catch(()=>{});
+      return send(res,201,{message:mapSupportMessage(row)});
+    }
+    if(p==='/api/admin/reported-quotes' && req.method==='GET'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const rows=await q("SELECT q.*, r.title AS request_title, r.service_type FROM quotes q JOIN requests r ON r.id=q.request_id WHERE q.reported=true ORDER BY q.reported_at DESC");
+      const homeownerIds=[...new Set(rows.map(r=>r.homeowner_id).filter(Boolean))];
+      const reqRows=rows.length?await q('SELECT id,homeowner_id FROM requests WHERE id = ANY($1::text[])',[rows.map(r=>r.request_id)]):[];
+      const homeownerByReq=Object.fromEntries(reqRows.map(r=>[r.id,r.homeowner_id]));
+      const allUserIds=[...new Set(rows.map(r=>r.provider_id).concat(Object.values(homeownerByReq)))];
+      const users=allUserIds.length?await q('SELECT id,name,email FROM users WHERE id = ANY($1::text[])',[allUserIds]):[];
+      const userMap=Object.fromEntries(users.map(x=>[x.id,{id:x.id,name:x.name,email:x.email}]));
+      const out=rows.map(r=>({...mapQuote(r),requestTitle:r.request_title,serviceType:r.service_type,reported:true,reportedBy:userMap[r.reported_by]||null,reportedReason:r.reported_reason,reportedAt:toISO(r.reported_at),provider:userMap[r.provider_id]||null,homeowner:userMap[homeownerByReq[r.request_id]]||null}));
+      return send(res,200,{quotes:out});
+    }
+    if(p==='/api/admin/support' && req.method==='GET'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const rows=await q(`SELECT sm.user_id, u.name, u.email, u.role,
+        max(sm.created_at) AS last_at,
+        count(*) FILTER (WHERE sm.sender_role='user' AND sm.read=false)::int AS unread
+        FROM support_messages sm JOIN users u ON u.id=sm.user_id GROUP BY sm.user_id,u.name,u.email,u.role ORDER BY last_at DESC`);
+      return send(res,200,{threads:rows.map(r=>({userId:r.user_id,name:r.name,email:r.email,role:r.role,lastAt:toISO(r.last_at),unread:r.unread}))});
+    }
+    if(p.startsWith('/api/admin/support/') && req.method==='GET'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const userId=p.split('/')[4];
+      await pool.query("UPDATE support_messages SET read=true WHERE user_id=$1 AND sender_role='user'",[userId]);
+      const rows=await q('SELECT * FROM support_messages WHERE user_id=$1 ORDER BY created_at',[userId]);
+      return send(res,200,{messages:rows.map(mapSupportMessage)});
+    }
+    if(p.startsWith('/api/admin/support/') && req.method==='POST'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const userId=p.split('/')[4];
+      const target=await q1('SELECT * FROM users WHERE id=$1',[userId]); if(!target)return send(res,404,{error:'Account not found'});
+      const b=await body(req), text=String(b.body||'').trim().slice(0,2000);
+      if(!text) return send(res,400,{error:'Message cannot be empty'});
+      const row=await q1('INSERT INTO support_messages (id,user_id,sender_role,body) VALUES ($1,$2,$3,$4) RETURNING *',[id('sup'),userId,'admin',text]);
+      if(target.email) sendEmail({to:target.email,type:'admin_support_reply',subject:'Reply from Living Communities support',html:emailShell('Support reply',`<h2 style="margin:0 0 10px;color:#17352f">Support replied</h2><p style="color:#3f4f4a;line-height:1.6;font-size:14.5px;background:#eaf4ef;border-radius:10px;padding:12px 14px">${esc_(text).slice(0,300)}</p>${btn('View Reply',APP_URL)}`)}).catch(()=>{});
+      return send(res,201,{message:mapSupportMessage(row)});
+    }
+    if(p==='/api/admin/announcements' && req.method==='POST'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const b=await body(req);
+      const title=String(b.title||'').trim().slice(0,120), text=String(b.body||'').trim().slice(0,2000);
+      if(!title||!text) return send(res,400,{error:'Title and body are required.'});
+      const userId=b.userId?String(b.userId):null;
+      if(userId){ const target=await q1('SELECT id,email,name FROM users WHERE id=$1',[userId]); if(!target)return send(res,404,{error:'Account not found'}); }
+      const row=await q1('INSERT INTO announcements (id,user_id,title,body) VALUES ($1,$2,$3,$4) RETURNING *',[id('ann'),userId,title,text]);
+      return send(res,201,{announcement:mapAnnouncement(row)});
+    }
     return send(res,404,{error:'Not found'});
   }catch(e){console.error(e);send(res,500,{error:'Server error',detail:e.message});}
 });
