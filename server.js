@@ -53,7 +53,7 @@ function tooManyAttempts(ip){
 function mapUser(r){
   if(!r) return null;
   const carePlanItems=r.care_plan_items||[];
-  const u={id:r.id,role:r.role,name:r.name,email:r.email,passwordHash:r.password_hash,salt:r.salt,phone:r.phone,createdAt:toISO(r.created_at),subscription:r.subscription,carePlanItems,carePlanServices:carePlanItems.filter(i=>i.status==='active').map(i=>i.key),avatarKind:r.avatar_kind||null,avatarValue:r.avatar_value||null,address:r.address,lat:r.lat!=null?Number(r.lat):null,lng:r.lng!=null?Number(r.lng):null,suspended:!!r.suspended};
+  const u={id:r.id,role:r.role,name:r.name,email:r.email,passwordHash:r.password_hash,salt:r.salt,phone:r.phone,createdAt:toISO(r.created_at),subscription:r.subscription,carePlanItems,carePlanServices:carePlanItems.filter(i=>i.status==='active').map(i=>i.key),avatarKind:r.avatar_kind||null,avatarValue:r.avatar_value||null,address:r.address,lat:r.lat!=null?Number(r.lat):null,lng:r.lng!=null?Number(r.lng):null,suspended:!!r.suspended,deleted:!!r.deleted,deletedAt:toISO(r.deleted_at),lastAnnouncementsViewAt:toISO(r.last_announcements_view_at)};
   if(r.role==='homeowner'){ u.community=r.community; u.carePlanNextBilling=r.care_plan_next_billing?new Date(r.care_plan_next_billing).toISOString().slice(0,10):null; }
   else if(r.role==='provider'){
     u.serviceTypes=r.service_types||[]; u.rating=r.rating!=null?Number(r.rating):null; u.reviewCount=r.review_count||0; u.verified=!!r.verified; u.businessDescription=r.business_description; u.providerPlan=r.provider_plan||'free'; u.quotesUsed=r.quotes_sent_this_period||0; u.convosUsed=r.new_conversations_this_period||0;
@@ -96,7 +96,7 @@ function mapRequest(r){ return {id:r.id,homeownerId:r.homeowner_id,serviceType:r
 // uploaded verification document images) that a bulk list endpoint has no business returning.
 function adminAccountView(u){
   if(!u) return null;
-  const base={id:u.id,role:u.role,name:u.name,email:u.email,phone:u.phone,createdAt:u.createdAt,suspended:!!u.suspended};
+  const base={id:u.id,role:u.role,name:u.name,email:u.email,phone:u.phone,createdAt:u.createdAt,suspended:!!u.suspended,deleted:!!u.deleted,deletedAt:u.deletedAt};
   if(u.role==='homeowner'){
     return {...base,community:u.community,subscription:normalizeHomeownerPlanKey(u.subscription),carePlanServiceCount:(u.carePlanServices||[]).length,carePlanNextBilling:u.carePlanNextBilling};
   }
@@ -436,6 +436,17 @@ function accountReactivatedEmailHtml(u){
      <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Your account has been reactivated. You can log back in whenever you're ready.</p>
      ${btn('Log In',APP_URL)}`);
 }
+function accountDeletedEmailHtml(u){
+  return emailShell('Your account was deleted',
+    `<h2 style="margin:0 0 10px;color:#17352f">Your account has been deleted</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Your Living Communities account (${esc_(u.email)}) was deleted at your request. You've been signed out and can no longer log in with it. If this wasn't you, reply to this email right away.</p>`);
+}
+function adminAccountDeletedEmailHtml(u){
+  return emailShell('Account deleted',
+    `<h2 style="margin:0 0 10px;color:#17352f">${esc_(u.name)} deleted their account</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">${esc_(u.role)} · ${esc_(u.email)}</p>
+     ${btn('View Deleted Accounts',APP_URL+'/#admin')}`);
+}
 function verificationApprovedEmailHtml(u){
   return emailShell('You\'re verified',
     `<h2 style="margin:0 0 10px;color:#17352f">You're verified ✅</h2>
@@ -712,6 +723,14 @@ async function initSchema(){
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS background_check_status text DEFAULT 'not_requested'`); // not_requested | requested | in_progress | clear | consider
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS background_check_requested_at timestamptz`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS suspended boolean DEFAULT false`);
+  // Self-service account deletion is a SOFT delete: the row and all its requests/quotes/jobs/chats
+  // stay in place (admin needs full history in the Deleted Accounts log), the account just can't
+  // log in or be matched/contacted anymore.
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted boolean DEFAULT false`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_at timestamptz`);
+  // Tracks when a user last opened the Messages panel, so new announcements since then can badge
+  // the nav item instead of it always looking the same regardless of anything new.
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_announcements_view_at timestamptz`);
   await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS dispatched_provider_id text`);
   await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS dispatched_at timestamptz`);
   await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS dispatched_note text`);
@@ -838,6 +857,7 @@ async function requireAuth(req,res,roles){
   const row=await q1('SELECT * FROM users WHERE id=$1',[uid]);
   if(!row){sessions.delete(token);send(res,401,{error:'Session invalid'});return null}
   const u=mapUser(row);
+  if(u.deleted){sessions.delete(token);send(res,403,{error:'This account has been deleted.',deleted:true});return null}
   if(u.suspended){sessions.delete(token);send(res,403,{error:'This account has been suspended. Contact support if you think this is a mistake.',suspended:true});return null}
   if(roles&&!roles.includes(u.role)){send(res,403,{error:'Not authorized'});return null}
   return u;
@@ -856,15 +876,29 @@ function serveStatic(req,res,pathname){
   });
 }
 
-// Loads quotes (with embedded provider) for a set of requests, keyed by request id.
-async function quotesByRequestId(reqIds){
+// Chat activity per quote thread, from one viewer's point of view: how many messages are
+// addressed to them and still unread, and when the thread was last touched at all (falls back to
+// null — callers fall back further to the quote's own createdAt). This is what lets a lead/quote
+// card show "new" and a real timestamp instead of looking identical to every other card.
+async function quoteActivity(quoteIds,viewerId){
+  const out={};
+  for(const qid of quoteIds) out[qid]={unreadCount:0,lastActivityAt:null};
+  if(!quoteIds.length) return out;
+  const rows=await q('SELECT quote_id, max(created_at) AS last_at, count(*) FILTER (WHERE recipient_id=$2 AND read=false) AS unread FROM messages WHERE quote_id = ANY($1::text[]) GROUP BY quote_id',[quoteIds,viewerId||null]);
+  for(const r of rows) out[r.quote_id]={unreadCount:Number(r.unread||0),lastActivityAt:toISO(r.last_at)};
+  return out;
+}
+// Loads quotes (with embedded provider) for a set of requests, keyed by request id. viewerId (the
+// homeowner asking) is who chat unread counts are computed for.
+async function quotesByRequestId(reqIds,viewerId){
   if(!reqIds.length) return {};
   const quotes=await q('SELECT * FROM quotes WHERE request_id = ANY($1::text[]) ORDER BY created_at',[reqIds]);
   const providerIds=[...new Set(quotes.map(x=>x.provider_id))];
   const providers=providerIds.length?await q('SELECT * FROM users WHERE id = ANY($1::text[])',[providerIds]):[];
   const providerMap=Object.fromEntries(providers.map(p=>[p.id,publicProviderView(mapUser(p))]));
+  const activity=await quoteActivity(quotes.map(x=>x.id),viewerId);
   const out={};
-  for(const qq of quotes){ (out[qq.request_id]=out[qq.request_id]||[]).push({...mapQuote(qq),provider:providerMap[qq.provider_id]}); }
+  for(const qq of quotes){ (out[qq.request_id]=out[qq.request_id]||[]).push({...mapQuote(qq),provider:providerMap[qq.provider_id],...activity[qq.id]}); }
   return out;
 }
 
@@ -882,6 +916,7 @@ const server=http.createServer(async (req,res)=>{
       const row=await q1('SELECT * FROM users WHERE lower(email)=lower($1)',[String(b.email||'')]);
       const u=mapUser(row);
       if(!u || u.passwordHash!==hash(String(b.password||''),u.salt)) return send(res,401,{error:'Invalid email or password'});
+      if(u.deleted) return send(res,403,{error:'This account has been deleted.',deleted:true});
       if(u.suspended) return send(res,403,{error:'This account has been suspended. Contact support if you think this is a mistake.',suspended:true});
       const token=crypto.randomBytes(24).toString('hex'); sessions.set(token,u.id); return send(res,200,{token,user:safeUser(u)});
     }
@@ -1010,12 +1045,15 @@ const server=http.createServer(async (req,res)=>{
       if(u.role==='admin') return send(res,403,{error:'Admins use /api/admin/verifications instead of /api/dashboard'});
       if(u.role==='homeowner'){
         const reqRows=await q('SELECT * FROM requests WHERE homeowner_id=$1 ORDER BY created_at DESC',[u.id]);
-        const qMap=await quotesByRequestId(reqRows.map(r=>r.id));
+        const qMap=await quotesByRequestId(reqRows.map(r=>r.id),u.id);
         const requests=reqRows.map(r=>({...mapRequest(r),quotes:qMap[r.id]||[]}));
+        const unreadChatCount=Object.values(qMap).flat().reduce((sum,qq)=>sum+(qq.unreadCount||0),0);
         const announcements=await q('SELECT * FROM announcements WHERE user_id=$1 OR user_id IS NULL ORDER BY created_at DESC LIMIT 50',[u.id]);
+        const unreadAnnouncementsCount=Number((await q1("SELECT count(*)::int AS c FROM announcements WHERE (user_id=$1 OR user_id IS NULL) AND created_at > COALESCE($2::timestamptz,'-infinity')",[u.id,u.lastAnnouncementsViewAt])).c);
+        const unreadSupportCount=isPaidPlan(u)?Number((await q1("SELECT count(*)::int AS c FROM support_messages WHERE user_id=$1 AND sender_role='admin' AND read=false",[u.id])).c):0;
         const jobs=await q('SELECT * FROM jobs WHERE homeowner_id=$1 ORDER BY created_at DESC',[u.id]);
         const reviews=await q('SELECT * FROM reviews WHERE homeowner_id=$1',[u.id]);
-        return send(res,200,{user:safeUser(u),requests,announcements:announcements.map(mapAnnouncement),jobs:jobs.map(mapJob),reviews:reviews.map(mapReview)});
+        return send(res,200,{user:safeUser(u),requests,announcements:announcements.map(mapAnnouncement),jobs:jobs.map(mapJob),reviews:reviews.map(mapReview),unreadChatCount,unreadMessagesCount:unreadAnnouncementsCount+unreadSupportCount});
       }
       if(u.role==='provider'){ const usage=await ensureUsagePeriod(u); u.quotesUsed=usage.quotes; u.convosUsed=usage.convos; }
       // Joins in the homeowner's lat/lng (if they ever geocoded an address) so each request can
@@ -1024,16 +1062,25 @@ const server=http.createServer(async (req,res)=>{
       // filtered out, so incomplete address data never silently hides real leads.
       const openRows=await q("SELECT r.*, uh.lat AS h_lat, uh.lng AS h_lng FROM requests r JOIN users uh ON uh.id=r.homeowner_id WHERE r.status='open' ORDER BY r.created_at DESC");
       const myQuotes=openRows.length?await q('SELECT * FROM quotes WHERE request_id = ANY($1::text[]) AND provider_id=$2',[openRows.map(r=>r.id),u.id]):[];
-      const quoteByReq=Object.fromEntries(myQuotes.map(qq=>[qq.request_id,mapQuote(qq)]));
+      const myActivity=await quoteActivity(myQuotes.map(qq=>qq.id),u.id);
+      const quoteByReq=Object.fromEntries(myQuotes.map(qq=>[qq.request_id,{...mapQuote(qq),...myActivity[qq.id]}]));
       const requests=openRows.map(r=>{
         const distanceMi=(u.lat!=null&&u.lng!=null&&r.h_lat!=null&&r.h_lng!=null)?Math.round(haversineMiles(u.lat,u.lng,Number(r.h_lat),Number(r.h_lng))*10)/10:null;
         return {...mapRequest(r),quote:quoteByReq[r.id]||null,distanceMi};
       });
+      const unreadChatCount=Object.values(quoteByReq).reduce((sum,qq)=>sum+(qq.unreadCount||0),0);
       const announcements=await q('SELECT * FROM announcements WHERE user_id=$1 OR user_id IS NULL ORDER BY created_at DESC LIMIT 50',[u.id]);
+      const unreadAnnouncementsCount=Number((await q1("SELECT count(*)::int AS c FROM announcements WHERE (user_id=$1 OR user_id IS NULL) AND created_at > COALESCE($2::timestamptz,'-infinity')",[u.id,u.lastAnnouncementsViewAt])).c);
+      const unreadSupportCount=isPaidPlan(u)?Number((await q1("SELECT count(*)::int AS c FROM support_messages WHERE user_id=$1 AND sender_role='admin' AND read=false",[u.id])).c):0;
       const jobs=await q('SELECT * FROM jobs WHERE provider_id=$1 ORDER BY created_at DESC',[u.id]);
       const reviews=await q('SELECT * FROM reviews WHERE provider_id=$1',[u.id]);
       const completedJobCount=Number((await q1("SELECT count(*)::int AS c FROM jobs WHERE provider_id=$1 AND status='completed' AND receipt_uploaded_at IS NOT NULL",[u.id])).c);
-      return send(res,200,{user:{...safeUser(u),completedJobCount},requests,announcements:announcements.map(mapAnnouncement),jobs:jobs.map(mapJob),reviews:reviews.map(mapReview)});
+      return send(res,200,{user:{...safeUser(u),completedJobCount},requests,announcements:announcements.map(mapAnnouncement),jobs:jobs.map(mapJob),reviews:reviews.map(mapReview),unreadChatCount,unreadMessagesCount:unreadAnnouncementsCount+unreadSupportCount});
+    }
+    // Clears the "new" badge on the Messages nav item — call when the user opens that panel.
+    if(p==='/api/announcements/mark-seen' && req.method==='POST'){
+      await pool.query('UPDATE users SET last_announcements_view_at=now() WHERE id=$1',[u.id]);
+      return send(res,200,{ok:true});
     }
 
     if(p==='/api/requests' && req.method==='GET'){
@@ -1062,7 +1109,7 @@ const server=http.createServer(async (req,res)=>{
     if(p.startsWith('/api/requests/') && p.endsWith('/quotes') && req.method==='GET'){
       const rid=p.split('/')[3], r=await q1('SELECT * FROM requests WHERE id=$1',[rid]); if(!r)return send(res,404,{error:'Request not found'});
       if(u.role==='homeowner'&&r.homeowner_id!==u.id)return send(res,403,{error:'Not authorized'});
-      const qMap=await quotesByRequestId([rid]);
+      const qMap=await quotesByRequestId([rid],u.id);
       return send(res,200,{quotes:qMap[rid]||[]});
     }
     if(p.startsWith('/api/requests/') && p.endsWith('/quotes') && req.method==='POST'){
@@ -1117,6 +1164,9 @@ const server=http.createServer(async (req,res)=>{
       const qid=p.split('/')[3], t=await loadQuoteThread(qid); if(!t)return send(res,404,{error:'Quote not found'});
       if(u.role!=='admin' && t.request.homeowner_id!==u.id && t.quote.provider_id!==u.id) return send(res,403,{error:'Not authorized'});
       const rows=await q('SELECT * FROM messages WHERE quote_id=$1 ORDER BY created_at',[qid]);
+      // Opening the thread as a participant clears its unread badge (no-op for admin's read-only view,
+      // since admin is never the recipient on a homeowner/provider message).
+      await pool.query('UPDATE messages SET read=true WHERE quote_id=$1 AND recipient_id=$2 AND read=false',[qid,u.id]);
       return send(res,200,{messages:rows.map(mapMessage)});
     }
     if(p.startsWith('/api/quotes/') && p.endsWith('/messages') && req.method==='POST'){
@@ -1469,6 +1519,20 @@ const server=http.createServer(async (req,res)=>{
       const row=await q1('UPDATE users SET address=$1,lat=$2,lng=$3,geocoded_at=now() WHERE id=$4 RETURNING *',[address,geo.lat,geo.lng,u.id]);
       return send(res,200,{user:safeUser(mapUser(row))});
     }
+    // Self-service account deletion (soft delete): the account is flagged and every session for
+    // it is killed, but all its requests/quotes/jobs/chat history stay in place so admin can still
+    // review it in the Deleted Accounts log. Requires re-entering the current password so a
+    // stolen/left-open session can't be used to delete the account.
+    if(p==='/api/account/delete' && req.method==='POST'){
+      if(u.role==='admin')return send(res,403,{error:'Admin accounts can\'t be self-deleted here.'});
+      const b=await body(req);
+      if(u.passwordHash!==hash(String(b.password||''),u.salt)) return send(res,401,{error:'Incorrect password.'});
+      const row=await q1('UPDATE users SET deleted=true,deleted_at=now() WHERE id=$1 RETURNING *',[u.id]);
+      for(const [tok,uid] of sessions){ if(uid===u.id) sessions.delete(tok); }
+      sendEmail({to:row.email,type:'account_deleted',subject:'Your account was deleted',html:accountDeletedEmailHtml(mapUser(row)),userId:row.id}).catch(()=>{});
+      if(ADMIN_NOTIFY_EMAIL) sendEmail({to:ADMIN_NOTIFY_EMAIL,type:'admin_account_deleted',subject:`Account deleted: ${row.name}`,html:adminAccountDeletedEmailHtml(mapUser(row))}).catch(()=>{});
+      return send(res,200,{ok:true});
+    }
     if(p==='/api/neighborhood' && req.method==='GET'){
       if(u.role!=='homeowner')return send(res,403,{error:'Neighborhood is for homeowners'});
       if(!u.carePlanServices||!u.carePlanServices.length)return send(res,403,{error:'Neighborhood is a Home Care Plan perk',needsPlan:true});
@@ -1557,8 +1621,8 @@ const server=http.createServer(async (req,res)=>{
       const status=String(url.searchParams.get('status')||'all'); // all|active|suspended
       const qstr=String(url.searchParams.get('q')||'').trim().toLowerCase();
       const rows = ['homeowner','provider'].includes(role)
-        ? await q('SELECT * FROM users WHERE role=$1 ORDER BY created_at DESC',[role])
-        : await q("SELECT * FROM users WHERE role IN ('homeowner','provider') ORDER BY created_at DESC");
+        ? await q('SELECT * FROM users WHERE role=$1 AND deleted=false ORDER BY created_at DESC',[role])
+        : await q("SELECT * FROM users WHERE role IN ('homeowner','provider') AND deleted=false ORDER BY created_at DESC");
       let accounts=rows.map(r=>adminAccountView(mapUser(r)));
       if(status==='active') accounts=accounts.filter(a=>!a.suspended);
       if(status==='suspended') accounts=accounts.filter(a=>a.suspended);
@@ -1806,6 +1870,7 @@ const server=http.createServer(async (req,res)=>{
     if(p==='/api/support/messages' && req.method==='GET'){
       if(!isPaidPlan(u)) return send(res,403,{error:'Support chat is available on a paid plan.'});
       const rows=await q('SELECT * FROM support_messages WHERE user_id=$1 ORDER BY created_at',[u.id]);
+      await pool.query("UPDATE support_messages SET read=true WHERE user_id=$1 AND sender_role='admin' AND read=false",[u.id]);
       return send(res,200,{messages:rows.map(mapSupportMessage)});
     }
     if(p==='/api/support/messages' && req.method==='POST'){
@@ -1862,6 +1927,55 @@ const server=http.createServer(async (req,res)=>{
       if(userId){ const target=await q1('SELECT id,email,name FROM users WHERE id=$1',[userId]); if(!target)return send(res,404,{error:'Account not found'}); }
       const row=await q1('INSERT INTO announcements (id,user_id,title,body) VALUES ($1,$2,$3,$4) RETURNING *',[id('ann'),userId,title,text]);
       return send(res,201,{announcement:mapAnnouncement(row)});
+    }
+    if(p==='/api/admin/deleted-accounts' && req.method==='GET'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const rows=await q("SELECT * FROM users WHERE deleted=true ORDER BY deleted_at DESC");
+      return send(res,200,{accounts:rows.map(r=>({...adminAccountView(mapUser(r))}))});
+    }
+    // Full history for one deleted account: its own requests/quotes/jobs, plus every quote
+    // thread it touched (as homeowner on the request, or as the provider who quoted), so admin
+    // can open any of those chats read-only the same way the Reported panel does.
+    if(p.startsWith('/api/admin/deleted-accounts/') && req.method==='GET'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const aid=p.split('/')[4];
+      const target=await q1('SELECT * FROM users WHERE id=$1 AND deleted=true',[aid]);
+      if(!target)return send(res,404,{error:'Deleted account not found'});
+      let requestsOut=[], quotesOut=[], jobsOut=[];
+      if(target.role==='homeowner'){
+        const reqs=await q('SELECT * FROM requests WHERE homeowner_id=$1 ORDER BY created_at DESC',[aid]);
+        const quoteRows=reqs.length?await q('SELECT q.*, r.title AS request_title FROM quotes q JOIN requests r ON r.id=q.request_id WHERE q.request_id = ANY($1::text[]) ORDER BY q.created_at',[reqs.map(r=>r.id)]):[];
+        const providerIds=[...new Set(quoteRows.map(x=>x.provider_id))];
+        const providers=providerIds.length?await q('SELECT id,name FROM users WHERE id = ANY($1::text[])',[providerIds]):[];
+        const providerNameById=Object.fromEntries(providers.map(p2=>[p2.id,p2.name]));
+        requestsOut=reqs.map(r=>({...mapRequest(r)}));
+        quotesOut=quoteRows.map(r=>({...mapQuote(r),requestTitle:r.request_title,otherPartyName:providerNameById[r.provider_id]||'—'}));
+        const jobs=await q('SELECT * FROM jobs WHERE homeowner_id=$1 ORDER BY created_at DESC',[aid]);
+        jobsOut=jobs.map(mapJob);
+      } else if(target.role==='provider'){
+        const quoteRows=await q('SELECT q.*, r.title AS request_title, r.homeowner_id FROM quotes q JOIN requests r ON r.id=q.request_id WHERE q.provider_id=$1 ORDER BY q.created_at DESC',[aid]);
+        const homeownerIds=[...new Set(quoteRows.map(x=>x.homeowner_id))];
+        const homeowners=homeownerIds.length?await q('SELECT id,name FROM users WHERE id = ANY($1::text[])',[homeownerIds]):[];
+        const homeownerNameById=Object.fromEntries(homeowners.map(h=>[h.id,h.name]));
+        quotesOut=quoteRows.map(r=>({...mapQuote(r),requestTitle:r.request_title,otherPartyName:homeownerNameById[r.homeowner_id]||'—'}));
+        const jobs=await q('SELECT * FROM jobs WHERE provider_id=$1 ORDER BY created_at DESC',[aid]);
+        jobsOut=jobs.map(mapJob);
+      }
+      return send(res,200,{account:adminAccountView(mapUser(target)),requests:requestsOut,quotes:quotesOut,jobs:jobsOut});
+    }
+    // Diagnostic viewer for the "no emails are sending" report: every send attempt is logged
+    // (dry_run = no RESEND_API_KEY configured in this environment; error = Resend rejected it,
+    // see the error column; sent = accepted by Resend) so admin can see what's actually happening
+    // in production without needing server console access.
+    if(p==='/api/admin/email-log' && req.method==='GET'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const status=String(url.searchParams.get('status')||'all');
+      const limit=Math.min(parseInt(url.searchParams.get('limit')||'100',10)||100,500);
+      const rows = ['sent','error','dry_run'].includes(status)
+        ? await q('SELECT * FROM email_log WHERE status=$1 ORDER BY sent_at DESC LIMIT $2',[status,limit])
+        : await q('SELECT * FROM email_log ORDER BY sent_at DESC LIMIT $1',[limit]);
+      const counts=await q1("SELECT count(*) FILTER (WHERE status='sent')::int AS sent, count(*) FILTER (WHERE status='error')::int AS error, count(*) FILTER (WHERE status='dry_run')::int AS dry_run FROM email_log");
+      return send(res,200,{emails:rows.map(r=>({id:r.id,userId:r.user_id,to:r.to_email,type:r.type,subject:r.subject,status:r.status,error:r.error,sentAt:toISO(r.sent_at)})),counts,resendConfigured:!!RESEND_API_KEY,emailFrom:EMAIL_FROM});
     }
     return send(res,404,{error:'Not found'});
   }catch(e){console.error(e);send(res,500,{error:'Server error',detail:e.message});}

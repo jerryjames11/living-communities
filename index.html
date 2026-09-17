@@ -107,7 +107,7 @@ button{font:inherit;cursor:pointer}
 .dash-header{background:#fff;border-bottom:1px solid var(--line);padding:14px 6%;display:flex;align-items:center;justify-content:space-between}
 .dash-header .logo{font-size:19px}
 .dash-header-right{display:flex;align-items:center;gap:16px}
-.icon-btn{border:1px solid var(--line);background:#fff;border-radius:10px;width:38px;height:38px;display:grid;place-items:center;color:#51635e}
+.icon-btn{border:1px solid var(--line);background:#fff;border-radius:10px;width:38px;height:38px;display:grid;place-items:center;color:#51635e;position:relative}
 .header-plans-btn{border:0;background:var(--green);color:#fff;border-radius:10px;height:38px;padding:0 16px;font-weight:700;font-size:13px;white-space:nowrap}
 .profile-menu-wrap{position:relative}
 .dash-user{display:flex;align-items:center;gap:10px;border:0;background:none;padding:5px 8px 5px 5px;border-radius:12px;cursor:pointer;font:inherit;color:inherit;text-align:left}
@@ -137,6 +137,11 @@ button{font:inherit;cursor:pointer}
 .sideitem:hover{background:#f4f7f5}
 .sideitem.active{background:var(--mint);color:var(--green);font-weight:700}
 .sideitem.active svg{opacity:1}
+.sideitem{position:relative}
+.navbadge{background:#c0392b;color:#fff;font-size:10.5px;font-weight:800;border-radius:999px;padding:1.5px 6px;margin-left:auto;line-height:1.4}
+.icn-dot{position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:#c0392b;border:1.5px solid #fff}
+.card-unread-badge{background:#c0392b;color:#fff;font-size:10.5px;font-weight:800;border-radius:999px;padding:2px 8px;letter-spacing:.2px}
+.card-activity-ts{color:var(--muted);font-size:11.5px}
 .admin-status-tab.active{background:var(--mint);color:var(--green);border-color:transparent}
 .dispatch-sub-tab.active{background:var(--mint);color:var(--green);border-color:transparent}
 .careplan-account{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-top:10px}
@@ -269,6 +274,10 @@ button{font:inherit;cursor:pointer}
 .field label{font-size:12px;font-weight:800;color:#52645e}
 .field input,.field select,.field textarea{border:1px solid #cbd9d3;border-radius:10px;padding:12px;font:inherit;background:#fff}
 .field textarea{min-height:110px;resize:vertical}
+.pwfield{position:relative;display:flex}
+.pwfield input{flex:1;padding-right:44px}
+.pwtoggle{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:0;cursor:pointer;padding:6px;font-size:13px;color:var(--muted);font-weight:700}
+.pwtoggle:hover{color:var(--green)}
 .steps{display:flex;gap:7px;margin:14px 0}
 .step{height:5px;flex:1;background:#dfe8e3;border-radius:5px}
 .step.on{background:var(--green)}
@@ -402,6 +411,7 @@ button{font:inherit;cursor:pointer}
 <div class="dash-header">
   <div class="logo">Living <span>Communities</span></div>
   <div class="dash-header-right">
+    <button class="icon-btn" id="ho-notif-bell" title="Notifications" type="button" onclick="switchPanel('homeowner','messages')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8a5 5 0 0 1 10 0c0 4 1.5 5 1.5 5h-13S5 12 5 8Z"/><path d="M8.2 16a1.8 1.8 0 0 0 3.6 0"/></svg></button>
     <button id="ho-viewplans-btn" class="header-plans-btn" onclick="openPlansPage('homeowner')">View Plans</button>
     <div class="profile-menu-wrap" id="ho-profile-menu-wrap">
       <button class="dash-user" type="button" onclick="toggleProfileMenu(event,'homeowner')"><div class="avatar-slot" id="ho-header-avatar" data-label=""><img src="images/avatar-homeowner.jpg" alt="" onerror="this.closest('.avatar-slot').classList.add('missing')"><span class="avatar-fallback" id="ho-header-initials">JC</span></div><div><b id="ho-header-name">Jamie Carter</b><small>Homeowner</small></div><svg class="chev" width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7.5l5 5 5-5"/></svg></button>
@@ -465,7 +475,7 @@ button{font:inherit;cursor:pointer}
 <div class="dash-header">
   <div class="logo">Living <span>Communities</span></div>
   <div class="dash-header-right">
-    <button class="icon-btn" title="Notifications" type="button"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8a5 5 0 0 1 10 0c0 4 1.5 5 1.5 5h-13S5 12 5 8Z"/><path d="M8.2 16a1.8 1.8 0 0 0 3.6 0"/></svg></button>
+    <button class="icon-btn" id="pr-notif-bell" title="Notifications" type="button" onclick="switchPanel('provider','messages')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8a5 5 0 0 1 10 0c0 4 1.5 5 1.5 5h-13S5 12 5 8Z"/><path d="M8.2 16a1.8 1.8 0 0 0 3.6 0"/></svg></button>
     <div class="profile-menu-wrap" id="pr-profile-menu-wrap">
       <button class="dash-user" type="button" onclick="toggleProfileMenu(event,'provider')"><div class="avatar-slot" id="pr-header-avatar" data-label=""><img src="images/avatar-provider.jpg" alt="" onerror="this.closest('.avatar-slot').classList.add('missing')"><span class="avatar-fallback" id="pr-header-initials">RP</span></div><div><b id="pr-header-name">Richardson Pro Plumbing</b><small>Provider</small></div><svg class="chev" width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7.5l5 5 5-5"/></svg></button>
       <div class="profile-menu hidden" id="pr-profile-menu">
@@ -532,6 +542,8 @@ button{font:inherit;cursor:pointer}
 <div class="sideitem" data-panel="verification" onclick="switchAdminPanel('verification')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3l6 2.5v4.3c0 4-2.6 6.7-6 7.7-3.4-1-6-3.7-6-7.7V5.5L10 3z"/><path d="M7.3 10l2 2 3.4-4"/></svg>Verification</div>
 <div class="sideitem" data-panel="reported" onclick="switchAdminPanel('reported')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2l7 3.5v5c0 4.5-3 7-7 7.5-4-.5-7-3-7-7.5v-5L10 2z"/><path d="M10 7v4M10 13.5h.01"/></svg>Reported</div>
 <div class="sideitem" data-panel="support" onclick="switchAdminPanel('support')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h14v10H8l-4 3v-3H3z"/></svg>Support</div>
+<div class="sideitem" data-panel="deleted" onclick="switchAdminPanel('deleted')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h12M8 6V4.5A1.5 1.5 0 019.5 3h1A1.5 1.5 0 0112 4.5V6m-6.5 0l.6 9.4A1.6 1.6 0 007.7 17h4.6a1.6 1.6 0 001.6-1.6L14.5 6"/></svg>Deleted Accounts</div>
+<div class="sideitem" data-panel="emaillog" onclick="switchAdminPanel('emaillog')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h14v10H3z"/><path d="M3.5 5.5l6.5 5 6.5-5"/></svg>Email Log</div>
 </aside>
 <section class="content">
 
@@ -607,6 +619,22 @@ button{font:inherit;cursor:pointer}
   </div>
 </div>
 
+<div class="panel hidden" data-panel="deleted">
+  <p class="subtle" style="font-size:13px;margin:0 0 12px">Self-deleted accounts. Their requests, quotes, jobs and chats stay on file below — click one to review its full history.</p>
+  <div id="admin-deleted-list"></div>
+</div>
+
+<div class="panel hidden" data-panel="emaillog">
+  <p class="subtle" style="font-size:13px;margin:0 0 12px" id="admin-emaillog-summary">Loading…</p>
+  <div class="mini-actions" style="margin:0 0 12px">
+    <button class="secondary" onclick="loadAdminEmailLog('all')">All</button>
+    <button class="secondary" onclick="loadAdminEmailLog('sent')">Sent</button>
+    <button class="secondary" onclick="loadAdminEmailLog('error')">Errors</button>
+    <button class="secondary" onclick="loadAdminEmailLog('dry_run')">Dry Run</button>
+  </div>
+  <div id="admin-emaillog-list"></div>
+</div>
+
 </section></div>
 </div>
 </main>
@@ -616,6 +644,11 @@ button{font:inherit;cursor:pointer}
  <div class="field"><label>NOTE TO PROVIDER (OPTIONAL)</label><textarea id="adminAssignNote" placeholder="Any context worth passing along..."></textarea></div>
  <div id="adminAssignCandidates" style="max-height:360px;overflow:auto;display:flex;flex-direction:column;gap:8px"></div>
  <div id="adminAssignError" class="notice hidden" style="margin-top:12px"></div>
+</div></div>
+
+<div id="adminDeletedDetailModal" class="modal"><div class="modalbox">
+ <div class="modalhead"><div><div class="eyebrow">Deleted account</div><h2>Account history</h2></div><button class="close" onclick="closeModal()">×</button></div>
+ <div id="adminDeletedDetailBody" style="max-height:520px;overflow:auto"></div>
 </div></div>
 
 <div id="adminPlanModal" class="modal"><div class="modalbox">
@@ -712,7 +745,7 @@ button{font:inherit;cursor:pointer}
 <div id="loginModal" class="modal"><div class="modalbox loginbox">
  <div class="modalhead"><div><div class="eyebrow">Secure sign in</div><h2>Welcome back</h2></div><button class="close" onclick="closeLogin()">×</button></div>
  <div class="field"><label>EMAIL</label><input id="loginEmail" type="email" placeholder="you@example.com"></div>
- <div class="field"><label>PASSWORD</label><input id="loginPassword" type="password" placeholder="Password"></div>
+ <div class="field"><label>PASSWORD</label><div class="pwfield"><input id="loginPassword" type="password" placeholder="Password"><button type="button" class="pwtoggle" onclick="togglePasswordVisibility('loginPassword',this)">SHOW</button></div></div>
  <div id="loginError" class="notice hidden"></div>
  <div class="mini-actions"><button class="secondary" onclick="closeLogin()">Cancel</button><button class="primary" onclick="login()">Sign In</button></div>
  <p class="authhint">New here? <a href="#" onclick="closeLogin();openSignup();return false" style="color:var(--green);font-weight:800">Create an account</a></p>
@@ -726,7 +759,7 @@ button{font:inherit;cursor:pointer}
  </div>
  <div class="field"><label>FULL NAME</label><input id="signupName" placeholder="Jane Doe"></div>
  <div class="field"><label>EMAIL</label><input id="signupEmail" type="email" placeholder="you@example.com"></div>
- <div class="field"><label>PASSWORD</label><input id="signupPassword" type="password" placeholder="At least 8 characters"></div>
+ <div class="field"><label>PASSWORD</label><div class="pwfield"><input id="signupPassword" type="password" placeholder="At least 8 characters"><button type="button" class="pwtoggle" onclick="togglePasswordVisibility('signupPassword',this)">SHOW</button></div></div>
  <div class="field"><label>PHONE</label><input id="signupPhone" placeholder="(214) 555-0100"></div>
  <div id="signupHomeownerFields"><div class="field"><label>COMMUNITY / CITY</label><input id="signupCommunity" placeholder="Richardson Community"></div><div class="field"><label>HOME ADDRESS <span class="subtle" style="font-weight:600;text-transform:none">(optional: unlocks Neighborhood on a Home Care Plan)</span></label><input id="signupAddress" placeholder="123 Main St, Richardson, TX"></div></div>
  <div id="signupProviderFields" class="hidden">
@@ -736,6 +769,14 @@ button{font:inherit;cursor:pointer}
  <div id="signupError" class="notice hidden"></div>
  <div class="mini-actions"><button class="secondary" onclick="closeSignup()">Cancel</button><button class="primary" onclick="signup()">Create Account</button></div>
  <p class="authhint">Already have an account? <a href="#" onclick="closeSignup();openLogin();return false" style="color:var(--green);font-weight:800">Sign in</a></p>
+</div></div>
+
+<div id="deleteAccountModal" class="modal"><div class="modalbox">
+ <div class="modalhead"><div><div class="eyebrow" style="color:#a4402f">This can't be undone</div><h2>Delete your account?</h2></div><button class="close" onclick="closeModal()">×</button></div>
+ <p style="color:var(--muted);font-size:13.5px;line-height:1.5">You'll be signed out immediately and won't be able to log back in. Enter your password to confirm.</p>
+ <div class="field"><label>PASSWORD</label><div class="pwfield"><input id="deleteAccountPassword" type="password" placeholder="Password"><button type="button" class="pwtoggle" onclick="togglePasswordVisibility('deleteAccountPassword',this)">SHOW</button></div></div>
+ <div id="deleteAccountError" class="notice hidden"></div>
+ <div class="mini-actions"><button class="secondary" onclick="closeModal()">Cancel</button><button class="primary" style="background:#a4402f" onclick="submitDeleteAccount()">Delete My Account</button></div>
 </div></div>
 <div id="toast" class="toast"></div>
 
@@ -935,6 +976,30 @@ async function handleAvatarFileChange(input){
   }catch(e){ fail(e.message) }
   finally{ input.value=''; }
 }
+function dangerZoneHTML(){
+  return `<div class="request" style="margin-top:14px;border-color:#e6b8ae">
+    <div class="requestrow" style="flex-direction:column;align-items:flex-start;gap:8px;width:100%">
+      <b style="font-size:14.5px;color:#a4402f">Delete Account</b>
+      <div class="subtle" style="font-size:12.5px;margin-top:-4px">This permanently signs you out and blocks future logins. Your past requests and chats stay on file for support/records purposes.</div>
+      <button class="secondary" style="border-color:#e6b8ae;color:#a4402f" onclick="openDeleteAccountModal()">Delete My Account</button>
+    </div>
+  </div>`;
+}
+function openDeleteAccountModal(){
+  document.getElementById('deleteAccountPassword').value='';
+  document.getElementById('deleteAccountError').classList.add('hidden');
+  document.getElementById('deleteAccountModal').classList.add('show');
+}
+async function submitDeleteAccount(){
+  const password=document.getElementById('deleteAccountPassword').value;
+  const err=document.getElementById('deleteAccountError'); err.classList.add('hidden');
+  if(!password){err.textContent='Enter your password to confirm.';err.classList.remove('hidden');return}
+  try{
+    await api('/account/delete',{method:'POST',body:JSON.stringify({password})});
+    closeModal(); authToken=null; currentUser=null; localStorage.removeItem('lc_token'); updateNavAuthUI(); show('home');
+    toast('Your account has been deleted.');
+  }catch(e){ err.textContent=e.message; err.classList.remove('hidden'); }
+}
 function avatarEditorHTML(role,user){
   const icons=AVATAR_ICONS[role]||AVATAR_ICONS.homeowner;
   const hasAvatar=!!(user&&user.avatarKind);
@@ -971,6 +1036,12 @@ function openLogin(role){
   document.getElementById('loginModal').classList.add('show');
 }
 function closeLogin(){document.getElementById('loginModal').classList.remove('show')}
+function togglePasswordVisibility(inputId,btn){
+  const inp=document.getElementById(inputId);
+  const showing=inp.type==='text';
+  inp.type=showing?'password':'text';
+  btn.textContent=showing?'SHOW':'HIDE';
+}
 async function login(){
   const err=document.getElementById('loginError');err.classList.add('hidden');
   try{const d=await api('/auth/login',{method:'POST',body:JSON.stringify({email:document.getElementById('loginEmail').value,password:document.getElementById('loginPassword').value})});authToken=d.token;localStorage.setItem('lc_token',authToken);currentUser=d.user;closeLogin();updateNavAuthUI();show(currentUser.role==='homeowner'?'homeowner':(currentUser.role==='admin'?'admin':'provider'));if(currentUser.role!=='admin')await loadDashboard();toast('Signed in as '+currentUser.name)}catch(e){err.textContent=e.message;err.classList.remove('hidden')}
@@ -1445,7 +1516,27 @@ async function loadQuoteChatMessages(containerId,quoteId){
     const d=await api('/quotes/'+quoteId+'/messages');
     el.innerHTML = d.messages.length ? d.messages.map(m=>`<div style="align-self:${m.senderId===currentUser.id?'flex-end':'flex-start'};background:${m.senderId===currentUser.id?'var(--mint)':'#f0f4f2'};padding:10px 12px;border-radius:10px;max-width:90%"><div style="font-size:13px">${esc(m.body)}</div><div class="statusline" style="margin-top:4px">${esc(new Date(m.createdAt).toLocaleString())}</div></div>` ).join('') : '<div class="statusline">No messages yet. Say hello.</div>';
     el.scrollTop=el.scrollHeight;
+    clearQuoteUnread(quoteId);
   }catch(e){ el.innerHTML='<div class="statusline">Could not load messages.</div>'; }
+}
+// Opening a thread marks it read server-side (see GET /quotes/:id/messages) — mirror that locally
+// so the "NEW" badge on its lead/quote card and the nav counts disappear immediately, instead of
+// waiting on the next full dashboard reload.
+function clearQuoteUnread(quoteId){
+  for(const role of ['homeowner','provider']){
+    const d=lastDashboard[role]; if(!d)continue;
+    let touched=false;
+    (d.requests||[]).forEach(r=>{
+      if(r.quote && r.quote.id===quoteId && r.quote.unreadCount){ r.quote.unreadCount=0; touched=true; }
+      (r.quotes||[]).forEach(qq=>{ if(qq.id===quoteId && qq.unreadCount){ qq.unreadCount=0; touched=true; } });
+    });
+    if(touched){
+      d.unreadChatCount=Math.max(0,(d.requests||[]).reduce((sum,r)=>sum+(r.quote?r.quote.unreadCount||0:0)+(r.quotes||[]).reduce((s2,qq)=>s2+(qq.unreadCount||0),0),0));
+      updateNavBadges(role,d);
+      if(activePanel[role]==='leads') renderPrLeads(d);
+      if(activePanel[role]==='quotes') renderHoQuotes(d);
+    }
+  }
 }
 async function sendQuoteChatMessage(taId,quoteId,containerId){
   const ta=document.getElementById(taId); const text=(ta?.value||'').trim(); if(!text||!quoteId)return;
@@ -1490,13 +1581,56 @@ async function loadDashboard(){
       updateCarePlanSideitem();
       const req=d.requests[0]; const rbox=document.getElementById('ho-recent-request');
       if(rbox) rbox.innerHTML = req ? requestCardHTML(req) : '<div class="stub-notice">You haven\'t submitted any requests yet.</div>';
+      updateNavBadges('homeowner',d);
     }else{
       const pill=document.getElementById('pr-opportunity-pill'); if(pill)pill.textContent=`${visibleFeedRequests(d).length} open opportunities`;
       updateProviderPlanBadge();
       renderPrFeed(d);
+      updateNavBadges('provider',d);
     }
     renderPanel(page, activePanel[page]);
   }catch(e){console.error(e)}
+}
+
+// Relative time for lead/quote cards, so two cards with the same price range and status don't
+// read as identical — "2 hours ago" vs "3 days ago" is the actual distinguishing signal.
+function timeAgo(iso){
+  if(!iso)return '';
+  const diffMs=Date.now()-new Date(iso).getTime();
+  const min=Math.floor(diffMs/60000);
+  if(min<1)return 'just now';
+  if(min<60)return min+'m ago';
+  const hr=Math.floor(min/60);
+  if(hr<24)return hr+'h ago';
+  const day=Math.floor(hr/24);
+  if(day<7)return day+'d ago';
+  return new Date(iso).toLocaleDateString();
+}
+// Badges the "My Leads"/"My Quotes" and "Messages" sidebar nav items, and the header bell, with
+// unread counts — the same counts computed server-side per quote thread / announcement / support
+// reply, so this is just rendering them, not deciding what's unread.
+function updateNavBadges(role,d){
+  const prefix=role==='homeowner'?'ho':'pr';
+  const chatPanel=role==='homeowner'?'quotes':'leads';
+  const chatCount=d.unreadChatCount||0, msgCount=d.unreadMessagesCount||0;
+  const chatItem=document.querySelector('#'+role+' .sidebar .sideitem[data-panel="'+chatPanel+'"]');
+  if(chatItem){
+    let b=chatItem.querySelector('.navbadge');
+    if(chatCount>0){ if(!b){b=document.createElement('span');b.className='navbadge';chatItem.appendChild(b)} b.textContent=chatCount; }
+    else if(b) b.remove();
+  }
+  const msgItem=document.querySelector('#'+role+' .sidebar .sideitem[data-panel="messages"]');
+  if(msgItem){
+    let b=msgItem.querySelector('.navbadge');
+    if(msgCount>0){ if(!b){b=document.createElement('span');b.className='navbadge';msgItem.appendChild(b)} b.textContent=msgCount; }
+    else if(b) b.remove();
+  }
+  const bell=document.getElementById(prefix+'-notif-bell');
+  if(bell){
+    let dot=bell.querySelector('.icn-dot');
+    if((chatCount+msgCount)>0){ if(!dot){dot=document.createElement('span');dot.className='icn-dot';bell.appendChild(dot)} }
+    else if(dot) dot.remove();
+  }
 }
 
 function toggleAllServices(role){
@@ -1512,6 +1646,9 @@ function switchPanel(role,panelName){
   document.querySelectorAll('#'+role+' .sidebar .sideitem[data-panel]').forEach(el=>el.classList.toggle('active',el.dataset.panel===panelName));
   document.querySelectorAll('#'+role+' .content .panel').forEach(el=>el.classList.toggle('hidden',el.dataset.panel!==panelName));
   renderPanel(role,panelName);
+  if(panelName==='messages'){
+    api('/announcements/mark-seen',{method:'POST'}).then(()=>{ if(lastDashboard[role]){lastDashboard[role].unreadMessagesCount=0; updateNavBadges(role,lastDashboard[role]);} }).catch(()=>{});
+  }
 }
 function renderPanel(role,panelName){
   const d=lastDashboard[role]; if(!d)return;
@@ -1543,7 +1680,8 @@ function renderHoQuotes(d){
   const all=[];
   (d.requests||[]).forEach(r=>(r.quotes||[]).forEach(q=>all.push({r,q})));
   if(!all.length){el.innerHTML='<div class="notice">No quotes yet. Once providers respond to your requests, they\'ll show up here.</div>';return}
-  el.innerHTML=all.map(({r,q})=>`<div class="request">${photoSlotHTML(serviceImage(r.serviceType),null,'req-thumb')}<div class="requestrow"><div><span class="tag">${esc(r.serviceType.toUpperCase())}</span><span class="tag status-${esc(q.status)}">${esc(q.status.toUpperCase())}</span><h3>${esc(r.title)}</h3><p>${esc(q.provider.name)} · $${Number(q.amountMin)}–$${Number(q.amountMax)} · ${esc(q.availability)}</p></div><button class="secondary" onclick="document.getElementById('quotesModal').classList.add('show');loadQuotes('${esc(r.id)}')">View</button></div></div>`).join('');
+  all.sort((a,b)=>new Date(b.q.lastActivityAt||b.q.createdAt)-new Date(a.q.lastActivityAt||a.q.createdAt));
+  el.innerHTML=all.map(({r,q})=>`<div class="request">${photoSlotHTML(serviceImage(r.serviceType),null,'req-thumb')}<div class="requestrow"><div><span class="tag">${esc(r.serviceType.toUpperCase())}</span><span class="tag status-${esc(q.status)}">${esc(q.status.toUpperCase())}</span>${q.unreadCount?`<span class="card-unread-badge">${q.unreadCount} NEW</span>`:''}<h3>${esc(r.title)}</h3><p>${esc(q.provider.name)} · $${Number(q.amountMin)}–$${Number(q.amountMax)} · ${esc(q.availability)}</p><div class="card-activity-ts">${q.unreadCount?'New message':'Last activity'} ${timeAgo(q.lastActivityAt||q.createdAt)}</div></div><button class="secondary" onclick="document.getElementById('quotesModal').classList.add('show');loadQuotes('${esc(r.id)}')">View</button></div></div>`).join('');
 }
 function renderHoJobs(d){
   const el=document.getElementById('ho-jobs-list'); if(!el)return;
@@ -1563,7 +1701,7 @@ function renderHoProfile(d){
       <div id="profileAddressError" class="notice hidden"></div>
       <button class="secondary" onclick="saveProfileAddress()">Save Address</button>
     </div>
-  </div>` + avatarEditorHTML('homeowner',u);
+  </div>` + avatarEditorHTML('homeowner',u) + dangerZoneHTML();
 }
 async function saveProfileAddress(){
   const input=document.getElementById('profileAddressInput'); const address=(input?.value||'').trim();
@@ -1608,7 +1746,8 @@ function renderPrLeads(d){
   const el=document.getElementById('pr-leads-list'); if(!el)return;
   const leads=(d.requests||[]).filter(r=>r.quote);
   if(!leads.length){el.innerHTML='<div class="notice">You haven\'t sent any quotes yet. Respond to requests in the feed to see them here.</div>';return}
-  el.innerHTML=leads.map(r=>`<div class="request" style="cursor:pointer" onclick="openLeadChat('${esc(r.quote.id)}')">${photoSlotHTML(serviceImage(r.serviceType),null,'req-thumb')}<div class="requestrow"><div><span class="tag">${esc(r.serviceType.toUpperCase())}</span><span class="tag status-${esc(r.quote.status)}">${esc(r.quote.status.toUpperCase())}</span><h3>${esc(r.title)}</h3><p>Your quote: $${Number(r.quote.amountMin)}–$${Number(r.quote.amountMax)} · ${esc(r.quote.availability)}</p></div></div></div>`).join('');
+  leads.sort((a,b)=>new Date(b.quote.lastActivityAt||b.quote.createdAt)-new Date(a.quote.lastActivityAt||a.quote.createdAt));
+  el.innerHTML=leads.map(r=>`<div class="request" style="cursor:pointer" onclick="openLeadChat('${esc(r.quote.id)}')">${photoSlotHTML(serviceImage(r.serviceType),null,'req-thumb')}<div class="requestrow"><div><span class="tag">${esc(r.serviceType.toUpperCase())}</span><span class="tag status-${esc(r.quote.status)}">${esc(r.quote.status.toUpperCase())}</span>${r.quote.unreadCount?`<span class="card-unread-badge">${r.quote.unreadCount} NEW</span>`:''}<h3>${esc(r.title)}</h3><p>Your quote: $${Number(r.quote.amountMin)}–$${Number(r.quote.amountMax)} · ${esc(r.quote.availability)}</p><div class="card-activity-ts">${r.quote.unreadCount?'New message':'Last activity'} ${timeAgo(r.quote.lastActivityAt||r.quote.createdAt)}</div></div></div></div>`).join('');
 }
 function openLeadChat(quoteId){
   const lead=((lastDashboard.provider&&lastDashboard.provider.requests)||[]).find(r=>r.quote&&r.quote.id===quoteId);
@@ -1671,7 +1810,7 @@ async function clearProviderServiceArea(){
 }
 function renderPrProfile(d){
   const el=document.getElementById('pr-profile-view'); if(!el)return; const u=d.user;
-  el.innerHTML=`<div class="request"><div class="avatar-slot" style="width:56px;height:56px;overflow:hidden">${avatarInnerHTML(u,56)}</div><div class="requestrow" style="flex-direction:column;align-items:flex-start;gap:6px"><div><b style="font-size:16px">${esc(u.name)}</b><div class="statusline">★ ${esc(u.rating||'New')} · ${esc(u.reviewCount||0)} jobs${u.verified?' · Verified':''} · Plan: ${esc(u.subscription)}</div></div><p style="margin:6px 0 0">${esc(u.businessDescription||'')}</p><p style="margin:4px 0 0">Services: ${esc((u.serviceTypes||[]).join(', '))}<br>Phone: ${esc(u.phone||'N/A')}</p></div></div>` + providerVerificationHTML(u) + providerServiceAreaHTML(u) + avatarEditorHTML('provider',u);
+  el.innerHTML=`<div class="request"><div class="avatar-slot" style="width:56px;height:56px;overflow:hidden">${avatarInnerHTML(u,56)}</div><div class="requestrow" style="flex-direction:column;align-items:flex-start;gap:6px"><div><b style="font-size:16px">${esc(u.name)}</b><div class="statusline">★ ${esc(u.rating||'New')} · ${esc(u.reviewCount||0)} jobs${u.verified?' · Verified':''} · Plan: ${esc(u.subscription)}</div></div><p style="margin:6px 0 0">${esc(u.businessDescription||'')}</p><p style="margin:4px 0 0">Services: ${esc((u.serviceTypes||[]).join(', '))}<br>Phone: ${esc(u.phone||'N/A')}</p></div></div>` + providerVerificationHTML(u) + providerServiceAreaHTML(u) + avatarEditorHTML('provider',u) + dangerZoneHTML();
 }
 
 // --- provider verification / background-check ---
@@ -1858,6 +1997,8 @@ function switchAdminPanel(panelName){
   else if(panelName==='verification') loadAdminQueue(adminQueueStatus);
   else if(panelName==='reported') loadAdminReported();
   else if(panelName==='support') loadAdminSupportThreads();
+  else if(panelName==='deleted') loadAdminDeleted();
+  else if(panelName==='emaillog') loadAdminEmailLog('all');
 }
 async function loadAdminReported(){
   const el=document.getElementById('admin-reported-list'); if(!el)return;
@@ -1875,6 +2016,45 @@ async function openAdminQuoteThread(quoteId,title){
   activeQuoteChatId=quoteId;
   document.getElementById('jobChatModal').classList.add('show');
   await loadQuoteChatMessages('jobChatMessages',quoteId);
+}
+async function loadAdminDeleted(){
+  const el=document.getElementById('admin-deleted-list'); if(!el)return;
+  el.innerHTML='<div class="notice">Loading…</div>';
+  try{
+    const d=await api('/admin/deleted-accounts');
+    if(!d.accounts.length){el.innerHTML='<div class="notice">No deleted accounts.</div>';return}
+    el.innerHTML=d.accounts.map(a=>`<div class="request" style="cursor:pointer" onclick="openAdminDeletedAccount('${esc(a.id)}')"><div class="requestrow"><div><h3 style="margin:0 0 4px">${esc(a.name)}</h3><p style="margin:0;font-size:13px">${esc(a.role)} · ${esc(a.email)}</p><p class="statusline" style="margin-top:6px">Deleted ${a.deletedAt?esc(new Date(a.deletedAt).toLocaleString()):'—'}</p></div><button class="secondary">View History →</button></div></div>`).join('');
+  }catch(e){el.innerHTML='<div class="notice">'+esc(e.message)+'</div>'}
+}
+async function openAdminDeletedAccount(userId){
+  const modal=document.getElementById('adminDeletedDetailModal');
+  const body=document.getElementById('adminDeletedDetailBody');
+  body.innerHTML='Loading…'; modal.classList.add('show');
+  try{
+    const d=await api('/admin/deleted-accounts/'+userId);
+    const a=d.account;
+    let html=`<div class="request"><div class="requestrow"><div><h3 style="margin:0 0 4px">${esc(a.name)}</h3><p style="margin:0;font-size:13px">${esc(a.role)} · ${esc(a.email)}${a.phone?' · '+esc(a.phone):''}</p><p class="statusline" style="margin-top:6px">Account created ${esc(new Date(a.createdAt).toLocaleDateString())} · Deleted ${a.deletedAt?esc(new Date(a.deletedAt).toLocaleString()):'—'}</p></div></div></div>`;
+    if(a.role==='homeowner'){
+      html+=`<b style="font-size:13px;display:block;margin:16px 0 8px">Requests (${d.requests.length})</b>`;
+      html+=d.requests.length?d.requests.map(r=>`<div class="request" style="padding:10px 12px"><b style="font-size:13px">${esc(r.title)}</b><div class="statusline">${esc(r.serviceType)} · ${esc(r.status)} · ${esc(new Date(r.createdAt).toLocaleDateString())}</div></div>`).join(''):'<div class="notice">None</div>';
+    }
+    html+=`<b style="font-size:13px;display:block;margin:16px 0 8px">Quote Threads (${d.quotes.length})</b>`;
+    html+=d.quotes.length?d.quotes.map(q=>`<div class="request" style="padding:10px 12px"><div class="requestrow"><div><b style="font-size:13px">${esc(q.requestTitle)}</b><div class="statusline">With ${esc(q.otherPartyName)} · ${esc(q.status)} · $${Number(q.amountMin)}–$${Number(q.amountMax)}</div></div><button class="secondary" onclick="openAdminQuoteThread('${esc(q.id)}','${esc(q.requestTitle)}')">View Chat</button></div></div>`).join(''):'<div class="notice">None</div>';
+    html+=`<b style="font-size:13px;display:block;margin:16px 0 8px">Jobs (${d.jobs.length})</b>`;
+    html+=d.jobs.length?d.jobs.map(j=>`<div class="request" style="padding:10px 12px"><b style="font-size:13px">${esc(j.title||'Service job')}</b><div class="statusline">${esc(j.status)}${j.receiptUploadedAt?' · closed out '+esc(new Date(j.receiptUploadedAt).toLocaleDateString()):''}</div></div>`).join(''):'<div class="notice">None</div>';
+    body.innerHTML=html;
+  }catch(e){body.innerHTML='<div class="notice">'+esc(e.message)+'</div>'}
+}
+async function loadAdminEmailLog(status){
+  const el=document.getElementById('admin-emaillog-list'); const summary=document.getElementById('admin-emaillog-summary');
+  if(!el)return; el.innerHTML='<div class="notice">Loading…</div>';
+  try{
+    const d=await api('/admin/email-log?status='+encodeURIComponent(status||'all'));
+    if(summary)summary.textContent=`Resend configured: ${d.resendConfigured?'yes':'NO — RESEND_API_KEY is missing, every email below is a dry run only'} · From: ${d.emailFrom} · Sent ${d.counts.sent} · Errors ${d.counts.error} · Dry run ${d.counts.dry_run}`;
+    if(!d.emails.length){el.innerHTML='<div class="notice">No emails logged yet.</div>';return}
+    const statusColor={sent:'#286b58',error:'#a4402f',dry_run:'#8a6a10'};
+    el.innerHTML=d.emails.map(m=>`<div class="request" style="padding:10px 12px"><div class="requestrow"><div><b style="font-size:13px">${esc(m.subject)}</b><div class="statusline">to ${esc(m.to)} · ${esc(m.type)} · ${esc(new Date(m.sentAt).toLocaleString())}${m.error?' · '+esc(m.error.slice(0,200)):''}</div></div><span class="tag" style="color:${statusColor[m.status]||'#333'}">${esc(m.status.toUpperCase())}</span></div></div>`).join('');
+  }catch(e){el.innerHTML='<div class="notice">'+esc(e.message)+'</div>'}
 }
 let adminActiveSupportUserId=null;
 async function loadAdminSupportThreads(){
