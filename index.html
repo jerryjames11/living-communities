@@ -72,6 +72,10 @@ button{font:inherit;cursor:pointer}
 .price.featured{border:2px solid var(--green)}
 .price-badge{position:absolute;top:-1px;left:-2px;right:-2px;background:var(--green);color:#fff;text-align:center;font-size:11px;font-weight:800;letter-spacing:.5px;padding:7px;border-radius:19px 19px 0 0;text-transform:uppercase}
 .price.featured .price-body{margin-top:20px}
+.price.elite{border:2px solid #b8862f}
+.price.elite .price-body{margin-top:20px}
+.price-badge.elite-badge{background:#b8862f}
+.featured-tag{display:inline-block;background:#b8862f;color:#fff;font-size:10px;font-weight:800;letter-spacing:.4px;padding:3px 8px;border-radius:20px;text-transform:uppercase}
 .price h3{font-size:19px;margin:0 0 3px}
 .price .sub{color:var(--muted);font-size:13px;margin-bottom:14px}
 .price .amount{font-size:34px;font-weight:800}
@@ -143,6 +147,8 @@ button{font:inherit;cursor:pointer}
 .card-unread-badge{background:#c0392b;color:#fff;font-size:10.5px;font-weight:800;border-radius:999px;padding:2px 8px;letter-spacing:.2px}
 .card-activity-ts{color:var(--muted);font-size:11.5px}
 .admin-status-tab.active{background:var(--mint);color:var(--green);border-color:transparent}
+.filter-tab.active{background:var(--mint);color:var(--green);border-color:transparent}
+.tag.status-delisted{background:#f3e6e2;color:#8a4a2f}
 .dispatch-sub-tab.active{background:var(--mint);color:var(--green);border-color:transparent}
 .careplan-account{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-top:10px}
 .careplan-account-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:8px}
@@ -453,7 +459,14 @@ button{font:inherit;cursor:pointer}
 <div class="section-row" style="margin-top:22px"><h3 style="margin:0">Recent Requests</h3></div>
 <div id="ho-recent-request"></div>
 </div>
-<div class="panel hidden" data-panel="requests"><div id="ho-requests-list"></div></div>
+<div class="panel hidden" data-panel="requests">
+  <div class="mini-actions" style="margin-bottom:14px">
+    <button class="secondary filter-tab active" data-status="open" onclick="setHoRequestsFilter('open')">Open</button>
+    <button class="secondary filter-tab" data-status="closed" onclick="setHoRequestsFilter('closed')">Closed</button>
+    <button class="secondary filter-tab" data-status="delisted" onclick="setHoRequestsFilter('delisted')">Delisted</button>
+  </div>
+  <div id="ho-requests-list"></div>
+</div>
 <div class="panel hidden" data-panel="quotes"><div id="ho-quotes-list"></div></div>
 <div class="panel hidden" data-panel="jobs"><div id="ho-jobs-list"></div></div>
 <div class="panel hidden" data-panel="payments"><div class="stub-notice"><div class="icon"><svg width="30" height="30" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="16" height="11" rx="1.8"/><path d="M2 9h16"/><path d="M5 13h4"/></svg></div>Payments aren't live yet. Once providers accept jobs through Living Communities, your payment history and receipts will show up here.</div></div>
@@ -511,12 +524,14 @@ button{font:inherit;cursor:pointer}
 <div class="welcome"><div class="welcome-text"><h2>Find your next customer.</h2><p>Review nearby homeowner requests. Exact addresses and personal details stay private until the homeowner chooses to connect.</p></div><div class="photo-slot welcome-photo" data-label="images/dashboard-welcome.jpg"><img src="images/dashboard-welcome.jpg" alt="" onerror="this.closest('.photo-slot').classList.add('missing')"></div></div>
 <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
   <select id="pr-feed-service-filter" onchange="renderPrFeed(lastDashboard.provider)" style="border:1px solid #cbd9d3;border-radius:10px;padding:9px 12px;font:inherit;font-size:13.5px"><option value="">All Services</option></select>
-  <select id="pr-feed-urgency-filter" onchange="renderPrFeed(lastDashboard.provider)" style="border:1px solid #cbd9d3;border-radius:10px;padding:9px 12px;font:inherit;font-size:13.5px">
-    <option value="">Any Urgency</option>
-    <option value="Flexible">Flexible</option>
-    <option value="This week">This week</option>
-    <option value="ASAP">ASAP</option>
-    <option value="Emergency">Emergency</option>
+  <select id="pr-feed-distance-filter" onchange="renderPrFeed(lastDashboard.provider)" style="border:1px solid #cbd9d3;border-radius:10px;padding:9px 12px;font:inherit;font-size:13.5px">
+    <option value="">Any Distance</option>
+    <option value="5">Within 5 mi</option>
+    <option value="10">Within 10 mi</option>
+    <option value="25">Within 25 mi</option>
+    <option value="50">Within 50 mi</option>
+    <option value="100">Within 100 mi</option>
+    <option value="200">Within 200 mi</option>
   </select>
 </div>
 <div id="pr-feed-list"></div>
@@ -690,11 +705,23 @@ button{font:inherit;cursor:pointer}
   <div class="logo" style="margin-left:4px">Living <span>Communities</span></div>
 </div>
 <div class="app">
-<div class="dash-titlebar"><div><h1>Provider Plan</h1><p class="subtle">Free providers can send 3 quotes and start 3 new conversations a month. Go Pro for unlimited.</p></div></div>
+<div class="dash-titlebar"><div><h1>Provider Plan</h1><p class="subtle">Free: 3 quotes/convos a month, 20mi service area. Pro: 20 quotes/convos a month, 50mi. Elite: unlimited quotes, convos, and service area, plus a Featured badge (requires a 4.5★ rating and 10 completed jobs), priority placement, and quote analytics.</p></div></div>
 <div class="current-plan-banner"><div>You're currently on the <b id="pp-current-label">Free</b> plan.</div></div>
-<div class="pricing3" style="grid-template-columns:repeat(2,1fr);max-width:680px;margin:0 auto">
-  <div class="price" id="pp-card-free"><h3>Free</h3><div class="sub">Get started at no cost</div><div class="amount">$0<small>/month</small></div><ul><li>See every open request</li><li>3 quotes sent per month</li><li>3 new conversations started per month</li></ul><button class="secondary" style="width:100%" id="pp-btn-free" onclick="selectProviderPlan('free')">Choose Plan</button></div>
-  <div class="price featured" id="pp-card-pro"><div class="price-badge">Grow faster</div><div class="price-body"><h3>Pro Provider</h3><div class="sub">For active providers</div><div class="amount">$9.99<small>/month</small></div><ul><li>Unlimited quotes</li><li>Unlimited new conversations</li><li>Everything in Free</li></ul><button class="primary" style="width:100%" id="pp-btn-pro" onclick="selectProviderPlan('pro')">Choose Plan</button></div></div>
+<div class="pricing3" style="max-width:940px;margin:0 auto">
+  <div class="price" id="pp-card-free"><h3>Free</h3><div class="sub">Get started at no cost</div><div class="amount">$0<small>/month</small></div><ul><li>3 quotes sent per month</li><li>3 new conversations started per month</li><li>20 mi service area</li></ul><button class="secondary" style="width:100%" id="pp-btn-free" onclick="selectProviderPlan('free')">Choose Plan</button></div>
+  <div class="price featured" id="pp-card-pro"><div class="price-badge">Grow faster</div><div class="price-body"><h3>Pro Provider</h3><div class="sub">For active providers</div><div class="amount">$9.99<small>/month</small></div><ul><li>20 quotes sent per month</li><li>20 new conversations started per month</li><li>50 mi service area</li><li>Everything in Free</li></ul><button class="primary" style="width:100%" id="pp-btn-pro" onclick="selectProviderPlan('pro')">Choose Plan</button></div></div>
+  <div class="price elite" id="pp-card-elite"><div class="price-badge elite-badge">Stand out</div><div class="price-body"><h3>Elite Provider</h3><div class="sub">For providers who want the most leads</div><div class="amount">$20.99<small>/month</small></div><ul><li>Unlimited quotes</li><li>Unlimited new conversations</li><li>Unlimited service area (nationwide)</li><li>Featured badge on every quote — requires a 4.5★ rating and 10 completed jobs</li><li>Priority placement in the homeowner's compare view</li><li>Quote performance analytics</li><li>Everything in Pro</li></ul><button class="primary" style="width:100%" id="pp-btn-elite" onclick="selectProviderPlan('elite')">Choose Plan</button></div></div>
+</div>
+<div id="pp-elite-analytics" class="request hidden" style="margin-top:18px">
+  <div class="requestrow" style="flex-direction:column;align-items:flex-start;gap:10px;width:100%">
+    <b style="font-size:14.5px">Your Quote Analytics <span class="featured-tag">Elite</span></b>
+    <div style="display:flex;gap:24px;flex-wrap:wrap;width:100%">
+      <div><div class="subtle" style="font-size:11.5px">QUOTES SENT (ALL TIME)</div><div id="pp-stat-quotes-total" style="font-size:22px;font-weight:800">0</div></div>
+      <div><div class="subtle" style="font-size:11.5px">WIN RATE</div><div id="pp-stat-win-rate" style="font-size:22px;font-weight:800">—</div></div>
+      <div><div class="subtle" style="font-size:11.5px">QUOTES THIS MONTH</div><div id="pp-stat-quotes-month" style="font-size:22px;font-weight:800">0</div></div>
+      <div><div class="subtle" style="font-size:11.5px">NEW CHATS THIS MONTH</div><div id="pp-stat-convos-month" style="font-size:22px;font-weight:800">0</div></div>
+    </div>
+  </div>
 </div>
 </div>
 </main>
@@ -735,15 +762,36 @@ button{font:inherit;cursor:pointer}
 <div id="checkoutModal" class="modal"><div class="modalbox">
  <div class="modalhead"><div><div class="eyebrow">Confirm your plan</div><h2>Payment details</h2></div><button class="close" onclick="closeCheckout()">×</button></div>
  <div class="checkout-summary"><div id="checkout-plan-name">Plus plan<small>Billed monthly</small></div><div id="checkout-plan-price">$9.99/mo</div></div>
+ <div class="subtle" style="font-size:11.5px;margin:-2px 0 8px">Texas customers: applicable sales tax is added to each charge.</div>
  <div class="notice" id="checkoutSecurityNotice"><svg class="icn" width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="9" width="11" height="7.5" rx="1.5"/><path d="M6.5 9V6.3a3.5 3.5 0 017 0V9"/></svg> This is a demo checkout. No real charge is made and no card details are stored.</div>
  <div class="field"><label>NAME ON CARD</label><input id="ckName" placeholder="Jane Doe"></div>
+ <div class="field"><label>BILLING ADDRESS</label><input id="ckAddrLine1" placeholder="123 Main St"></div>
+ <div class="cardrow">
+   <div class="field"><label>CITY</label><input id="ckAddrCity" placeholder="Richardson"></div>
+   <div class="field"><label>STATE</label>
+     <select id="ckAddrState">
+       <option value="">Select…</option>
+       <option value="AL">AL</option><option value="AK">AK</option><option value="AZ">AZ</option><option value="AR">AR</option><option value="CA">CA</option>
+       <option value="CO">CO</option><option value="CT">CT</option><option value="DE">DE</option><option value="DC">DC</option><option value="FL">FL</option>
+       <option value="GA">GA</option><option value="HI">HI</option><option value="ID">ID</option><option value="IL">IL</option><option value="IN">IN</option>
+       <option value="IA">IA</option><option value="KS">KS</option><option value="KY">KY</option><option value="LA">LA</option><option value="ME">ME</option>
+       <option value="MD">MD</option><option value="MA">MA</option><option value="MI">MI</option><option value="MN">MN</option><option value="MS">MS</option>
+       <option value="MO">MO</option><option value="MT">MT</option><option value="NE">NE</option><option value="NV">NV</option><option value="NH">NH</option>
+       <option value="NJ">NJ</option><option value="NM">NM</option><option value="NY">NY</option><option value="NC">NC</option><option value="ND">ND</option>
+       <option value="OH">OH</option><option value="OK">OK</option><option value="OR">OR</option><option value="PA">PA</option><option value="RI">RI</option>
+       <option value="SC">SC</option><option value="SD">SD</option><option value="TN">TN</option><option value="TX">TX</option><option value="UT">UT</option>
+       <option value="VT">VT</option><option value="VA">VA</option><option value="WA">WA</option><option value="WV">WV</option><option value="WI">WI</option>
+       <option value="WY">WY</option>
+     </select>
+   </div>
+ </div>
+ <div class="field"><label>BILLING ZIP</label><input id="ckAddrZip" placeholder="75080" inputmode="numeric" maxlength="10" oninput="this.value=this.value.replace(/[^\d]/g,'')"></div>
  <div id="ckDemoFields">
    <div class="field"><label>CARD NUMBER</label><input id="ckCardNumber" placeholder="4242 4242 4242 4242" inputmode="numeric" maxlength="19" oninput="formatCardInput(this)"></div>
    <div class="cardrow">
      <div class="field"><label>EXPIRY</label><input id="ckExpiry" placeholder="MM/YY" maxlength="5" oninput="formatExpiryInput(this)"></div>
      <div class="field"><label>CVC</label><input id="ckCvc" placeholder="123" inputmode="numeric" maxlength="4" oninput="this.value=this.value.replace(/[^\d]/g,'')"></div>
    </div>
-   <div class="field"><label>BILLING ZIP</label><input id="ckZip" placeholder="75080" inputmode="numeric" maxlength="10" oninput="this.value=this.value.replace(/[^\d]/g,'')"></div>
  </div>
  <div id="ckStripeFields" class="hidden">
    <div class="field"><label>CARD</label><div id="card-element" style="border:1px solid #cbd9d3;border-radius:10px;padding:12px 13px;background:#fff"></div></div>
@@ -1125,24 +1173,38 @@ function renderPlansPage(){
     }
   });
 }
+const PROVIDER_PLAN_INFO={free:{label:'Free',price:'$0/mo',quoteLimit:3,convoLimit:3},pro:{label:'Pro Provider',price:'$9.99/mo',quoteLimit:20,convoLimit:20},elite:{label:'Elite Provider',price:'$20.99/mo',quoteLimit:null,convoLimit:null}};
+const PROVIDER_PLAN_ORDER=['free','pro','elite'];
+let pendingProviderPlan=null;
 function openProviderPlanPage(){ show('providerplan'); renderProviderPlanPage(); }
 function renderProviderPlanPage(){
   const cur=(currentUser&&currentUser.providerPlan)||'free';
-  const label=document.getElementById('pp-current-label'); if(label) label.textContent=cur==='pro'?'Pro Provider':'Free';
-  ['free','pro'].forEach(plan=>{
+  const label=document.getElementById('pp-current-label'); if(label) label.textContent=(PROVIDER_PLAN_INFO[cur]||PROVIDER_PLAN_INFO.free).label;
+  PROVIDER_PLAN_ORDER.forEach(plan=>{
     const card=document.getElementById('pp-card-'+plan), btn=document.getElementById('pp-btn-'+plan);
     if(!card||!btn)return;
     let tag=card.querySelector('.current-tag');
     card.classList.toggle('current',plan===cur);
     if(plan===cur){
       if(!tag){tag=document.createElement('div');tag.className='current-tag';card.appendChild(tag)}
-      tag.textContent='Current Plan'; tag.style.top=card.classList.contains('featured')?'40px':'16px';
+      tag.textContent='Current Plan'; tag.style.top=(card.classList.contains('featured')||card.classList.contains('elite'))?'40px':'16px';
       btn.textContent='Current Plan'; btn.disabled=true;
     } else {
       if(tag) tag.remove();
-      btn.disabled=false; btn.textContent=plan==='pro'?'Upgrade':'Downgrade';
+      btn.disabled=false; btn.textContent=PROVIDER_PLAN_ORDER.indexOf(plan)>PROVIDER_PLAN_ORDER.indexOf(cur)?'Upgrade':'Downgrade';
     }
   });
+  const analyticsEl=document.getElementById('pp-elite-analytics');
+  if(analyticsEl){
+    const a=(lastDashboard.provider&&lastDashboard.provider.providerAnalytics)||null;
+    analyticsEl.classList.toggle('hidden',!a);
+    if(a){
+      document.getElementById('pp-stat-quotes-total').textContent=a.quotesSentTotal||0;
+      document.getElementById('pp-stat-win-rate').textContent=a.winRatePct!=null?a.winRatePct+'%':'—';
+      document.getElementById('pp-stat-quotes-month').textContent=a.quotesThisMonth||0;
+      document.getElementById('pp-stat-convos-month').textContent=a.convosThisMonth||0;
+    }
+  }
 }
 async function selectProviderPlan(plan){
   if(!currentUser)return;
@@ -1154,17 +1216,21 @@ async function selectProviderPlan(plan){
     return;
   }
   checkoutMode='providerplan';
-  document.getElementById('checkout-plan-name').innerHTML='Pro Provider plan<small>Billed monthly</small>';
-  document.getElementById('checkout-plan-price').textContent='$9.99/mo';
+  pendingProviderPlan=plan;
+  const info=PROVIDER_PLAN_INFO[plan];
+  document.getElementById('checkout-plan-name').innerHTML=`${esc(info.label)} plan<small>Billed monthly</small>`;
+  document.getElementById('checkout-plan-price').textContent=info.price;
   resetCheckoutFields();
   ensureCardElementMounted();
   document.getElementById('checkoutModal').classList.add('show');
 }
 function updateProviderPlanBadge(){
   const el=document.getElementById('pr-usage-badge'); if(!el||!currentUser)return;
-  if(currentUser.providerPlan==='pro'){ el.textContent='Pro Provider · Unlimited'; return; }
+  const plan=currentUser.providerPlan||'free';
+  const info=PROVIDER_PLAN_INFO[plan]||PROVIDER_PLAN_INFO.free;
+  if(info.quoteLimit==null){ el.textContent=info.label+' · Unlimited'; return; }
   const q=currentUser.quotesUsed||0, c=currentUser.convosUsed||0;
-  el.textContent=`${Math.max(0,3-q)} quotes · ${Math.max(0,3-c)} new chats left this month`;
+  el.textContent=`${Math.max(0,info.quoteLimit-q)} quotes · ${Math.max(0,info.convoLimit-c)} new chats left this month`;
 }
 async function selectPlan(plan){
   if(!currentUser)return;
@@ -1181,7 +1247,7 @@ let checkoutMode='plan'; // 'plan' | 'careplan-accept' | 'providerplan'
 let pendingCheckoutPlan=null;
 let pendingAcceptServiceKey=null;
 function resetCheckoutFields(){
-  ['ckName','ckCardNumber','ckExpiry','ckCvc','ckZip'].forEach(id=>{const el=document.getElementById(id); if(el)el.value=''});
+  ['ckName','ckAddrLine1','ckAddrCity','ckAddrState','ckAddrZip','ckCardNumber','ckExpiry','ckCvc'].forEach(id=>{const el=document.getElementById(id); if(el)el.value=''});
   document.getElementById('checkoutError').classList.add('hidden');
 }
 function openCheckoutModal(plan){
@@ -1214,41 +1280,48 @@ async function submitCheckout(){
   const name=document.getElementById('ckName').value.trim();
   const fail=msg=>{err.textContent=msg;err.classList.remove('hidden')};
   if(!name) return fail('Enter the name on the card.');
+  const billingAddress={
+    line1:document.getElementById('ckAddrLine1').value.trim(),
+    city:document.getElementById('ckAddrCity').value.trim(),
+    state:document.getElementById('ckAddrState').value.trim(),
+    zip:document.getElementById('ckAddrZip').value.trim()
+  };
+  if(!billingAddress.line1||!billingAddress.city||!billingAddress.state||!billingAddress.zip){
+    return fail('Enter your full billing address — this is what your sales tax, if any, is based on.');
+  }
   if(!STRIPE_ENABLED){
     const cardRaw=document.getElementById('ckCardNumber').value.replace(/\s+/g,'');
     const expiry=document.getElementById('ckExpiry').value.trim();
     const cvc=document.getElementById('ckCvc').value.trim();
-    const zip=document.getElementById('ckZip').value.trim();
     if(!/^\d{15,16}$/.test(cardRaw)) return fail('Enter a valid card number.');
     if(!/^(0[1-9]|1[0-2])\/\d{2}$/.test(expiry)) return fail('Enter expiry as MM/YY.');
     if(!/^\d{3,4}$/.test(cvc)) return fail('Enter a valid CVC.');
-    if(!zip) return fail('Enter your billing ZIP code.');
   }
   const btn=document.getElementById('checkoutSubmitBtn'); btn.disabled=true; btn.textContent='Processing…';
   try{
     let paymentMethodId=null;
     if(STRIPE_ENABLED){
       const {clientSecret}=await api('/billing/setup-intent',{method:'POST'});
-      const result=await stripe.confirmCardSetup(clientSecret,{payment_method:{card:cardElement,billing_details:{name}}});
+      const result=await stripe.confirmCardSetup(clientSecret,{payment_method:{card:cardElement,billing_details:{name,address:{line1:billingAddress.line1,city:billingAddress.city,state:billingAddress.state,postal_code:billingAddress.zip,country:'US'}}}});
       if(result.error) return fail(result.error.message);
       paymentMethodId=result.setupIntent.payment_method;
     }
     if(checkoutMode==='careplan-accept'){
-      const d=await api('/care-plan/accept',{method:'POST',body:JSON.stringify({serviceKey:pendingAcceptServiceKey,paymentMethodId})});
+      const d=await api('/care-plan/accept',{method:'POST',body:JSON.stringify({serviceKey:pendingAcceptServiceKey,paymentMethodId,billingAddress})});
       currentUser=d.user;
       closeCheckout();
       toast('Service is now active!');
       renderCareBuilder();
       updateCarePlanSideitem();
     } else if(checkoutMode==='providerplan'){
-      const d=await api('/provider-plan',{method:'POST',body:JSON.stringify({plan:'pro',paymentMethodId})});
+      const d=await api('/provider-plan',{method:'POST',body:JSON.stringify({plan:pendingProviderPlan,paymentMethodId,billingAddress})});
       currentUser=d.user;
       closeCheckout();
-      toast('You are now on the Pro Provider plan!');
+      toast('You are now on the '+(PROVIDER_PLAN_INFO[pendingProviderPlan]||{}).label+' plan!');
       renderProviderPlanPage();
       updateProviderPlanBadge();
     } else {
-      const d=await api('/subscription',{method:'POST',body:JSON.stringify({plan:pendingCheckoutPlan,paymentMethodId})});
+      const d=await api('/subscription',{method:'POST',body:JSON.stringify({plan:pendingCheckoutPlan,paymentMethodId,billingAddress})});
       currentUser=d.user||currentUser;
       currentUser.subscription=pendingCheckoutPlan;
       closeCheckout();
@@ -1498,10 +1571,10 @@ async function submitRequest(){
   }catch(e){ if(zipErr && e.status===422){zipErr.textContent=e.message;zipErr.classList.remove('hidden')} else {toast(e.message)} }
 }
 async function acceptQuote(){
-  try{const first=lastDashboard.homeowner&&lastDashboard.homeowner.requests[0];if(!first)return;const qs=await api('/requests/'+first.id+'/quotes');const q=qs.quotes[0];await api('/quotes/'+q.id+'/accept',{method:'POST'});closeModal();toast('Quote accepted and job scheduled');await loadDashboard()}catch(e){toast(e.message)}
+  try{const first=lastDashboard.homeowner&&lastDashboard.homeowner.requests[0];if(!first)return;const qs=await api('/requests/'+first.id+'/quotes');const q=qs.quotes[0];await api('/quotes/'+q.id+'/accept',{method:'POST'});closeModal();toast('Accepted — coordinate details directly with the provider');await loadDashboard()}catch(e){toast(e.message)}
 }
 async function loadQuotes(requestId){
-  try{const d=await api('/requests/'+requestId+'/quotes');quoteTargetRequestId=requestId;const cards=document.querySelector('#quotesModal .quotegrid');cards.innerHTML=d.quotes.map((q,i)=>`<div class="quoteCard ${i===0?'selected':''}" style="position:relative">${q.unreadCount?`<span class="card-unread-badge" style="position:absolute;top:12px;right:12px">${q.unreadCount} NEW</span>`:''}<div class="profilebar"><div class="avatar">${initials(q.provider.name)}</div><div><b>${esc(q.provider.name)}</b><div class="statusline">★ ${esc(q.provider.rating||'New')} · ${esc(q.provider.reviewCount||0)} jobs</div></div></div><h3>$${Number(q.amountMin)}–$${Number(q.amountMax)}</h3><p style="color:var(--muted);font-size:13px">${esc(q.availability)}</p><div class="card-activity-ts">${q.unreadCount?'New message':'Last activity'} ${timeAgo(q.lastActivityAt||q.createdAt)}</div><button class="${i===0?'primary':'secondary'}" style="width:100%;margin-top:8px" onclick="viewQuote('${esc(q.id)}')">View Response</button></div>`).join('')||'<div class="notice">No responses yet.</div>';const countEl=document.getElementById('quotesModalCount');if(countEl)countEl.textContent=`${d.quotes.length} response${d.quotes.length===1?'':'s'}`}catch(e){toast(e.message)}
+  try{const d=await api('/requests/'+requestId+'/quotes');quoteTargetRequestId=requestId;const cards=document.querySelector('#quotesModal .quotegrid');cards.innerHTML=d.quotes.map((q,i)=>`<div class="quoteCard ${i===0?'selected':''}" style="position:relative">${q.unreadCount?`<span class="card-unread-badge" style="position:absolute;top:12px;right:12px">${q.unreadCount} NEW</span>`:''}<div class="profilebar"><div class="avatar">${initials(q.provider.name)}</div><div><b>${esc(q.provider.name)}</b> ${q.featured?'<span class="featured-tag">Featured</span>':''}<div class="statusline">★ ${esc(q.provider.rating||'New')} · ${esc(q.provider.reviewCount||0)} jobs</div></div></div><h3>$${Number(q.amountMin)}–$${Number(q.amountMax)}</h3><p style="color:var(--muted);font-size:13px">${esc(q.availability)}</p><div class="card-activity-ts">${q.unreadCount?'New message':'Last activity'} ${timeAgo(q.lastActivityAt||q.createdAt)}</div><button class="${i===0?'primary':'secondary'}" style="width:100%;margin-top:8px" onclick="viewQuote('${esc(q.id)}')">View Response</button></div>`).join('')||'<div class="notice">No responses yet.</div>';const countEl=document.getElementById('quotesModalCount');if(countEl)countEl.textContent=`${d.quotes.length} response${d.quotes.length===1?'':'s'}`}catch(e){toast(e.message)}
 }
 async function viewQuote(id){try{
   const d=await api('/requests/'+quoteTargetRequestId+'/quotes');const q=d.quotes.find(x=>x.id===id);if(!q)return;
@@ -1509,7 +1582,7 @@ async function viewQuote(id){try{
   document.querySelector('#quoteModal .modalhead h2').textContent=req?req.title:'Service request';
   document.querySelector('#quoteModal .avatar').textContent=initials(q.provider.name);
   document.querySelector('#quoteModal .profilebar b').textContent=q.provider.name;
-  document.querySelector('#quoteModal .profilebar .statusline').innerHTML=`<span class="dot"></span>${q.provider.verified?'Verified provider':'Provider'} · ${q.provider.rating?Number(q.provider.rating).toFixed(1):'New'} ★`;
+  document.querySelector('#quoteModal .profilebar .statusline').innerHTML=`<span class="dot"></span>${q.provider.verified?'Verified provider':'Provider'} · ${q.provider.rating?Number(q.provider.rating).toFixed(1):'New'} ★ ${q.featured?'<span class="featured-tag">Featured</span>':''}`;
   document.querySelector('#quoteModal .quoteCard h2').textContent=`$${q.amountMin}–$${q.amountMax}`;
   document.querySelector('#quoteModal .quoteCard .tag').textContent=q.availability;
   document.querySelector('#quoteModal p').textContent='"'+(q.message||'No message provided.')+'"';
@@ -1557,12 +1630,12 @@ async function reportQuoteThread(quoteId){
   if(!confirm('Report this conversation to our team for review?'))return;
   try{ await api('/quotes/'+quoteId+'/report',{method:'POST',body:JSON.stringify({})}); toast('Reported. Our team will review this conversation.'); }catch(e){toast(e.message)}
 }
-async function acceptSpecificQuote(id){try{await api('/quotes/'+id+'/accept',{method:'POST'});closeModal();toast('Quote accepted and job scheduled');await loadDashboard()}catch(e){toast(e.message)}}
+async function acceptSpecificQuote(id){try{await api('/quotes/'+id+'/accept',{method:'POST'});closeModal();toast('Accepted — coordinate details directly with the provider');await loadDashboard()}catch(e){toast(e.message)}}
 
 async function submitProviderQuote(){try{await api('/requests/'+quoteTargetRequestId+'/quotes',{method:'POST',body:JSON.stringify({amountMin:document.getElementById('quoteMin').value,amountMax:document.getElementById('quoteMax').value,availability:document.getElementById('quoteAvailability').value,message:document.getElementById('quoteMessage').value})});closeModal();toast('Quote sent to homeowner');await loadDashboard()}catch(e){handleUpgradeError(e)}}
 function handleUpgradeError(e){
   toast(e.message);
-  if(e.data&&e.data.upgradeRequired){ setTimeout(()=>{ if(confirm('Upgrade to Pro Provider now for unlimited quotes and messaging?')) openProviderPlanPage(); },250); }
+  if(e.data&&e.data.upgradeRequired){ setTimeout(()=>{ if(confirm('Upgrade your plan now for more quotes and messaging?')) openProviderPlanPage(); },250); }
 }
 let lastDashboard={homeowner:null,provider:null};
 let activePanel={homeowner:'dashboard',provider:'dashboard'};
@@ -1678,26 +1751,66 @@ function renderPanel(role,panelName){
 }
 
 function requestCardHTML(r){
-  return `<div class="request">${photoSlotHTML(serviceImage(r.serviceType),null,'req-thumb')}<div class="requestrow"><div><span class="tag">${esc(r.serviceType.toUpperCase())}</span><span class="tag status-${esc(r.status)}">${esc(r.status.toUpperCase())}</span><h3>${esc(r.title)}</h3><p>${esc(r.description||'')}</p><div class="statusline"><span class="dot"></span> ${r.quotes.length} provider${r.quotes.length===1?'':'s'} responded</div></div><button class="primary" onclick="document.getElementById('quotesModal').classList.add('show');loadQuotes('${esc(r.id)}')">View ${r.quotes.length} Response${r.quotes.length===1?'':'s'}</button></div></div>`;
+  const tag = r.delisted ? '<span class="tag status-delisted">DELISTED</span>' : `<span class="tag status-${esc(r.status)}">${esc(statusLabel(r.status).toUpperCase())}</span>`;
+  const delistBtn = r.status==='open'
+    ? (r.delisted
+        ? `<button class="secondary" onclick="relistRequest('${esc(r.id)}')">Re-list</button>`
+        : `<button class="secondary" onclick="delistRequest('${esc(r.id)}')">Delist</button>`)
+    : '';
+  return `<div class="request">${photoSlotHTML(serviceImage(r.serviceType),null,'req-thumb')}<div class="requestrow"><div><span class="tag">${esc(r.serviceType.toUpperCase())}</span>${tag}<h3>${esc(r.title)}</h3><p>${esc(r.description||'')}</p><div class="statusline"><span class="dot"></span> ${r.quotes.length} provider${r.quotes.length===1?'':'s'} responded${r.delisted?' · Hidden from new providers':''}</div></div><div class="mini-actions">${delistBtn}<button class="primary" onclick="document.getElementById('quotesModal').classList.add('show');loadQuotes('${esc(r.id)}')">View ${r.quotes.length} Response${r.quotes.length===1?'':'s'}</button></div></div></div>`;
+}
+let hoRequestsFilter='open';
+function setHoRequestsFilter(f){
+  hoRequestsFilter=f;
+  document.querySelectorAll('#homeowner .filter-tab[data-status]').forEach(b=>b.classList.toggle('active',b.dataset.status===f));
+  renderHoRequests(lastDashboard.homeowner);
+}
+// Open = accepting quotes and visible to providers. Closed = a provider was accepted (request.status
+// moves off 'open'). Delisted = still open, but the homeowner pulled it off the provider feed themselves.
+function bucketForRequest(r){
+  if(r.status!=='open') return 'closed';
+  return r.delisted ? 'delisted' : 'open';
 }
 function renderHoRequests(d){
-  const el=document.getElementById('ho-requests-list'); if(!el)return;
-  if(!d.requests.length){el.innerHTML='<div class="notice">You haven\'t submitted any requests yet.</div>';return}
-  el.innerHTML=d.requests.map(requestCardHTML).join('');
+  const el=document.getElementById('ho-requests-list'); if(!el||!d)return;
+  const filtered=(d.requests||[]).filter(r=>bucketForRequest(r)===hoRequestsFilter);
+  if(!filtered.length){
+    const msg = hoRequestsFilter==='open' ? "No open requests. Submit one to start getting quotes."
+      : hoRequestsFilter==='closed' ? "No closed requests yet."
+      : "No delisted requests.";
+    el.innerHTML=`<div class="notice">${msg}</div>`;
+    return;
+  }
+  el.innerHTML=filtered.map(requestCardHTML).join('');
+}
+async function delistRequest(id){
+  try{ await api('/requests/'+id+'/delist',{method:'POST'}); toast('Request delisted — hidden from new providers.'); await loadDashboard(); }catch(e){toast(e.message)}
+}
+async function relistRequest(id){
+  try{ await api('/requests/'+id+'/relist',{method:'POST'}); toast('Request re-listed — visible to providers again.'); await loadDashboard(); }catch(e){toast(e.message)}
 }
 function renderHoQuotes(d){
   const el=document.getElementById('ho-quotes-list'); if(!el)return;
   const all=[];
   (d.requests||[]).forEach(r=>(r.quotes||[]).forEach(q=>all.push({r,q})));
   if(!all.length){el.innerHTML='<div class="notice">No quotes yet. Once providers respond to your requests, they\'ll show up here.</div>';return}
-  all.sort((a,b)=>new Date(b.q.lastActivityAt||b.q.createdAt)-new Date(a.q.lastActivityAt||a.q.createdAt));
-  el.innerHTML=all.map(({r,q})=>`<div class="request">${photoSlotHTML(serviceImage(r.serviceType),null,'req-thumb')}<div class="requestrow"><div><span class="tag">${esc(r.serviceType.toUpperCase())}</span><span class="tag status-${esc(q.status)}">${esc(q.status.toUpperCase())}</span>${q.unreadCount?`<span class="card-unread-badge">${q.unreadCount} NEW</span>`:''}<h3>${esc(r.title)}</h3><p>${esc(q.provider.name)} · $${Number(q.amountMin)}–$${Number(q.amountMax)} · ${esc(q.availability)}</p><div class="card-activity-ts">${q.unreadCount?'New message':'Last activity'} ${timeAgo(q.lastActivityAt||q.createdAt)}</div></div><button class="secondary" onclick="document.getElementById('quotesModal').classList.add('show');loadQuotes('${esc(r.id)}')">View</button></div></div>`).join('');
+  all.sort((a,b)=>(b.q.featured?1:0)-(a.q.featured?1:0)||new Date(b.q.lastActivityAt||b.q.createdAt)-new Date(a.q.lastActivityAt||a.q.createdAt));
+  el.innerHTML=all.map(({r,q})=>`<div class="request">${photoSlotHTML(serviceImage(r.serviceType),null,'req-thumb')}<div class="requestrow"><div><span class="tag">${esc(r.serviceType.toUpperCase())}</span><span class="tag status-${esc(q.status)}">${esc(q.status.toUpperCase())}</span>${q.featured?'<span class="featured-tag">Featured</span>':''}${q.unreadCount?`<span class="card-unread-badge">${q.unreadCount} NEW</span>`:''}<h3>${esc(r.title)}</h3><p>${esc(q.provider.name)} · $${Number(q.amountMin)}–$${Number(q.amountMax)} · ${esc(q.availability)}</p><div class="card-activity-ts">${q.unreadCount?'New message':'Last activity'} ${timeAgo(q.lastActivityAt||q.createdAt)}</div></div><button class="secondary" onclick="document.getElementById('quotesModal').classList.add('show');loadQuotes('${esc(r.id)}')">View</button></div></div>`).join('');
 }
+// Display-only relabeling — the underlying job/request status values in the database are
+// unchanged ('scheduled' etc still drives all the existing logic), this just controls the word
+// shown to users. "Scheduled" implied Living Communities booked an appointment; "Accepted"
+// accurately says a quote was accepted — the actual date/time is worked out directly between
+// the homeowner and provider, which the hands-off note below makes explicit.
+function statusLabel(status){
+  return status==='scheduled' ? 'Accepted' : (status||'').replace('_',' ');
+}
+const HANDS_OFF_NOTE = 'Scheduling and any details you share are handled directly with the provider — Living Communities isn\'t involved past this point.';
 function renderHoJobs(d){
   const el=document.getElementById('ho-jobs-list'); if(!el)return;
   const jobs=d.jobs||[];
-  if(!jobs.length){el.innerHTML='<div class="notice">No appointments yet. Accept a quote from My Requests to schedule one.</div>';return}
-  el.innerHTML=jobs.map(j=>`<div class="request">${photoSlotHTML(serviceImage(j.serviceType),null,'req-thumb')}<div class="requestrow"><div><span class="tag">${esc((j.serviceType||'SERVICE').toUpperCase())}</span><span class="tag status-${esc(j.status)}">${esc(j.status.toUpperCase())}</span><h3>${esc(j.title||'Service job')}</h3><p>Scheduled: ${esc(j.scheduledFor||'')}</p>${j.status==='completed'?`<p class="statusline" style="margin-top:4px">Closed out ${j.receiptUploadedAt?new Date(j.receiptUploadedAt).toLocaleDateString():''}${j.receiptNote?' · '+esc(j.receiptNote):''}</p>`:'<p class="statusline" style="margin-top:4px">Awaiting the provider to close this job out with a receipt.</p>'}</div>${j.quoteId?`<button class="secondary" onclick="openJobChat('${esc(j.quoteId)}','${esc(j.title||'Service job')}')">Chat</button>`:''}</div></div>`).join('');
+  if(!jobs.length){el.innerHTML='<div class="notice">No appointments yet. Accept a quote from My Requests to get started.</div>';return}
+  el.innerHTML=jobs.map(j=>`<div class="request">${photoSlotHTML(serviceImage(j.serviceType),null,'req-thumb')}<div class="requestrow"><div><span class="tag">${esc((j.serviceType||'SERVICE').toUpperCase())}</span><span class="tag status-${esc(j.status)}">${esc(statusLabel(j.status).toUpperCase())}</span><h3>${esc(j.title||'Service job')}</h3>${j.providerName?`<p class="statusline" style="margin:2px 0">With ${esc(j.providerName)}</p>`:''}<p>Provider's proposed time: ${esc(j.scheduledFor||'—')}</p>${j.status==='completed'?`<p class="statusline" style="margin-top:4px">Closed out ${j.receiptUploadedAt?new Date(j.receiptUploadedAt).toLocaleDateString():''}${j.receiptNote?' · '+esc(j.receiptNote):''}</p>`:'<p class="statusline" style="margin-top:4px">Awaiting the provider to close this job out with a receipt.</p>'}${(j.status==='scheduled'||j.status==='in_progress')?`<p class="subtle" style="font-size:11.5px;margin-top:6px;line-height:1.4">${HANDS_OFF_NOTE}</p>`:''}</div>${j.quoteId?`<button class="secondary" onclick="openJobChat('${esc(j.quoteId)}','${esc(j.title||'Service job')}')">Chat</button>`:''}</div></div>`).join('');
 }
 function renderHoProfile(d){
   const el=document.getElementById('ho-profile-view'); if(!el)return; const u=d.user;
@@ -1748,15 +1861,18 @@ function renderPrFeed(d){
     serviceSel.value=services.includes(current)?current:'';
   }
   const serviceFilter=serviceSel?serviceSel.value:'';
-  const urgencyFilter=(document.getElementById('pr-feed-urgency-filter')||{}).value||'';
-  const open=allOpen.filter(r=>(!serviceFilter||r.serviceType===serviceFilter)&&(!urgencyFilter||(r.urgency||'Flexible')===urgencyFilter));
+  const distanceFilter=Number((document.getElementById('pr-feed-distance-filter')||{}).value||0);
+  // A request whose homeowner never geocoded (distanceMi:null) stays visible under any distance
+  // filter, same reasoning as the service-radius filter above — missing location data should
+  // never silently hide a real lead.
+  const open=allOpen.filter(r=>(!serviceFilter||r.serviceType===serviceFilter)&&(!distanceFilter||r.distanceMi==null||r.distanceMi<=distanceFilter));
   if(!allOpen.length){
     el.innerHTML = radius!=null
       ? `<div class="notice">No open requests within ${radius} mi of ${esc(d.user.address||'your service area')} right now. <a onclick="switchPanel('provider','profile')" style="color:var(--green);font-weight:700;cursor:pointer">Widen your service area →</a></div>`
       : '<div class="notice">No new opportunities right now. Check back soon.</div>';
     return;
   }
-  if(!open.length){ el.innerHTML='<div class="notice">No open requests match this filter. <a onclick="document.getElementById(\'pr-feed-service-filter\').value=\'\';document.getElementById(\'pr-feed-urgency-filter\').value=\'\';renderPrFeed(lastDashboard.provider)" style="color:var(--green);font-weight:700;cursor:pointer">Clear filters →</a></div>'; return; }
+  if(!open.length){ el.innerHTML='<div class="notice">No open requests match this filter. <a onclick="document.getElementById(\'pr-feed-service-filter\').value=\'\';document.getElementById(\'pr-feed-distance-filter\').value=\'\';renderPrFeed(lastDashboard.provider)" style="color:var(--green);font-weight:700;cursor:pointer">Clear filters →</a></div>'; return; }
   el.innerHTML=open.map(r=>{
     const preferred = r.preferredDate ? `Prefers ${new Date(r.preferredDate+'T00:00').toLocaleDateString(undefined,{month:'short',day:'numeric'})}${r.preferredTime&&r.preferredTime!=='Any time'?' · '+esc(r.preferredTime):''}` : '';
     return `<div class="request">${photoSlotHTML(serviceImage(r.serviceType),null,'req-thumb')}<div class="provider" style="flex:1"><div><span class="tag">${esc(r.serviceType.toUpperCase())}</span><h3 style="margin:8px 0 4px">${esc(r.title)}</h3><p style="color:var(--muted);font-size:14px;margin:0 0 6px">${esc(r.description||'')}</p><small style="color:var(--muted)"><svg class="icn" width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 18s6-5.6 6-10.2A6 6 0 104 7.8C4 12.4 10 18 10 18z"/><circle cx="10" cy="7.6" r="2"/></svg> ${esc(d.user.community||'Local area')}${r.distanceMi!=null?' · '+r.distanceMi+' mi away':''} · ${esc(r.urgency||'Flexible')}</small><div class="card-activity-ts" style="margin-top:3px">Posted ${timeAgo(r.createdAt)}${preferred?' · '+preferred:''}</div></div><div class="mini-actions"><button class="primary" onclick="openQuoteSubmit('${esc(r.id)}')">I Can Help</button></div></div></div>`;
@@ -1789,17 +1905,23 @@ function renderPrJobs(d,statuses,elId){
   const el=document.getElementById(elId); if(!el)return;
   const jobs=(d.jobs||[]).filter(j=>statuses.includes(j.status));
   if(!jobs.length){el.innerHTML=`<div class="notice">No ${statuses.includes('completed')?'completed':'active'} jobs yet.</div>`;return}
-  el.innerHTML=jobs.map(j=>`<div class="request">${photoSlotHTML(serviceImage(j.serviceType),null,'req-thumb')}<div class="requestrow"><div><span class="tag">${esc((j.serviceType||'SERVICE').toUpperCase())}</span><span class="tag status-${esc(j.status)}">${esc(j.status.toUpperCase())}</span><h3>${esc(j.title||'Service job')}</h3><p>Scheduled: ${esc(j.scheduledFor||'')}</p>${j.status==='completed'&&j.receiptUploadedAt?`<p class="statusline" style="margin-top:4px">Closed out ${new Date(j.receiptUploadedAt).toLocaleDateString()}</p>`:''}</div><div class="mini-actions">${j.quoteId?`<button class="secondary" onclick="openJobChat('${esc(j.quoteId)}','${esc(j.title||'Service job')}')">Chat</button>`:''}${j.status!=='completed'?`<button class="primary" onclick="openReceiptModal('${esc(j.id)}')">Add Receipt &amp; Complete</button>`:''}</div></div></div>`).join('');
+  el.innerHTML=jobs.map(j=>`<div class="request">${photoSlotHTML(serviceImage(j.serviceType),null,'req-thumb')}<div class="requestrow"><div><span class="tag">${esc((j.serviceType||'SERVICE').toUpperCase())}</span><span class="tag status-${esc(j.status)}">${esc(statusLabel(j.status).toUpperCase())}</span><h3>${esc(j.title||'Service job')}</h3>${j.homeownerName?`<p class="statusline" style="margin:2px 0">With ${esc(j.homeownerName)}</p>`:''}<p>Your proposed time: ${esc(j.scheduledFor||'—')}</p>${j.status==='completed'&&j.receiptUploadedAt?`<p class="statusline" style="margin-top:4px">Closed out ${new Date(j.receiptUploadedAt).toLocaleDateString()}</p>`:''}${(j.status==='scheduled'||j.status==='in_progress')?`<p class="subtle" style="font-size:11.5px;margin-top:6px;line-height:1.4">${HANDS_OFF_NOTE}</p>`:''}</div><div class="mini-actions">${j.quoteId?`<button class="secondary" onclick="openJobChat('${esc(j.quoteId)}','${esc(j.title||'Service job')}')">Chat</button>`:''}${j.status!=='completed'?`<button class="primary" onclick="openReceiptModal('${esc(j.id)}')">Add Receipt &amp; Complete</button>`:''}</div></div></div>`).join('');
 }
-const PROVIDER_FREE_MAX_RADIUS_MI = 50;
+const PROVIDER_FREE_MAX_RADIUS_MI = 20;
+const PROVIDER_PRO_MAX_RADIUS_MI = 50;
 function providerServiceAreaHTML(u){
   const geoStatus = u.address ? (u.lat!=null ? '<span style="color:var(--green)">✓ located</span>' : '<span style="color:#b3432e">could not locate. Try a more specific city or ZIP</span>') : '';
-  const isPro = u.providerPlan==='pro';
-  const maxRadius = isPro ? 200 : PROVIDER_FREE_MAX_RADIUS_MI;
-  const radius = Math.min(u.serviceRadiusMi || (isPro?25:PROVIDER_FREE_MAX_RADIUS_MI), maxRadius);
-  const planNote = isPro
+  const plan = u.providerPlan||'free';
+  const isElite = plan==='elite';
+  const isPro = plan==='pro';
+  const maxRadius = isElite ? 500 : (isPro ? PROVIDER_PRO_MAX_RADIUS_MI : PROVIDER_FREE_MAX_RADIUS_MI);
+  const defaultRadius = isPro ? PROVIDER_PRO_MAX_RADIUS_MI : PROVIDER_FREE_MAX_RADIUS_MI;
+  const radius = Math.min(u.serviceRadiusMi || defaultRadius, maxRadius);
+  const planNote = isElite
     ? ''
-    : `<div class="subtle" style="font-size:12.5px">Free plan is capped at ${PROVIDER_FREE_MAX_RADIUS_MI} mi. <a onclick="openProviderPlanPage()" style="color:var(--green);font-weight:700;cursor:pointer">Upgrade to Pro</a> to widen it or see every request nationwide.</div>`;
+    : isPro
+      ? `<div class="subtle" style="font-size:12.5px">Pro plan is capped at ${PROVIDER_PRO_MAX_RADIUS_MI} mi. <a onclick="openProviderPlanPage()" style="color:var(--green);font-weight:700;cursor:pointer">Upgrade to Elite</a> to see every request nationwide.</div>`
+      : `<div class="subtle" style="font-size:12.5px">Free plan is capped at ${PROVIDER_FREE_MAX_RADIUS_MI} mi. <a onclick="openProviderPlanPage()" style="color:var(--green);font-weight:700;cursor:pointer">Upgrade to Pro</a> for a ${PROVIDER_PRO_MAX_RADIUS_MI} mi radius, or Elite for nationwide.</div>`;
   return `<div class="request" style="margin-top:14px">
     <div class="requestrow" style="flex-direction:column;align-items:flex-start;gap:8px;width:100%">
       <b style="font-size:14.5px">Service Area</b>
@@ -1813,7 +1935,7 @@ function providerServiceAreaHTML(u){
       <div id="providerAreaError" class="notice hidden"></div>
       <div class="mini-actions" style="margin-top:2px">
         <button class="primary" onclick="saveProviderServiceArea()">Save Service Area</button>
-        ${(isPro&&u.address)?'<button class="secondary" onclick="clearProviderServiceArea()">Show All Requests</button>':''}
+        ${(isElite&&u.address)?'<button class="secondary" onclick="clearProviderServiceArea()">Show All Requests</button>':''}
       </div>
     </div>
   </div>`;
@@ -1839,7 +1961,7 @@ function renderPrProfile(d){
   el.innerHTML=`<div class="request"><div class="avatar-slot" style="width:56px;height:56px;overflow:hidden">${avatarInnerHTML(u,56)}</div><div class="requestrow" style="flex-direction:column;align-items:flex-start;gap:6px"><div><b style="font-size:16px">${esc(u.name)}</b><div class="statusline">★ ${esc(u.rating||'New')} · ${esc(u.reviewCount||0)} jobs${u.verified?' · Verified':''} · Plan: ${esc(u.subscription)}</div></div><p style="margin:6px 0 0">${esc(u.businessDescription||'')}</p><p style="margin:4px 0 0">Services: ${esc((u.serviceTypes||[]).join(', '))}<br>Phone: ${esc(u.phone||'N/A')}</p></div></div>` + providerVerificationHTML(u) + providerServiceAreaHTML(u) + avatarEditorHTML('provider',u) + dangerZoneHTML();
 }
 
-// --- provider verification / background-check ---
+// --- provider verification ---
 let verificationDraftEntityType=null, verificationDraftDocs={};
 function verificationStatusPill(u){
   const s=u.verificationStatus||'unverified';
@@ -1911,15 +2033,8 @@ function providerVerificationHTML(u){
     const optionalDocRows = optionalDocFields.length ? `
       <div class="subtle" style="font-size:12px;margin:10px 0 2px">Add any of these to strengthen your profile. None of them are required for the Verified badge.</div>
       ${optionalDocFields.map(docRow).join('')}` : '';
-    const bgCheckField = entityType==='individual' ? `
-      <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-top:4px">
-        <input type="checkbox" id="vdoc-bgcheck" style="width:auto">
-        Also request a background check ${u.backgroundCheckStatus&&u.backgroundCheckStatus!=='not_requested'?'(status: '+esc(u.backgroundCheckStatus)+')':''}
-      </label>
-      <div class="subtle" style="font-size:11.5px;margin-top:2px">We'll follow up by email with a secure link to complete this with our screening partner. Nothing sensitive is entered on this site.</div>` : '';
     body=`${rejectedNote}
       <div class="formgrid" style="margin-top:4px">${docRows}${optionalDocRows}</div>
-      ${bgCheckField}
       <div id="verificationError" class="notice hidden" style="margin-top:8px"></div>
       <div class="mini-actions" style="margin-top:8px">
         <button class="primary" onclick="submitVerification('${entityType}')">Submit for Review</button>
@@ -1945,9 +2060,8 @@ async function submitVerification(entityType){
     return;
   }
   if(!docs.length){ if(err){err.textContent='Upload at least one document.';err.classList.remove('hidden')} return; }
-  const requestBackgroundCheck=!!(document.getElementById('vdoc-bgcheck')&&document.getElementById('vdoc-bgcheck').checked);
   try{
-    const d=await api('/profile/verification',{method:'POST',body:JSON.stringify({entityType,documents:docs,requestBackgroundCheck})});
+    const d=await api('/profile/verification',{method:'POST',body:JSON.stringify({entityType,documents:docs})});
     currentUser=d.user; verificationDraftEntityType=null; verificationDraftDocs={};
     toast('Submitted for review!'); await loadDashboard(); renderPanel('provider','profile');
   }catch(e){ if(err){err.textContent=e.message;err.classList.remove('hidden')} }
@@ -1979,7 +2093,6 @@ function renderAdminQueue(providers){
   if(!providers.length){ el.innerHTML=`<div class="notice">No ${esc(adminQueueStatus)} submissions right now.</div>`; return; }
   el.innerHTML=providers.map(p=>{
     const docs=(p.verificationDocuments||[]).map(docPreviewHTML).join('');
-    const bg = p.entityType==='individual' ? `<p style="margin:4px 0 0;font-size:12.5px;color:var(--muted)">Background check: ${esc(p.backgroundCheckStatus||'not_requested')}</p>` : '';
     const submitted = p.verificationSubmittedAt ? new Date(p.verificationSubmittedAt).toLocaleDateString() : 'N/A';
     const actions = adminQueueStatus==='pending' || p.verificationStatus==='pending' ? `
       <div class="field full"><label>REVIEW NOTES ${p.verificationStatus==='pending'?'(required to reject)':''}</label><textarea id="admin-notes-${p.id}" placeholder="Optional note to the provider..."></textarea></div>
@@ -1995,7 +2108,6 @@ function renderAdminQueue(providers){
         </div>
         <p style="margin:0;font-size:13px">${esc(p.businessDescription||'')}</p>
         <p style="margin:0;font-size:12.5px;color:var(--muted)">Services: ${esc((p.serviceTypes||[]).join(', ')||'None listed')}</p>
-        ${bg}
         <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:4px">${docs||'<span class="subtle" style="font-size:12px">No documents uploaded.</span>'}</div>
         ${actions}
       </div>
@@ -2174,7 +2286,7 @@ function renderAdminAccounts(accounts){
   el.innerHTML=accounts.map(adminAccountRowHTML).join('');
 }
 const ADMIN_HOMEOWNER_PLAN_INFO={free:{label:'Free',price:'$0/mo'},plus:{label:'Plus',price:'$9.99/mo'},premium:{label:'Premium',price:'$29.99/mo'}};
-const ADMIN_PROVIDER_PLAN_INFO={free:{label:'Free',price:'$0/mo'},pro:{label:'Pro',price:'$9.99/mo'}};
+const ADMIN_PROVIDER_PLAN_INFO={free:{label:'Free',price:'$0/mo'},pro:{label:'Pro',price:'$9.99/mo'},elite:{label:'Elite',price:'$20.99/mo'}};
 function adminAccountRowHTML(a){
   const planMap = a.role==='homeowner' ? ADMIN_HOMEOWNER_PLAN_INFO : ADMIN_PROVIDER_PLAN_INFO;
   const currentPlan = a.role==='homeowner' ? (a.subscription||'free') : (a.providerPlan||'free');
@@ -2428,7 +2540,7 @@ function renderAnnouncements(role,d){
     </div>`;
   if(eligible) loadSupportMessages(role);
 }
-function isPaidPlanUser(u){ return u.role==='provider' ? u.providerPlan==='pro' : ['plus','premium'].includes(u.subscription); }
+function isPaidPlanUser(u){ return u.role==='provider' ? u.providerPlan!=='free' : ['plus','premium'].includes(u.subscription); }
 async function loadSupportMessages(role){
   const el=document.getElementById('supportChatMessages-'+role); if(!el)return;
   try{

@@ -53,26 +53,25 @@ function tooManyAttempts(ip){
 function mapUser(r){
   if(!r) return null;
   const carePlanItems=r.care_plan_items||[];
-  const u={id:r.id,role:r.role,name:r.name,email:r.email,passwordHash:r.password_hash,salt:r.salt,phone:r.phone,createdAt:toISO(r.created_at),subscription:r.subscription,carePlanItems,carePlanServices:carePlanItems.filter(i=>i.status==='active').map(i=>i.key),avatarKind:r.avatar_kind||null,avatarValue:r.avatar_value||null,address:r.address,lat:r.lat!=null?Number(r.lat):null,lng:r.lng!=null?Number(r.lng):null,suspended:!!r.suspended,deleted:!!r.deleted,deletedAt:toISO(r.deleted_at),lastAnnouncementsViewAt:toISO(r.last_announcements_view_at)};
+  const u={id:r.id,role:r.role,name:r.name,email:r.email,passwordHash:r.password_hash,salt:r.salt,phone:r.phone,createdAt:toISO(r.created_at),subscription:r.subscription,carePlanItems,carePlanServices:carePlanItems.filter(i=>i.status==='active').map(i=>i.key),avatarKind:r.avatar_kind||null,avatarValue:r.avatar_value||null,address:r.address,lat:r.lat!=null?Number(r.lat):null,lng:r.lng!=null?Number(r.lng):null,billingAddress:r.billing_address||null,suspended:!!r.suspended,deleted:!!r.deleted,deletedAt:toISO(r.deleted_at),lastAnnouncementsViewAt:toISO(r.last_announcements_view_at)};
   if(r.role==='homeowner'){ u.community=r.community; u.carePlanNextBilling=r.care_plan_next_billing?new Date(r.care_plan_next_billing).toISOString().slice(0,10):null; }
   else if(r.role==='provider'){
     u.serviceTypes=r.service_types||[]; u.rating=r.rating!=null?Number(r.rating):null; u.reviewCount=r.review_count||0; u.verified=!!r.verified; u.businessDescription=r.business_description; u.providerPlan=r.provider_plan||'free'; u.quotesUsed=r.quotes_sent_this_period||0; u.convosUsed=r.new_conversations_this_period||0;
     u.serviceRadiusMi=r.service_radius_mi!=null?Number(r.service_radius_mi):null;
-    // Effective radius actually used to filter the feed: Free plan is capped at PROVIDER_FREE_MAX_RADIUS_MI
-    // (even if an older saved value exceeds it) and defaults to it once they have a location on file but
-    // never picked a radius themselves. Pro plan is unlimited unless they've set their own radius.
-    if(u.providerPlan==='pro'){ u.effectiveServiceRadiusMi = u.serviceRadiusMi; }
-    else if(u.serviceRadiusMi!=null){ u.effectiveServiceRadiusMi = Math.min(u.serviceRadiusMi, PROVIDER_FREE_MAX_RADIUS_MI); }
-    else { u.effectiveServiceRadiusMi = u.lat!=null ? PROVIDER_FREE_DEFAULT_RADIUS_MI : null; }
-    // Verification / background-check workflow
+    // Effective radius actually used to filter the feed: Free is capped at 20mi, Pro at 50mi (even
+    // if an older saved value exceeds their plan's cap), each defaulting to that cap once they have
+    // a location on file but never picked a radius themselves. Elite is unlimited unless they've
+    // chosen to narrow it themselves.
+    if(isProviderRadiusUnlimited(u.providerPlan)){ u.effectiveServiceRadiusMi = u.serviceRadiusMi; }
+    else if(u.serviceRadiusMi!=null){ u.effectiveServiceRadiusMi = Math.min(u.serviceRadiusMi, providerMaxRadiusMi(u.providerPlan)); }
+    else { u.effectiveServiceRadiusMi = u.lat!=null ? providerDefaultRadiusMi(u.providerPlan) : null; }
+    // Verification workflow
     u.entityType=r.provider_entity_type||null;
     u.verificationStatus=r.verification_status||'unverified';
     u.verificationNotes=r.verification_notes||null;
     u.verificationSubmittedAt=toISO(r.verification_submitted_at);
     u.verificationReviewedAt=toISO(r.verification_reviewed_at);
     u.verificationDocuments=r.verification_documents||[];
-    u.backgroundCheckStatus=r.background_check_status||'not_requested';
-    u.backgroundCheckRequestedAt=toISO(r.background_check_requested_at);
   }
   return u;
 }
@@ -90,7 +89,7 @@ function publicProviderView(u){
     createdAt:u.createdAt
   };
 }
-function mapRequest(r){ return {id:r.id,homeownerId:r.homeowner_id,serviceType:r.service_type,title:r.title,description:r.description,urgency:r.urgency,preferredDate:r.preferred_date,preferredTime:r.preferred_time,status:r.status,createdAt:toISO(r.created_at),dispatchedProviderId:r.dispatched_provider_id||null,dispatchedAt:toISO(r.dispatched_at)||null}; }
+function mapRequest(r){ return {id:r.id,homeownerId:r.homeowner_id,serviceType:r.service_type,title:r.title,description:r.description,urgency:r.urgency,preferredDate:r.preferred_date,preferredTime:r.preferred_time,status:r.status,createdAt:toISO(r.created_at),dispatchedProviderId:r.dispatched_provider_id||null,dispatchedAt:toISO(r.dispatched_at)||null,delisted:!!r.delisted,delistedAt:toISO(r.delisted_at)}; }
 // Slim account view for the admin accounts list — everything an admin needs to monitor an
 // account and its subscription at a glance, but never the heavy/sensitive stuff (password data,
 // uploaded verification document images) that a bulk list endpoint has no business returning.
@@ -101,7 +100,7 @@ function adminAccountView(u){
     return {...base,community:u.community,subscription:normalizeHomeownerPlanKey(u.subscription),carePlanServiceCount:(u.carePlanServices||[]).length,carePlanNextBilling:u.carePlanNextBilling};
   }
   if(u.role==='provider'){
-    return {...base,serviceTypes:u.serviceTypes,providerPlan:u.providerPlan,rating:u.rating,reviewCount:u.reviewCount,verified:u.verified,verificationStatus:u.verificationStatus,entityType:u.entityType,backgroundCheckStatus:u.backgroundCheckStatus};
+    return {...base,serviceTypes:u.serviceTypes,providerPlan:u.providerPlan,rating:u.rating,reviewCount:u.reviewCount,verified:u.verified,verificationStatus:u.verificationStatus,entityType:u.entityType};
   }
   return base;
 }
@@ -109,7 +108,7 @@ function mapQuote(r){ return {id:r.id,requestId:r.request_id,providerId:r.provid
 function mapMessage(r){ return {id:r.id,quoteId:r.quote_id,senderId:r.sender_id,recipientId:r.recipient_id,body:r.body,createdAt:toISO(r.created_at),read:r.read}; }
 function mapAnnouncement(r){ return {id:r.id,title:r.title,body:r.body,createdAt:toISO(r.created_at)}; }
 function mapSupportMessage(r){ return {id:r.id,userId:r.user_id,senderRole:r.sender_role,body:r.body,createdAt:toISO(r.created_at),read:r.read}; }
-function isPaidPlan(u){ return u.role==='provider' ? u.providerPlan==='pro' : ['plus','premium'].includes(u.subscription); }
+function isPaidPlan(u){ return u.role==='provider' ? u.providerPlan!=='free' : ['plus','premium'].includes(u.subscription); }
 function mapJob(r){ return {id:r.id,requestId:r.request_id,quoteId:r.quote_id||null,homeownerId:r.homeowner_id,providerId:r.provider_id,serviceType:r.service_type,title:r.title,status:r.status,scheduledFor:r.scheduled_for,createdAt:toISO(r.created_at),receiptDataUrl:r.receipt_data_url||null,receiptNote:r.receipt_note||null,receiptUploadedAt:r.receipt_uploaded_at?toISO(r.receipt_uploaded_at):null}; }
 function mapReview(r){ return {id:r.id,jobId:r.job_id,homeownerId:r.homeowner_id,providerId:r.provider_id,rating:Number(r.rating),text:r.text,createdAt:toISO(r.created_at)}; }
 function safeUser(u){ if(!u) return null; const {passwordHash,salt,...x}=u; return x; }
@@ -136,6 +135,34 @@ function haversineMiles(lat1,lon1,lat2,lon2){
   const a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
   return R*2*Math.asin(Math.sqrt(a));
 }
+// Fallback "is this a Texas ZIP" check — only used when a billing address has a ZIP but no state
+// (shouldn't normally happen since the checkout form requires state, but cheap to cover).
+const TX_ZIP_RANGES=[[75001,79999],[88500,88595]]; // 885xx is split with NM; fine for this heuristic
+function isTexasZip(zip){
+  const z=Number(String(zip||'').trim().slice(0,5));
+  if(!Number.isFinite(z)) return false;
+  return TX_ZIP_RANGES.some(([lo,hi])=>z>=lo&&z<=hi);
+}
+// Cleans up a billing address object posted from the checkout form. Every field is optional at
+// the type level (caller decides whether to require them) but each is trimmed/length-capped.
+function sanitizeBillingAddress(b){
+  if(!b || typeof b!=='object') return null;
+  const line1=String(b.line1||'').trim().slice(0,120);
+  const city=String(b.city||'').trim().slice(0,80);
+  const state=String(b.state||'').trim().slice(0,2).toUpperCase();
+  const zip=String(b.zip||'').trim().slice(0,10);
+  if(!line1&&!city&&!state&&!zip) return null;
+  return {line1,city,state,zip};
+}
+// Sales-tax jurisdiction decision for a SaaS subscription (Plus/Premium, Pro Provider): based on
+// the billing address collected at checkout, not the homeowner/provider's service-area address —
+// those can differ, and the billing address is the one that actually determines tax. State code
+// is authoritative when present; ZIP is only a fallback if state is somehow missing.
+function isTexasBilling(billingAddress){
+  if(!billingAddress) return false;
+  if(billingAddress.state) return billingAddress.state==='TX';
+  return isTexasZip(billingAddress.zip);
+}
 
 // --- email (Resend REST API — https://resend.com; no SDK dependency, just fetch) ---
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
@@ -152,12 +179,81 @@ const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || '';
 const STRIPE_PUBLISHABLE_KEY = process.env.STRIPE_PUBLISHABLE_KEY || '';
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
 function stripeConfigured(){ return !!STRIPE_SECRET_KEY; }
-// $9.99/mo is a suggested default for the provider paywall plan — change freely, it's just a constant.
+// TX sales tax on SaaS subscriptions (Plus/Premium, Pro Provider): Texas taxes SaaS as a "data
+// processing service" (Admin Code Rule 3.330), but only 80% of the charge is taxable. Effective
+// rate = combined local rate * 0.8. This uses the business's own Richardson, TX combined rate
+// (8.25%) as a flat approximation applied to every TX customer, regardless of their own city's
+// exact combined rate — simplest thing that's directionally correct for a single-location small
+// business. Not a substitute for a CPA confirming the right rate/sourcing. Override via env if
+// the rate changes or a CPA gives a different number.
+const TX_SAAS_TAX_PERCENT = Number(process.env.TX_SAAS_TAX_PERCENT || 6.6); // 8.25% * 80%
+let _txSaasTaxRateId=null; // cached Stripe Tax Rate object id, looked up/created lazily
+async function ensureTxSaasTaxRateId(){
+  if(!stripeConfigured()) return null;
+  if(_txSaasTaxRateId) return _txSaasTaxRateId;
+  const existing=await stripeRequest('GET','tax_rates?limit=100&active=true').catch(()=>null);
+  const found=existing?.data?.find(r=>r.metadata && r.metadata.key==='tx_saas_tax');
+  if(found){ _txSaasTaxRateId=found.id; return _txSaasTaxRateId; }
+  const created=await stripeRequest('POST','tax_rates',{
+    display_name:'TX Sales Tax (SaaS)', percentage:TX_SAAS_TAX_PERCENT, inclusive:'false',
+    country:'US', state:'TX', jurisdiction:'TX', metadata:{key:'tx_saas_tax'}
+  }).catch(e=>{ console.error('Failed to create TX tax rate:',e.message); return null; });
+  _txSaasTaxRateId=created?.id||null;
+  return _txSaasTaxRateId;
+}
+// $9.99/mo and $20.99/mo are suggested defaults for the two paid provider plans — change freely,
+// they're just constants.
 const PROVIDER_PLAN_PRICE_CENTS = 999;
+const PROVIDER_ELITE_PLAN_PRICE_CENTS = 2099;
 const PROVIDER_FREE_QUOTE_LIMIT = 3;
 const PROVIDER_FREE_CONVO_LIMIT = 3;
-const PROVIDER_FREE_MAX_RADIUS_MI = 50;
-const PROVIDER_FREE_DEFAULT_RADIUS_MI = 50;
+// Pro used to be unlimited; it's now capped like Free, just at a higher number. Elite is the only
+// plan left with no cap (see providerQuotaLimits).
+const PROVIDER_PRO_QUOTE_LIMIT = 20;
+const PROVIDER_PRO_CONVO_LIMIT = 20;
+const PROVIDER_FREE_MAX_RADIUS_MI = 20;
+const PROVIDER_FREE_DEFAULT_RADIUS_MI = 20;
+const PROVIDER_PRO_MAX_RADIUS_MI = 50;
+const PROVIDER_PRO_DEFAULT_RADIUS_MI = 50;
+// Single source of truth for "how many quotes/conversations can this provider plan send this
+// month" — Infinity means unlimited. Used both to decide whether to even check usage, and to
+// build the error message when a cap is hit.
+function providerQuotaLimits(plan){
+  if(plan==='elite') return {quotes:Infinity, convos:Infinity};
+  if(plan==='pro') return {quotes:PROVIDER_PRO_QUOTE_LIMIT, convos:PROVIDER_PRO_CONVO_LIMIT};
+  return {quotes:PROVIDER_FREE_QUOTE_LIMIT, convos:PROVIDER_FREE_CONVO_LIMIT};
+}
+// Service-area radius caps: Free 20mi, Pro 50mi, Elite unlimited (no cap at all — the only plan
+// that can clear its address entirely and see every open request nationwide).
+function providerMaxRadiusMi(plan){
+  if(plan==='pro') return PROVIDER_PRO_MAX_RADIUS_MI;
+  if(plan==='elite') return 500; // slider ceiling only; isProviderRadiusUnlimited makes this moot
+  return PROVIDER_FREE_MAX_RADIUS_MI;
+}
+function providerDefaultRadiusMi(plan){ return plan==='pro' ? PROVIDER_PRO_DEFAULT_RADIUS_MI : PROVIDER_FREE_DEFAULT_RADIUS_MI; }
+function isProviderRadiusUnlimited(plan){ return plan==='elite'; }
+function isEliteProvider(plan){ return plan==='elite'; }
+// Upgrade copy shown when a Free/Pro provider hits their monthly quote/conversation cap — Pro's
+// only remaining upsell is Elite (unlimited); Free can go to either.
+function providerQuotaUpsellText(plan,noun){
+  return plan==='pro' ? `Upgrade to Elite for unlimited ${noun}.` : `Upgrade to Pro for ${PROVIDER_PRO_QUOTE_LIMIT}/month, or Elite for unlimited.`;
+}
+// Featured tag/priority-placement eligibility: Elite plan is necessary but not sufficient — the
+// provider must also have at least a 4.5 rating and 10 completed jobs (a job counts as completed
+// once the provider uploads the payment receipt — see the /api/jobs/:id/receipt handler and the
+// completedJobCount query below, which use the exact same definition).
+const FEATURED_MIN_RATING = 4.5;
+const FEATURED_MIN_COMPLETED_JOBS = 10;
+function isFeaturedEligible(plan,rating,completedJobCount){
+  return plan==='elite' && Number(rating||0)>=FEATURED_MIN_RATING && Number(completedJobCount||0)>=FEATURED_MIN_COMPLETED_JOBS;
+}
+// Same "completed" definition used for the provider dashboard's own completedJobCount stat:
+// status='completed' AND a receipt was actually uploaded (not just marked done).
+async function completedJobCounts(providerIds){
+  if(!providerIds.length) return {};
+  const rows=await q("SELECT provider_id, count(*)::int AS c FROM jobs WHERE provider_id = ANY($1::text[]) AND status='completed' AND receipt_uploaded_at IS NOT NULL GROUP BY provider_id",[providerIds]);
+  return Object.fromEntries(rows.map(r=>[r.provider_id,r.c]));
+}
 
 // Flattens a nested object into Stripe's bracket-notation form encoding, e.g.
 // {items:[{price_data:{unit_amount:100}}]} -> "items[0][price_data][unit_amount]=100"
@@ -203,7 +299,10 @@ async function stripeSubscribe(customerId, paymentMethodId, existingSubId, items
   if(existingSubId) await stripeRequest('DELETE','subscriptions/'+existingSubId).catch(()=>{});
   const sub=await stripeRequest('POST','subscriptions',{
     customer:customerId,
-    items:items.map(it=>({price_data:{currency:'usd',unit_amount:it.unitAmount,recurring:{interval:it.interval||'month'},product_data:{name:it.name}}})),
+    items:items.map(it=>({
+      price_data:{currency:'usd',unit_amount:it.unitAmount,recurring:{interval:it.interval||'month'},product_data:{name:it.name}},
+      ...(it.taxRateId?{tax_rates:[it.taxRateId]}:{})
+    })),
     default_payment_method:paymentMethodId,
   });
   return sub;
@@ -276,20 +375,10 @@ async function sendEmail({to,type,subject,html,userId}){
 // server-side allowlist so an /api/profile/avatar call can't stash an arbitrary string.
 const AVATAR_ICON_IDS=['h1','h2','h3','h4','h5','p1','p2','p3','p4','p5'];
 
-// --- provider verification / background-check workflow ---
+// --- provider verification workflow ---
 const VERIFICATION_DOC_RE=/^data:(image\/(png|jpe?g|webp)|application\/pdf);base64,[A-Za-z0-9+/=]+$/;
 const VERIFICATION_MAX_DOC_BYTES=5_500_000; // ~4MB file once base64-encoded
 const VERIFICATION_MAX_DOCS=6;
-// No real screening vendor is wired up (needs a signed vendor account + API keys we don't have,
-// and this sandbox can't reach the internet to test one anyway). This just records that a check
-// was requested so it shows up in the admin queue. To go live: sign up with a vendor that offers
-// a HOSTED candidate flow (e.g. Checkr Invitations) — the provider enters SSN/DOB directly on the
-// vendor's own site, so this server never touches that data — then call the vendor's "create
-// invitation" API here and flip background_check_status via their webhook, the same pattern used
-// for the Stripe webhook above.
-async function initiateBackgroundCheck(provider){
-  console.log(`[background-check] requested for provider ${provider.id} (${provider.email}) — no vendor configured, left as 'requested' for manual admin follow-up.`);
-}
 
 const CARE_SERVICE_INFO={
   landscaping:{name:'Landscaping',price:110,billing:'mo'},
@@ -305,7 +394,7 @@ function carePlanActiveDetails(items){ return (items||[]).filter(i=>i.status==='
 // Plan catalogs used by the admin account panel: labels/prices for the invoice email, and a rank
 // order so we can tell an upgrade (send an invoice) from a downgrade or lateral change (don't).
 const HOMEOWNER_PLAN_INFO={free:{label:'Free',priceCents:0,rank:0},plus:{label:'Plus',priceCents:999,rank:1},premium:{label:'Premium',priceCents:2999,rank:2}};
-const PROVIDER_PLAN_INFO={free:{label:'Free',priceCents:0,rank:0},pro:{label:'Pro Provider',priceCents:PROVIDER_PLAN_PRICE_CENTS,rank:1}};
+const PROVIDER_PLAN_INFO={free:{label:'Free',priceCents:0,rank:0},pro:{label:'Pro Provider',priceCents:PROVIDER_PLAN_PRICE_CENTS,rank:1},elite:{label:'Elite Provider',priceCents:PROVIDER_ELITE_PLAN_PRICE_CENTS,rank:2}};
 // The self-service /api/subscription route has historically stored the homeowner Premium tier as
 // 'pro' (a leftover naming mismatch with the admin panel's 'premium'). Normalize on read so both
 // old and new rows resolve to the same HOMEOWNER_PLAN_INFO entry everywhere admin code looks up a
@@ -332,7 +421,7 @@ function newQuoteEmailHtml(homeowner,request,quote,provider){
 function quoteAcceptedEmailHtml(provider,request){
   return emailShell('Your quote was accepted',
     `<h2 style="margin:0 0 10px;color:#17352f">You got the job! 🎉</h2>
-     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Your quote on "${esc_(request.title)}" was accepted. It's now on your Active Jobs list.</p>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Your quote on "${esc_(request.title)}" was accepted. It's now on your Active Jobs list. Reach out to the homeowner directly to confirm the exact date/time and any details — Living Communities isn't involved in scheduling.</p>
      ${btn('View Job',APP_URL)}`);
 }
 function newMessageEmailHtml(recipientName,senderName,body){
@@ -502,12 +591,6 @@ function adminJobCancelledEmailHtml(job,homeownerName,providerName){
   return emailShell('Job cancelled',
     `<h2 style="margin:0 0 10px;color:#17352f">"${esc_(job.title)}" was cancelled</h2>
      <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Between <b>${esc_(homeownerName)}</b> and <b>${esc_(providerName)}</b>.</p>
-     ${btn('View in Admin',APP_URL+'/#admin')}`);
-}
-function adminBackgroundCheckRequestedEmailHtml(provider){
-  return emailShell('Background check requested',
-    `<h2 style="margin:0 0 10px;color:#17352f">${esc_(provider.name)} requested a background check</h2>
-     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px"><b>${esc_(provider.name)}</b> (${esc_(provider.email)}) opted into a background check when submitting verification. No vendor is wired up yet — this needs manual follow-up.</p>
      ${btn('View in Admin',APP_URL+'/#admin')}`);
 }
 function adminDigestEmailHtml(stats){
@@ -713,14 +796,22 @@ async function initSchema(){
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_kind text`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_value text`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS service_radius_mi integer`);
-  // Provider verification / background-check workflow
+  // Billing address collected at checkout for paid subscriptions (Plus/Premium, Pro Provider) —
+  // {line1,city,state,zip}. This, not the homeowner/provider's service-area address, is what
+  // decides sales-tax jurisdiction (see isTexasBilling). Stored so the decision made at the time
+  // of charge is auditable later, separate from whatever address they have on file today.
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS billing_address jsonb`);
+  // Provider verification workflow
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS provider_entity_type text`); // 'individual' | 'business'
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_status text DEFAULT 'unverified'`); // unverified | pending | verified | rejected
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_notes text`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_submitted_at timestamptz`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_reviewed_at timestamptz`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_documents jsonb DEFAULT '[]'::jsonb`);
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS background_check_status text DEFAULT 'not_requested'`); // not_requested | requested | in_progress | clear | consider
+  // background_check_status / background_check_requested_at columns were used by a removed
+  // feature and are no longer read or written; left in place (harmless, unused) rather than
+  // dropped, so this stays idempotent if an older deploy still references them.
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS background_check_status text DEFAULT 'not_requested'`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS background_check_requested_at timestamptz`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS suspended boolean DEFAULT false`);
   // Self-service account deletion is a SOFT delete: the row and all its requests/quotes/jobs/chats
@@ -734,6 +825,11 @@ async function initSchema(){
   await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS dispatched_provider_id text`);
   await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS dispatched_at timestamptz`);
   await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS dispatched_note text`);
+  // Homeowner can pull their own open request off the provider feed at any time without deleting
+  // it (delist), and put it back (relist) — the request and any quotes/chats it already has stay
+  // exactly as they were either way, this only controls whether new providers can see/quote it.
+  await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS delisted boolean DEFAULT false`);
+  await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS delisted_at timestamptz`);
   // Chat is scoped to a quote (one request + one provider), never to a person. quote_id is
   // required going forward; any pre-existing message with no quote_id is unlinked legacy DM
   // data from the old person-to-person model and is dropped below, once, on boot.
@@ -897,8 +993,21 @@ async function quotesByRequestId(reqIds,viewerId){
   const providers=providerIds.length?await q('SELECT * FROM users WHERE id = ANY($1::text[])',[providerIds]):[];
   const providerMap=Object.fromEntries(providers.map(p=>[p.id,publicProviderView(mapUser(p))]));
   const activity=await quoteActivity(quotes.map(x=>x.id),viewerId);
+  const completedCounts=await completedJobCounts(providerIds);
   const out={};
-  for(const qq of quotes){ (out[qq.request_id]=out[qq.request_id]||[]).push({...mapQuote(qq),provider:providerMap[qq.provider_id],...activity[qq.id]}); }
+  for(const qq of quotes){
+    const provider=providerMap[qq.provider_id];
+    const featured=isFeaturedEligible(provider&&provider.providerPlan,provider&&provider.rating,completedCounts[qq.provider_id]);
+    (out[qq.request_id]=out[qq.request_id]||[]).push({...mapQuote(qq),provider,featured,...activity[qq.id]});
+  }
+  // Elite ("featured") providers' quotes surface first — the priority-placement perk — then within
+  // each tier, most recently active first (same tiebreak the UI already used).
+  for(const rid in out){
+    out[rid].sort((a,b)=>{
+      if(a.featured!==b.featured) return a.featured?-1:1;
+      return new Date(b.lastActivityAt||b.createdAt)-new Date(a.lastActivityAt||a.createdAt);
+    });
+  }
   return out;
 }
 
@@ -1051,16 +1160,19 @@ const server=http.createServer(async (req,res)=>{
         const announcements=await q('SELECT * FROM announcements WHERE user_id=$1 OR user_id IS NULL ORDER BY created_at DESC LIMIT 50',[u.id]);
         const unreadAnnouncementsCount=Number((await q1("SELECT count(*)::int AS c FROM announcements WHERE (user_id=$1 OR user_id IS NULL) AND created_at > COALESCE($2::timestamptz,'-infinity')",[u.id,u.lastAnnouncementsViewAt])).c);
         const unreadSupportCount=isPaidPlan(u)?Number((await q1("SELECT count(*)::int AS c FROM support_messages WHERE user_id=$1 AND sender_role='admin' AND read=false",[u.id])).c):0;
-        const jobs=await q('SELECT * FROM jobs WHERE homeowner_id=$1 ORDER BY created_at DESC',[u.id]);
+        // Joins in the provider's name so the appointment card can say who the homeowner is
+        // dealing with, not just "scheduled" with no counterparty shown.
+        const jobs=await q('SELECT j.*, up.name AS provider_name FROM jobs j JOIN users up ON up.id=j.provider_id WHERE j.homeowner_id=$1 ORDER BY j.created_at DESC',[u.id]);
         const reviews=await q('SELECT * FROM reviews WHERE homeowner_id=$1',[u.id]);
-        return send(res,200,{user:safeUser(u),requests,announcements:announcements.map(mapAnnouncement),jobs:jobs.map(mapJob),reviews:reviews.map(mapReview),unreadChatCount,unreadMessagesCount:unreadAnnouncementsCount+unreadSupportCount});
+        return send(res,200,{user:safeUser(u),requests,announcements:announcements.map(mapAnnouncement),jobs:jobs.map(r=>({...mapJob(r),providerName:r.provider_name})),reviews:reviews.map(mapReview),unreadChatCount,unreadMessagesCount:unreadAnnouncementsCount+unreadSupportCount});
       }
-      if(u.role==='provider'){ const usage=await ensureUsagePeriod(u); u.quotesUsed=usage.quotes; u.convosUsed=usage.convos; }
+      let providerUsage=null;
+      if(u.role==='provider'){ providerUsage=await ensureUsagePeriod(u); u.quotesUsed=providerUsage.quotes; u.convosUsed=providerUsage.convos; }
       // Joins in the homeowner's lat/lng (if they ever geocoded an address) so each request can
       // carry a distanceMi from this provider — used to filter/label the feed by service area.
       // Requests whose homeowner has no geocoded location get distanceMi:null and are never
       // filtered out, so incomplete address data never silently hides real leads.
-      const openRows=await q("SELECT r.*, uh.lat AS h_lat, uh.lng AS h_lng FROM requests r JOIN users uh ON uh.id=r.homeowner_id WHERE r.status='open' ORDER BY r.created_at DESC");
+      const openRows=await q("SELECT r.*, uh.lat AS h_lat, uh.lng AS h_lng FROM requests r JOIN users uh ON uh.id=r.homeowner_id WHERE r.status='open' AND r.delisted=false ORDER BY r.created_at DESC");
       const myQuotes=openRows.length?await q('SELECT * FROM quotes WHERE request_id = ANY($1::text[]) AND provider_id=$2',[openRows.map(r=>r.id),u.id]):[];
       const myActivity=await quoteActivity(myQuotes.map(qq=>qq.id),u.id);
       const quoteByReq=Object.fromEntries(myQuotes.map(qq=>[qq.request_id,{...mapQuote(qq),...myActivity[qq.id]}]));
@@ -1072,10 +1184,24 @@ const server=http.createServer(async (req,res)=>{
       const announcements=await q('SELECT * FROM announcements WHERE user_id=$1 OR user_id IS NULL ORDER BY created_at DESC LIMIT 50',[u.id]);
       const unreadAnnouncementsCount=Number((await q1("SELECT count(*)::int AS c FROM announcements WHERE (user_id=$1 OR user_id IS NULL) AND created_at > COALESCE($2::timestamptz,'-infinity')",[u.id,u.lastAnnouncementsViewAt])).c);
       const unreadSupportCount=isPaidPlan(u)?Number((await q1("SELECT count(*)::int AS c FROM support_messages WHERE user_id=$1 AND sender_role='admin' AND read=false",[u.id])).c):0;
-      const jobs=await q('SELECT * FROM jobs WHERE provider_id=$1 ORDER BY created_at DESC',[u.id]);
+      // Same join, mirrored: the provider's job cards show which homeowner it is.
+      const jobs=await q('SELECT j.*, uh.name AS homeowner_name FROM jobs j JOIN users uh ON uh.id=j.homeowner_id WHERE j.provider_id=$1 ORDER BY j.created_at DESC',[u.id]);
       const reviews=await q('SELECT * FROM reviews WHERE provider_id=$1',[u.id]);
       const completedJobCount=Number((await q1("SELECT count(*)::int AS c FROM jobs WHERE provider_id=$1 AND status='completed' AND receipt_uploaded_at IS NOT NULL",[u.id])).c);
-      return send(res,200,{user:{...safeUser(u),completedJobCount},requests,announcements:announcements.map(mapAnnouncement),jobs:jobs.map(mapJob),reviews:reviews.map(mapReview),unreadChatCount,unreadMessagesCount:unreadAnnouncementsCount+unreadSupportCount});
+      // Quote performance analytics — an Elite-only perk. All-time send/accept counts plus this
+      // month's usage (already tracked for everyone; just surfaced here for Elite's dashboard panel).
+      let providerAnalytics=null;
+      if(isEliteProvider(u.providerPlan)){
+        const stats=await q1("SELECT count(*)::int AS total, count(*) FILTER (WHERE status='accepted')::int AS accepted FROM quotes WHERE provider_id=$1",[u.id]);
+        providerAnalytics={
+          quotesSentTotal:stats.total,
+          quotesAcceptedTotal:stats.accepted,
+          winRatePct:stats.total?Math.round(stats.accepted/stats.total*100):null,
+          quotesThisMonth:providerUsage?providerUsage.quotes:0,
+          convosThisMonth:providerUsage?providerUsage.convos:0
+        };
+      }
+      return send(res,200,{user:{...safeUser(u),completedJobCount},requests,announcements:announcements.map(mapAnnouncement),jobs:jobs.map(r=>({...mapJob(r),homeownerName:r.homeowner_name})),reviews:reviews.map(mapReview),unreadChatCount,unreadMessagesCount:unreadAnnouncementsCount+unreadSupportCount,providerAnalytics});
     }
     // Clears the "new" badge on the Messages nav item — call when the user opens that panel.
     if(p==='/api/announcements/mark-seen' && req.method==='POST'){
@@ -1084,7 +1210,7 @@ const server=http.createServer(async (req,res)=>{
     }
 
     if(p==='/api/requests' && req.method==='GET'){
-      const rows=u.role==='homeowner'?await q('SELECT * FROM requests WHERE homeowner_id=$1 ORDER BY created_at DESC',[u.id]):await q("SELECT * FROM requests WHERE status='open' ORDER BY created_at DESC");
+      const rows=u.role==='homeowner'?await q('SELECT * FROM requests WHERE homeowner_id=$1 ORDER BY created_at DESC',[u.id]):await q("SELECT * FROM requests WHERE status='open' AND delisted=false ORDER BY created_at DESC");
       return send(res,200,{requests:rows.map(mapRequest)});
     }
     if(p==='/api/requests' && req.method==='POST'){
@@ -1106,6 +1232,23 @@ const server=http.createServer(async (req,res)=>{
         [id('req'),u.id,serviceType,String(b.title||`${serviceType} service request`).slice(0,120),String(b.description||'').slice(0,2000),b.urgency||'Flexible',b.preferredDate||'',b.preferredTime||'Any time','open']);
       return send(res,201,{request:mapRequest(row)});
     }
+    // Delist/relist: the homeowner's own on/off switch for whether their still-open request is
+    // visible to providers. Doesn't touch the request, any quotes already sent, or their chats —
+    // only whether NEW providers can see and quote it.
+    if(p.startsWith('/api/requests/') && p.endsWith('/delist') && req.method==='POST'){
+      const rid=p.split('/')[3], r=await q1('SELECT * FROM requests WHERE id=$1',[rid]); if(!r)return send(res,404,{error:'Request not found'});
+      if(r.homeowner_id!==u.id) return send(res,403,{error:'Not authorized'});
+      if(r.status!=='open') return send(res,409,{error:'Only an open request can be delisted.'});
+      const row=await q1('UPDATE requests SET delisted=true, delisted_at=now() WHERE id=$1 RETURNING *',[rid]);
+      return send(res,200,{request:mapRequest(row)});
+    }
+    if(p.startsWith('/api/requests/') && p.endsWith('/relist') && req.method==='POST'){
+      const rid=p.split('/')[3], r=await q1('SELECT * FROM requests WHERE id=$1',[rid]); if(!r)return send(res,404,{error:'Request not found'});
+      if(r.homeowner_id!==u.id) return send(res,403,{error:'Not authorized'});
+      if(r.status!=='open') return send(res,409,{error:'Only an open request can be relisted.'});
+      const row=await q1('UPDATE requests SET delisted=false, delisted_at=NULL WHERE id=$1 RETURNING *',[rid]);
+      return send(res,200,{request:mapRequest(row)});
+    }
     if(p.startsWith('/api/requests/') && p.endsWith('/quotes') && req.method==='GET'){
       const rid=p.split('/')[3], r=await q1('SELECT * FROM requests WHERE id=$1',[rid]); if(!r)return send(res,404,{error:'Request not found'});
       if(u.role==='homeowner'&&r.homeowner_id!==u.id)return send(res,403,{error:'Not authorized'});
@@ -1115,16 +1258,19 @@ const server=http.createServer(async (req,res)=>{
     if(p.startsWith('/api/requests/') && p.endsWith('/quotes') && req.method==='POST'){
       if(u.role!=='provider')return send(res,403,{error:'Only providers can submit quotes'});
       const rid=p.split('/')[3], r=await q1('SELECT * FROM requests WHERE id=$1',[rid]); if(!r)return send(res,404,{error:'Request not found'});
+      if(r.delisted) return send(res,410,{error:'This homeowner took the request down. It\'s no longer accepting quotes.'});
+      if(r.status!=='open') return send(res,409,{error:'This request already has a provider scheduled.'});
       const existing=await q1('SELECT id FROM quotes WHERE request_id=$1 AND provider_id=$2',[rid,u.id]);
       if(existing)return send(res,409,{error:'You already responded to this request'});
-      if(u.providerPlan!=='pro'){
+      const quoteLimits=providerQuotaLimits(u.providerPlan);
+      if(Number.isFinite(quoteLimits.quotes)){
         const usage=await ensureUsagePeriod(u);
-        if(usage.quotes>=PROVIDER_FREE_QUOTE_LIMIT) return send(res,402,{error:"You've sent "+PROVIDER_FREE_QUOTE_LIMIT+" quotes this month on the Free plan. Upgrade to Pro Provider for unlimited quotes.",upgradeRequired:true});
+        if(usage.quotes>=quoteLimits.quotes) return send(res,402,{error:`You've sent ${quoteLimits.quotes} quotes this month on the ${PROVIDER_PLAN_INFO[u.providerPlan||'free'].label} plan. ${providerQuotaUpsellText(u.providerPlan,'quotes')}`,upgradeRequired:true});
       }
       const b=await body(req);
       const row=await q1('INSERT INTO quotes (id,request_id,provider_id,amount_min,amount_max,availability,message,status) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *',
         [id('quote'),rid,u.id,Number(b.amountMin||0),Number(b.amountMax||0),String(b.availability||'Flexible').slice(0,120),String(b.message||'').slice(0,1000),'pending']);
-      if(u.providerPlan!=='pro') await pool.query('UPDATE users SET quotes_sent_this_period=quotes_sent_this_period+1 WHERE id=$1',[u.id]);
+      if(Number.isFinite(quoteLimits.quotes)) await pool.query('UPDATE users SET quotes_sent_this_period=quotes_sent_this_period+1 WHERE id=$1',[u.id]);
       const homeownerRow=await q1('SELECT * FROM users WHERE id=$1',[r.homeowner_id]);
       if(homeownerRow) sendEmail({to:homeownerRow.email,type:'new_quote',subject:`New quote on "${r.title}"`,html:newQuoteEmailHtml(homeownerRow,r,row,u),userId:homeownerRow.id}).catch(()=>{});
       return send(res,201,{quote:mapQuote(row)});
@@ -1178,12 +1324,15 @@ const server=http.createServer(async (req,res)=>{
       const recipientId=isHomeowner?t.quote.provider_id:t.request.homeowner_id;
       const recipientRow=await q1('SELECT * FROM users WHERE id=$1',[recipientId]);
       let isNewConversation=false;
-      if(isProvider && u.providerPlan!=='pro'){
+      if(isProvider){
         const priorMsg=await q1('SELECT id FROM messages WHERE quote_id=$1 AND sender_id=$2 LIMIT 1',[qid,u.id]);
         isNewConversation=!priorMsg;
         if(isNewConversation){
-          const usage=await ensureUsagePeriod(u);
-          if(usage.convos>=PROVIDER_FREE_CONVO_LIMIT) return send(res,402,{error:"You've started "+PROVIDER_FREE_CONVO_LIMIT+" new conversations this month on the Free plan. Upgrade to Pro Provider to message more homeowners.",upgradeRequired:true});
+          const convoLimits=providerQuotaLimits(u.providerPlan);
+          if(Number.isFinite(convoLimits.convos)){
+            const usage=await ensureUsagePeriod(u);
+            if(usage.convos>=convoLimits.convos) return send(res,402,{error:`You've started ${convoLimits.convos} new conversations this month on the ${PROVIDER_PLAN_INFO[u.providerPlan||'free'].label} plan. ${providerQuotaUpsellText(u.providerPlan,'new conversations')}`,upgradeRequired:true});
+          }
         }
       }
       const row=await q1('INSERT INTO messages (id,quote_id,sender_id,recipient_id,participants,body,read) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *',
@@ -1260,17 +1409,24 @@ const server=http.createServer(async (req,res)=>{
           if(existing?.stripe_subscription_id) await stripeRequest('DELETE','subscriptions/'+existing.stripe_subscription_id).catch(()=>{});
         }
         row=await q1('UPDATE users SET subscription=$1, stripe_subscription_id=NULL WHERE id=$2 RETURNING *',[b.plan,u.id]);
-      }else if(stripeConfigured()){
-        if(!b.paymentMethodId) return send(res,400,{error:'Payment method required'});
-        try{
-          const customerId=await ensureStripeCustomer(u);
-          const priceCents=b.plan==='plus'?HOMEOWNER_PLAN_INFO.plus.priceCents:HOMEOWNER_PLAN_INFO.premium.priceCents;
-          const existing=await q1('SELECT stripe_subscription_id FROM users WHERE id=$1',[u.id]);
-          const sub=await stripeSubscribe(customerId,b.paymentMethodId,existing?.stripe_subscription_id,[{unitAmount:priceCents,name:(b.plan==='plus'?'Plus':'Premium')+' plan',interval:'month'}]);
-          row=await q1('UPDATE users SET subscription=$1, stripe_subscription_id=$2, stripe_customer_id=$3 WHERE id=$4 RETURNING *',[b.plan,sub.id,customerId,u.id]);
-        }catch(e){ return sendStripeError(res,e); }
       }else{
-        row=await q1('UPDATE users SET subscription=$1 WHERE id=$2 RETURNING *',[b.plan,u.id]);
+        const billingAddress=sanitizeBillingAddress(b.billingAddress);
+        if(!billingAddress||!billingAddress.line1||!billingAddress.city||!billingAddress.state||!billingAddress.zip){
+          return send(res,400,{error:'Enter your billing address (this is what your sales tax, if any, is based on).'});
+        }
+        if(stripeConfigured()){
+          if(!b.paymentMethodId) return send(res,400,{error:'Payment method required'});
+          try{
+            const customerId=await ensureStripeCustomer(u);
+            const priceCents=b.plan==='plus'?HOMEOWNER_PLAN_INFO.plus.priceCents:HOMEOWNER_PLAN_INFO.premium.priceCents;
+            const existing=await q1('SELECT stripe_subscription_id FROM users WHERE id=$1',[u.id]);
+            const taxRateId=isTexasBilling(billingAddress)?await ensureTxSaasTaxRateId():null;
+            const sub=await stripeSubscribe(customerId,b.paymentMethodId,existing?.stripe_subscription_id,[{unitAmount:priceCents,name:(b.plan==='plus'?'Plus':'Premium')+' plan',interval:'month',taxRateId}]);
+            row=await q1('UPDATE users SET subscription=$1, stripe_subscription_id=$2, stripe_customer_id=$3, billing_address=$4::jsonb WHERE id=$5 RETURNING *',[b.plan,sub.id,customerId,JSON.stringify(billingAddress),u.id]);
+          }catch(e){ return sendStripeError(res,e); }
+        }else{
+          row=await q1('UPDATE users SET subscription=$1, billing_address=$2::jsonb WHERE id=$3 RETURNING *',[b.plan,JSON.stringify(billingAddress),u.id]);
+        }
       }
       await pool.query('INSERT INTO subscriptions (id,user_id,plan,status) VALUES ($1,$2,$3,$4)',[id('sub'),u.id,b.plan,'active']);
       if(b.plan!==(u.subscription||'free')){
@@ -1401,9 +1557,9 @@ const server=http.createServer(async (req,res)=>{
       return send(res,200,{user:safeUser(mapUser(row))});
     }
     if(p==='/api/provider-plan' && req.method==='POST'){
-      if(u.role!=='provider')return send(res,403,{error:'Only providers have a Pro Provider plan'});
+      if(u.role!=='provider')return send(res,403,{error:'Only providers have a paid provider plan'});
       const b=await body(req);
-      const plan=b.plan==='pro'?'pro':'free';
+      const plan=['pro','elite'].includes(b.plan)?b.plan:'free';
       let row;
       if(plan==='free'){
         if(stripeConfigured()){
@@ -1411,16 +1567,24 @@ const server=http.createServer(async (req,res)=>{
           if(existing?.provider_plan_stripe_subscription_id) await stripeRequest('DELETE','subscriptions/'+existing.provider_plan_stripe_subscription_id).catch(()=>{});
         }
         row=await q1("UPDATE users SET provider_plan='free', provider_plan_stripe_subscription_id=NULL WHERE id=$1 RETURNING *",[u.id]);
-      }else if(stripeConfigured()){
-        if(!b.paymentMethodId) return send(res,400,{error:'Payment method required'});
-        try{
-          const customerId=await ensureStripeCustomer(u);
-          const existing=await q1('SELECT provider_plan_stripe_subscription_id FROM users WHERE id=$1',[u.id]);
-          const sub=await stripeSubscribe(customerId,b.paymentMethodId,existing?.provider_plan_stripe_subscription_id,[{unitAmount:PROVIDER_PLAN_PRICE_CENTS,name:'Pro Provider plan',interval:'month'}]);
-          row=await q1("UPDATE users SET provider_plan='pro', provider_plan_stripe_subscription_id=$1, stripe_customer_id=$2 WHERE id=$3 RETURNING *",[sub.id,customerId,u.id]);
-        }catch(e){ return sendStripeError(res,e); }
       }else{
-        row=await q1("UPDATE users SET provider_plan='pro' WHERE id=$1 RETURNING *",[u.id]);
+        const billingAddress=sanitizeBillingAddress(b.billingAddress);
+        if(!billingAddress||!billingAddress.line1||!billingAddress.city||!billingAddress.state||!billingAddress.zip){
+          return send(res,400,{error:'Enter your billing address (this is what your sales tax, if any, is based on).'});
+        }
+        const planInfo=PROVIDER_PLAN_INFO[plan];
+        if(stripeConfigured()){
+          if(!b.paymentMethodId) return send(res,400,{error:'Payment method required'});
+          try{
+            const customerId=await ensureStripeCustomer(u);
+            const existing=await q1('SELECT provider_plan_stripe_subscription_id FROM users WHERE id=$1',[u.id]);
+            const taxRateId=isTexasBilling(billingAddress)?await ensureTxSaasTaxRateId():null;
+            const sub=await stripeSubscribe(customerId,b.paymentMethodId,existing?.provider_plan_stripe_subscription_id,[{unitAmount:planInfo.priceCents,name:planInfo.label+' plan',interval:'month',taxRateId}]);
+            row=await q1("UPDATE users SET provider_plan=$1, provider_plan_stripe_subscription_id=$2, stripe_customer_id=$3, billing_address=$4::jsonb WHERE id=$5 RETURNING *",[plan,sub.id,customerId,JSON.stringify(billingAddress),u.id]);
+          }catch(e){ return sendStripeError(res,e); }
+        }else{
+          row=await q1("UPDATE users SET provider_plan=$1, billing_address=$2::jsonb WHERE id=$3 RETURNING *",[plan,JSON.stringify(billingAddress),u.id]);
+        }
       }
       if(plan!==(u.providerPlan||'free')){
         const info=PROVIDER_PLAN_INFO[plan];
@@ -1456,12 +1620,12 @@ const server=http.createServer(async (req,res)=>{
       if(u.role!=='provider')return send(res,403,{error:'Only providers set a service area'});
       const b=await body(req);
       const address=String(b.address||'').trim().slice(0,200);
-      const maxRadiusMi = u.providerPlan==='pro' ? 200 : PROVIDER_FREE_MAX_RADIUS_MI;
+      const maxRadiusMi = providerMaxRadiusMi(u.providerPlan);
       if(!address){
-        if(u.providerPlan!=='pro'){
-          return send(res,403,{error:`Free plan providers keep a service area (up to ${PROVIDER_FREE_MAX_RADIUS_MI} mi). Upgrade to Pro Provider to see every open request, nationwide.`,upgradeRequired:true});
+        if(!isProviderRadiusUnlimited(u.providerPlan)){
+          return send(res,403,{error:`${PROVIDER_PLAN_INFO[u.providerPlan||'free'].label} plan providers keep a service area (up to ${maxRadiusMi} mi). Upgrade to Elite to see every open request, nationwide.`,upgradeRequired:true});
         }
-        // Clearing the field resets to "show every open request" — Pro plan only.
+        // Clearing the field resets to "show every open request" — Elite only.
         const row=await q1('UPDATE users SET address=NULL, lat=NULL, lng=NULL, geocoded_at=NULL, service_radius_mi=NULL WHERE id=$1 RETURNING *',[u.id]);
         return send(res,200,{user:safeUser(mapUser(row))});
       }
@@ -1492,20 +1656,15 @@ const server=http.createServer(async (req,res)=>{
         if(dataUrl.length>VERIFICATION_MAX_DOC_BYTES) return send(res,400,{error:`"${label}" is too large. Please keep each file under 4MB.`});
         documents.push({type:docType,label,dataUrl,uploadedAt:new Date().toISOString()});
       }
-      const wantsBackgroundCheck = entityType==='individual' && !!b.requestBackgroundCheck;
-      const bgStatus = wantsBackgroundCheck ? 'requested' : 'not_requested';
       const row=await q1(
         `UPDATE users SET provider_entity_type=$1, verification_documents=$2::jsonb, verification_status='pending',
-         verification_notes=NULL, verification_submitted_at=now(), verification_reviewed_at=NULL,
-         background_check_status=$3, background_check_requested_at=$4
-         WHERE id=$5 RETURNING *`,
-        [entityType, JSON.stringify(documents), bgStatus, wantsBackgroundCheck?new Date():null, u.id]
+         verification_notes=NULL, verification_submitted_at=now(), verification_reviewed_at=NULL
+         WHERE id=$3 RETURNING *`,
+        [entityType, JSON.stringify(documents), u.id]
       );
-      if(wantsBackgroundCheck) initiateBackgroundCheck(mapUser(row)); // stub — see function comment
       sendEmail({to:row.email,type:'verification_submitted',subject:'Verification submitted',html:verificationSubmittedEmailHtml(mapUser(row)),userId:row.id}).catch(()=>{});
       if(ADMIN_NOTIFY_EMAIL){
         sendEmail({to:ADMIN_NOTIFY_EMAIL,type:'admin_new_verification',subject:`New verification pending: ${row.name}`,html:adminNewVerificationEmailHtml(mapUser(row))}).catch(()=>{});
-        if(wantsBackgroundCheck) sendEmail({to:ADMIN_NOTIFY_EMAIL,type:'admin_background_check_requested',subject:`Background check requested: ${row.name}`,html:adminBackgroundCheckRequestedEmailHtml(mapUser(row))}).catch(()=>{});
       }
       return send(res,200,{user:safeUser(mapUser(row))});
     }
@@ -1660,8 +1819,8 @@ const server=http.createServer(async (req,res)=>{
         planInfo=HOMEOWNER_PLAN_INFO[plan];
         isUpgrade=planInfo.rank>(HOMEOWNER_PLAN_INFO[oldPlan]?.rank??0);
       } else if(target.role==='provider'){
-        const plan=['free','pro'].includes(b.providerPlan)?b.providerPlan:null;
-        if(!plan) return send(res,400,{error:'providerPlan must be free or pro'});
+        const plan=['free','pro','elite'].includes(b.providerPlan)?b.providerPlan:null;
+        if(!plan) return send(res,400,{error:'providerPlan must be free, pro, or elite'});
         const oldPlan=target.provider_plan||'free';
         row=await q1('UPDATE users SET provider_plan=$1 WHERE id=$2 RETURNING *',[plan,aid]);
         planInfo=PROVIDER_PLAN_INFO[plan];
