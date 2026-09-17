@@ -858,12 +858,13 @@ button{font:inherit;cursor:pointer}
  <div class="steps"><div class="step on"></div><div class="step on"></div><div class="step"></div></div>
  <div class="notice"><svg class="icn" width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="9" width="11" height="7.5" rx="1.5"/><path d="M6.5 9V6.3a3.5 3.5 0 017 0V9"/></svg> Your name and exact address stay private. We use your ZIP/city only to match you with nearby providers.</div>
  <div class="formgrid">
-  <div class="field"><label>SERVICE</label><select id="serviceType"><option>Lawn & Landscaping</option><option>House Cleaning</option><option>Pool Service</option><option>Handyman</option><option>Plumbing</option><option>Electrical</option><option>HVAC</option><option>Pest Control</option></select></div>
-  <div class="field"><label>URGENCY</label><select><option>Flexible</option><option>This week</option><option>ASAP</option><option>Emergency</option></select></div>
+  <div class="field"><label>SERVICE</label><select id="serviceType" onchange="populateCommonRequests()"><option>Lawn & Landscaping</option><option>House Cleaning</option><option>Pool Service</option><option>Handyman</option><option>Plumbing</option><option>Electrical</option><option>HVAC</option><option>Pest Control</option></select></div>
+  <div class="field"><label>URGENCY</label><select id="requestUrgency"><option>Flexible</option><option>This week</option><option>ASAP</option><option>Emergency</option></select></div>
+  <div class="field full"><label>COMMON REQUESTS <span class="subtle" style="font-weight:400;text-transform:none">(optional — pick any that apply)</span></label><select id="commonRequestPicker" onchange="insertCommonRequest()"></select></div>
   <div class="field full"><label>YOUR ZIP CODE OR CITY</label><input id="requestZip" placeholder="e.g. 75080 or Richardson, TX" required></div>
-  <div class="field full"><label>WHAT DO YOU NEED?</label><textarea placeholder="Describe the work you need done..."></textarea></div>
-  <div class="field"><label>PREFERRED DATE</label><input type="date"></div>
-  <div class="field"><label>PREFERRED TIME</label><select><option>Morning</option><option>Afternoon</option><option>Evening</option><option>Any time</option></select></div>
+  <div class="field full"><label>WHAT DO YOU NEED?</label><textarea id="requestDescription" placeholder="Describe the work you need done..."></textarea></div>
+  <div class="field"><label>PREFERRED DATE</label><input type="date" id="requestPreferredDate"></div>
+  <div class="field"><label>PREFERRED TIME</label><select id="requestPreferredTime"><option>Morning</option><option>Afternoon</option><option>Evening</option><option>Any time</option></select></div>
   <div class="field full"><label>PHOTOS (OPTIONAL)</label><input type="file" multiple></div>
  </div>
  <div id="requestZipError" class="notice hidden"></div>
@@ -1565,9 +1566,37 @@ function closeProfileMenus(){
 document.addEventListener('click',closeProfileMenus);
 
 let quoteTargetRequestId=null;
+// Common requests per service: quick-pick starting points for the description box. Deliberately
+// excludes anything recurring/weekly (regular mowing, standard house cleaning, pool chemical runs,
+// etc.) — homeowners wanting ongoing service are steered to the Home Care Plan instead of a
+// one-off request.
+const COMMON_REQUESTS={
+  'Plumbing':['Leaky faucet','Clogged drain','Running toilet','Water heater repair','Pipe leak','Garbage disposal','Low water pressure','Sump pump'],
+  'Electrical':['Outlet not working','Light fixture install','Circuit breaker issue','Ceiling fan install','Panel upgrade','Flickering lights','GFCI outlet','EV charger install'],
+  'HVAC':['AC not cooling','Furnace not heating','AC tune-up','Thermostat install','Duct cleaning','Strange noise or smell','Filter replacement','New system quote'],
+  'Handyman':['Furniture assembly','Drywall repair','Door or lock repair','TV mounting','Shelving install','Caulking','Fence repair','General punch list'],
+  'Lawn & Landscaping':['Tree or shrub trimming','Mulching','Leaf removal','Sprinkler repair','Weed control','Sod or planting','Seasonal cleanup'],
+  'Pool Service':['Pump or filter repair','Green pool cleanup','Opening or closing','Leak detection','Tile or deck cleaning','Equipment install'],
+  'House Cleaning':['Deep clean','Move-in or move-out clean','Post-construction clean','Window cleaning','Carpet or upholstery clean','Fridge or oven deep clean','One-time tidy'],
+  'Pest Control':['Ants','Roaches','Rodents','Termites','Mosquitoes','Spiders','Bed bugs','General inspection']
+};
+function populateCommonRequests(){
+  const svc=document.getElementById('serviceType').value;
+  const picker=document.getElementById('commonRequestPicker'); if(!picker)return;
+  const items=COMMON_REQUESTS[svc]||[];
+  picker.innerHTML='<option value="">— choose a common issue —</option>'+items.map(i=>`<option value="${esc(i)}">${esc(i)}</option>`).join('');
+}
+function insertCommonRequest(){
+  const picker=document.getElementById('commonRequestPicker'); if(!picker||!picker.value)return;
+  const ta=document.getElementById('requestDescription'); if(!ta)return;
+  ta.value = ta.value.trim() ? ta.value.trim()+'\n'+picker.value : picker.value;
+  picker.value='';
+}
 function openRequest(service){
   if(!authToken){openLogin('homeowner');return}
   document.getElementById('serviceType').value=service;
+  populateCommonRequests();
+  const ta=document.getElementById('requestDescription'); if(ta) ta.value='';
   const zipEl=document.getElementById('requestZip'); if(zipEl) zipEl.value=(currentUser&&currentUser.address)||'';
   const zipErr=document.getElementById('requestZipError'); if(zipErr) zipErr.classList.add('hidden');
   document.getElementById('requestModal').classList.add('show');
@@ -1582,7 +1611,7 @@ async function submitRequest(){
   if(zipErr) zipErr.classList.add('hidden');
   try{
     const svc=document.getElementById('serviceType').value;
-    const d=await api('/requests',{method:'POST',body:JSON.stringify({serviceType:svc,title:svc+' request',address:zip,description:document.querySelector('#requestModal textarea').value,urgency:document.querySelector('#requestModal select').value,preferredDate:document.querySelector('#requestModal input[type=date]').value,preferredTime:document.querySelectorAll('#requestModal select')[2]?.value||'Any time'})});
+    const d=await api('/requests',{method:'POST',body:JSON.stringify({serviceType:svc,title:svc+' request',address:zip,description:document.getElementById('requestDescription').value,urgency:document.getElementById('requestUrgency').value,preferredDate:document.getElementById('requestPreferredDate').value,preferredTime:document.getElementById('requestPreferredTime').value||'Any time'})});
     closeModal();toast('Request published successfully');await loadDashboard();
   }catch(e){ if(zipErr && e.status===422){zipErr.textContent=e.message;zipErr.classList.remove('hidden')} else {toast(e.message)} }
 }
