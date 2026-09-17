@@ -72,8 +72,19 @@ function mapUser(r){
     u.verificationSubmittedAt=toISO(r.verification_submitted_at);
     u.verificationReviewedAt=toISO(r.verification_reviewed_at);
     u.verificationDocuments=r.verification_documents||[];
+    // Business profile: skills/specializations (freeform tags, provider-editable, no moderation
+    // needed since they're just text) and a work-photo gallery (each photo individually gated
+    // behind admin approval before it's visible to homeowners — see galleryPhotosForView).
+    u.skills=r.skills||[];
+    u.specializations=r.specializations||[];
+    u.galleryPhotos=r.gallery_photos||[];
   }
   return u;
+}
+// Approved-only gallery photos, safe to show to homeowners (strips review notes/status/uploadedAt
+// noise a homeowner has no use for).
+function approvedGalleryPhotos(u){
+  return (u.galleryPhotos||[]).filter(p=>p.status==='approved').map(p=>({id:p.id,dataUrl:p.dataUrl,caption:p.caption||''}));
 }
 // The subset of a provider's record that's safe to hand to OTHER users (homeowners viewing a
 // quote, the provider directory). Never includes verification documents (ID/license scans),
@@ -86,7 +97,8 @@ function publicProviderView(u){
     verified:u.verified, verificationStatus:u.verificationStatus, entityType:u.entityType,
     businessDescription:u.businessDescription, serviceTypes:u.serviceTypes,
     avatarKind:u.avatarKind, avatarValue:u.avatarValue, providerPlan:u.providerPlan,
-    createdAt:u.createdAt
+    createdAt:u.createdAt, skills:u.skills||[], specializations:u.specializations||[],
+    galleryPhotos:approvedGalleryPhotos(u)
   };
 }
 function mapRequest(r){ return {id:r.id,homeownerId:r.homeowner_id,serviceType:r.service_type,title:r.title,description:r.description,urgency:r.urgency,preferredDate:r.preferred_date,preferredTime:r.preferred_time,status:r.status,createdAt:toISO(r.created_at),dispatchedProviderId:r.dispatched_provider_id||null,dispatchedAt:toISO(r.dispatched_at)||null,delisted:!!r.delisted,delistedAt:toISO(r.delisted_at)}; }
@@ -379,6 +391,14 @@ const AVATAR_ICON_IDS=['h1','h2','h3','h4','h5','p1','p2','p3','p4','p5'];
 const VERIFICATION_DOC_RE=/^data:(image\/(png|jpe?g|webp)|application\/pdf);base64,[A-Za-z0-9+/=]+$/;
 const VERIFICATION_MAX_DOC_BYTES=5_500_000; // ~4MB file once base64-encoded
 const VERIFICATION_MAX_DOCS=6;
+
+// --- provider business-profile: skills/specializations + work gallery ---
+const GALLERY_PHOTO_RE=/^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=]+$/;
+const GALLERY_MAX_PHOTO_BYTES=5_500_000; // ~4MB file once base64-encoded
+const GALLERY_MAX_PHOTOS=12;
+const SKILL_MAX_LEN=40;
+const SKILLS_MAX_COUNT=20;
+const SPECIALIZATIONS_MAX_COUNT=20;
 
 const CARE_SERVICE_INFO={
   landscaping:{name:'Landscaping',price:110,billing:'mo'},
@@ -808,6 +828,12 @@ async function initSchema(){
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_submitted_at timestamptz`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_reviewed_at timestamptz`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_documents jsonb DEFAULT '[]'::jsonb`);
+  // Provider business-profile: skills/specializations tags + a work-photo gallery. Each gallery
+  // photo is stored with its own moderation status so a photo never appears to homeowners until
+  // an admin approves it (mirrors the verification-document review flow above).
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS skills jsonb DEFAULT '[]'::jsonb`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS specializations jsonb DEFAULT '[]'::jsonb`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS gallery_photos jsonb DEFAULT '[]'::jsonb`);
   // background_check_status / background_check_requested_at columns were used by a removed
   // feature and are no longer read or written; left in place (harmless, unused) rather than
   // dropped, so this stays idempotent if an older deploy still references them.
@@ -1257,6 +1283,11 @@ const server=http.createServer(async (req,res)=>{
     }
     if(p.startsWith('/api/requests/') && p.endsWith('/quotes') && req.method==='POST'){
       if(u.role!=='provider')return send(res,403,{error:'Only providers can submit quotes'});
+      // Providers can browse the open-requests feed as soon as they sign up, but can't respond
+      // (quote, message, get scheduled) until an admin has reviewed and approved their
+      // verification documents — see providerVerificationHTML/submitVerification client-side and
+      // /api/profile/verification + /api/admin/verifications/:id/decision server-side.
+      if(u.verificationStatus!=='verified') return send(res,403,{error:'Your account needs to be verified before you can respond to requests. Submit your verification documents from Business Profile — our team usually reviews within a couple of business days.',verificationRequired:true});
       const rid=p.split('/')[3], r=await q1('SELECT * FROM requests WHERE id=$1',[rid]); if(!r)return send(res,404,{error:'Request not found'});
       if(r.delisted) return send(res,410,{error:'This homeowner took the request down. It\'s no longer accepting quotes.'});
       if(r.status!=='open') return send(res,409,{error:'This request already has a provider scheduled.'});
@@ -1319,6 +1350,7 @@ const server=http.createServer(async (req,res)=>{
       const qid=p.split('/')[3], t=await loadQuoteThread(qid); if(!t)return send(res,404,{error:'Quote not found'});
       const isHomeowner=t.request.homeowner_id===u.id, isProvider=t.quote.provider_id===u.id;
       if(!isHomeowner && !isProvider) return send(res,403,{error:'Not authorized'});
+      if(isProvider && u.verificationStatus!=='verified') return send(res,403,{error:'Your account needs to be verified before you can message about a request. Submit your verification documents from Business Profile.',verificationRequired:true});
       const b=await body(req);
       const text=String(b.body||'').trim().slice(0,2000); if(!text)return send(res,400,{error:'Message cannot be empty'});
       const recipientId=isHomeowner?t.quote.provider_id:t.request.homeowner_id;
@@ -1668,6 +1700,42 @@ const server=http.createServer(async (req,res)=>{
       }
       return send(res,200,{user:safeUser(mapUser(row))});
     }
+    if(p==='/api/profile/skills' && req.method==='POST'){
+      if(u.role!=='provider')return send(res,403,{error:'Only providers have a skills list'});
+      const b=await body(req);
+      const clean=(arr,max)=>Array.from(new Set((Array.isArray(arr)?arr:[]).map(s=>String(s||'').trim().slice(0,SKILL_MAX_LEN)).filter(Boolean))).slice(0,max);
+      const skills=clean(b.skills,SKILLS_MAX_COUNT);
+      const specializations=clean(b.specializations,SPECIALIZATIONS_MAX_COUNT);
+      const row=await q1('UPDATE users SET skills=$1::jsonb, specializations=$2::jsonb WHERE id=$3 RETURNING *',[JSON.stringify(skills),JSON.stringify(specializations),u.id]);
+      return send(res,200,{user:safeUser(mapUser(row))});
+    }
+    // Provider uploads a work photo. It's stored immediately (so they see it on their own profile
+    // as "Pending review") but stays out of publicProviderView/approvedGalleryPhotos — and therefore
+    // invisible to homeowners — until an admin approves it via /api/admin/gallery/:id/:photoId/decision.
+    if(p==='/api/profile/gallery' && req.method==='POST'){
+      if(u.role!=='provider')return send(res,403,{error:'Only providers have a work gallery'});
+      const b=await body(req);
+      const dataUrl=String(b.dataUrl||'');
+      const caption=String(b.caption||'').trim().slice(0,140);
+      if(!GALLERY_PHOTO_RE.test(dataUrl)) return send(res,400,{error:'Photo must be a PNG, JPEG, or WEBP image.'});
+      if(dataUrl.length>GALLERY_MAX_PHOTO_BYTES) return send(res,400,{error:'Photo is too large. Please keep it under 4MB.'});
+      const existing=u.galleryPhotos||[];
+      if(existing.length>=GALLERY_MAX_PHOTOS) return send(res,400,{error:`You can upload up to ${GALLERY_MAX_PHOTOS} photos.`});
+      const photo={id:id('photo'),dataUrl,caption,status:'pending',reviewNotes:null,uploadedAt:new Date().toISOString(),reviewedAt:null};
+      const updated=[...existing,photo];
+      const row=await q1('UPDATE users SET gallery_photos=$1::jsonb WHERE id=$2 RETURNING *',[JSON.stringify(updated),u.id]);
+      if(ADMIN_NOTIFY_EMAIL){
+        sendEmail({to:ADMIN_NOTIFY_EMAIL,type:'admin_new_gallery_photo',subject:`New gallery photo pending: ${row.name}`,html:`<p>${row.name} uploaded a new work photo for review.</p>`}).catch(()=>{});
+      }
+      return send(res,200,{user:safeUser(mapUser(row))});
+    }
+    if(p.startsWith('/api/profile/gallery/') && req.method==='DELETE'){
+      if(u.role!=='provider')return send(res,403,{error:'Only providers have a work gallery'});
+      const photoId=p.split('/')[4];
+      const remaining=(u.galleryPhotos||[]).filter(ph=>ph.id!==photoId);
+      const row=await q1('UPDATE users SET gallery_photos=$1::jsonb WHERE id=$2 RETURNING *',[JSON.stringify(remaining),u.id]);
+      return send(res,200,{user:safeUser(mapUser(row))});
+    }
     if(p==='/api/profile/address' && req.method==='POST'){
       if(u.role!=='homeowner')return send(res,403,{error:'Only homeowners have a home address'});
       const b=await body(req);
@@ -1746,6 +1814,42 @@ const server=http.createServer(async (req,res)=>{
       }else{
         sendEmail({to:row.email,type:'verification_rejected',subject:'Update needed on your verification',html:verificationRejectedEmailHtml(mapUser(row),notes),userId:row.id}).catch(()=>{});
       }
+      return send(res,200,{provider:safeUser(mapUser(row))});
+    }
+    // Gallery-photo moderation queue: flattened across providers (a provider's gallery is a jsonb
+    // array of photos, each with its own status), mirroring the verification queue above but
+    // per-photo rather than per-provider since one provider can have several photos in different
+    // states at once.
+    if(p==='/api/admin/gallery' && req.method==='GET'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const status=String(url.searchParams.get('status')||'pending');
+      const rows=await q("SELECT id,name,gallery_photos FROM users WHERE role='provider' AND jsonb_array_length(gallery_photos)>0");
+      const photos=[];
+      for(const r of rows){
+        for(const ph of (r.gallery_photos||[])){
+          if(status!=='all' && ph.status!==status) continue;
+          photos.push({providerId:r.id,providerName:r.name,photoId:ph.id,dataUrl:ph.dataUrl,caption:ph.caption||'',status:ph.status,uploadedAt:ph.uploadedAt,reviewedAt:ph.reviewedAt||null,reviewNotes:ph.reviewNotes||null});
+        }
+      }
+      photos.sort((a,b)=>status==='pending' ? new Date(a.uploadedAt)-new Date(b.uploadedAt) : new Date(b.uploadedAt)-new Date(a.uploadedAt));
+      return send(res,200,{photos});
+    }
+    if(p.startsWith('/api/admin/gallery/') && p.endsWith('/decision') && req.method==='POST'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const parts=p.split('/'); // ['','api','admin','gallery',providerId,photoId,'decision']
+      const pid=parts[4], photoId=parts[5];
+      const b=await body(req);
+      const decision=b.decision==='approve'?'approved':(b.decision==='reject'?'rejected':null);
+      if(!decision) return send(res,400,{error:'decision must be "approve" or "reject"'});
+      const notes=String(b.notes||'').trim().slice(0,500);
+      if(decision==='rejected' && !notes) return send(res,400,{error:'Add a note explaining why, so the provider knows what to fix.'});
+      const target=await q1("SELECT * FROM users WHERE id=$1 AND role='provider'",[pid]);
+      if(!target) return send(res,404,{error:'Provider not found'});
+      const photos=target.gallery_photos||[];
+      const idx=photos.findIndex(ph=>ph.id===photoId);
+      if(idx===-1) return send(res,404,{error:'Photo not found'});
+      photos[idx]={...photos[idx],status:decision,reviewNotes:notes||null,reviewedAt:new Date().toISOString()};
+      const row=await q1('UPDATE users SET gallery_photos=$1::jsonb WHERE id=$2 RETURNING *',[JSON.stringify(photos),pid]);
       return send(res,200,{provider:safeUser(mapUser(row))});
     }
 
@@ -1836,6 +1940,22 @@ const server=http.createServer(async (req,res)=>{
         sendEmail({to:row.email,type:'admin_plan_invoice',subject:`Your invoice for the ${planInfo.label} plan (${invoiceNo})`,html:adminPlanInvoiceEmailHtml(mapUser(row),planInfo.label,planInfo.priceCents,invoiceNo),userId:row.id}).catch(()=>{});
       }
       return send(res,200,{account:adminAccountView(mapUser(row)),invoiceSent:!!invoiceNo,invoiceNo});
+    }
+    // Admin-initiated account deletion — the same soft delete as self-service (flag + kill
+    // sessions; all requests/quotes/jobs/chat history stay in place for the Deleted Accounts log)
+    // but without requiring the account's own password, since this is for admin cleanup of test/
+    // seed/abusive accounts. Removes the account from the active Accounts list immediately.
+    if(p.startsWith('/api/admin/accounts/') && p.endsWith('/delete') && req.method==='POST'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const aid=p.split('/')[4];
+      const target=await q1('SELECT * FROM users WHERE id=$1',[aid]);
+      if(!target) return send(res,404,{error:'Account not found'});
+      if(target.role==='admin') return send(res,403,{error:'Cannot delete an admin account'});
+      if(target.deleted) return send(res,400,{error:'That account is already deleted'});
+      const row=await q1('UPDATE users SET deleted=true,deleted_at=now() WHERE id=$1 RETURNING *',[aid]);
+      for(const [tok,uid] of sessions){ if(uid===aid) sessions.delete(tok); }
+      sendEmail({to:row.email,type:'account_deleted',subject:'Your account was deleted',html:accountDeletedEmailHtml(mapUser(row)),userId:row.id}).catch(()=>{});
+      return send(res,200,{ok:true});
     }
     if(p==='/api/admin/requests/stale' && req.method==='GET'){
       if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
