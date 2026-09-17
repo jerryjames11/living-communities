@@ -509,6 +509,16 @@ button{font:inherit;cursor:pointer}
 <section class="content">
 <div class="panel" data-panel="dashboard">
 <div class="welcome"><div class="welcome-text"><h2>Find your next customer.</h2><p>Review nearby homeowner requests. Exact addresses and personal details stay private until the homeowner chooses to connect.</p></div><div class="photo-slot welcome-photo" data-label="images/dashboard-welcome.jpg"><img src="images/dashboard-welcome.jpg" alt="" onerror="this.closest('.photo-slot').classList.add('missing')"></div></div>
+<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+  <select id="pr-feed-service-filter" onchange="renderPrFeed(lastDashboard.provider)" style="border:1px solid #cbd9d3;border-radius:10px;padding:9px 12px;font:inherit;font-size:13.5px"><option value="">All Services</option></select>
+  <select id="pr-feed-urgency-filter" onchange="renderPrFeed(lastDashboard.provider)" style="border:1px solid #cbd9d3;border-radius:10px;padding:9px 12px;font:inherit;font-size:13.5px">
+    <option value="">Any Urgency</option>
+    <option value="Flexible">Flexible</option>
+    <option value="This week">This week</option>
+    <option value="ASAP">ASAP</option>
+    <option value="Emergency">Emergency</option>
+  </select>
+</div>
 <div id="pr-feed-list"></div>
 </div>
 <div class="panel hidden" data-panel="leads"><div id="pr-leads-list"></div></div>
@@ -1491,7 +1501,7 @@ async function acceptQuote(){
   try{const first=lastDashboard.homeowner&&lastDashboard.homeowner.requests[0];if(!first)return;const qs=await api('/requests/'+first.id+'/quotes');const q=qs.quotes[0];await api('/quotes/'+q.id+'/accept',{method:'POST'});closeModal();toast('Quote accepted and job scheduled');await loadDashboard()}catch(e){toast(e.message)}
 }
 async function loadQuotes(requestId){
-  try{const d=await api('/requests/'+requestId+'/quotes');quoteTargetRequestId=requestId;const cards=document.querySelector('#quotesModal .quotegrid');cards.innerHTML=d.quotes.map((q,i)=>`<div class="quoteCard ${i===0?'selected':''}"><div class="profilebar"><div class="avatar">${initials(q.provider.name)}</div><div><b>${esc(q.provider.name)}</b><div class="statusline">★ ${esc(q.provider.rating||'New')} · ${esc(q.provider.reviewCount||0)} jobs</div></div></div><h3>$${Number(q.amountMin)}–$${Number(q.amountMax)}</h3><p style="color:var(--muted);font-size:13px">${esc(q.availability)}</p><button class="${i===0?'primary':'secondary'}" style="width:100%" onclick="viewQuote('${esc(q.id)}')">View Response</button></div>`).join('')||'<div class="notice">No responses yet.</div>';const countEl=document.getElementById('quotesModalCount');if(countEl)countEl.textContent=`${d.quotes.length} response${d.quotes.length===1?'':'s'}`}catch(e){toast(e.message)}
+  try{const d=await api('/requests/'+requestId+'/quotes');quoteTargetRequestId=requestId;const cards=document.querySelector('#quotesModal .quotegrid');cards.innerHTML=d.quotes.map((q,i)=>`<div class="quoteCard ${i===0?'selected':''}" style="position:relative">${q.unreadCount?`<span class="card-unread-badge" style="position:absolute;top:12px;right:12px">${q.unreadCount} NEW</span>`:''}<div class="profilebar"><div class="avatar">${initials(q.provider.name)}</div><div><b>${esc(q.provider.name)}</b><div class="statusline">★ ${esc(q.provider.rating||'New')} · ${esc(q.provider.reviewCount||0)} jobs</div></div></div><h3>$${Number(q.amountMin)}–$${Number(q.amountMax)}</h3><p style="color:var(--muted);font-size:13px">${esc(q.availability)}</p><div class="card-activity-ts">${q.unreadCount?'New message':'Last activity'} ${timeAgo(q.lastActivityAt||q.createdAt)}</div><button class="${i===0?'primary':'secondary'}" style="width:100%;margin-top:8px" onclick="viewQuote('${esc(q.id)}')">View Response</button></div>`).join('')||'<div class="notice">No responses yet.</div>';const countEl=document.getElementById('quotesModalCount');if(countEl)countEl.textContent=`${d.quotes.length} response${d.quotes.length===1?'':'s'}`}catch(e){toast(e.message)}
 }
 async function viewQuote(id){try{
   const d=await api('/requests/'+quoteTargetRequestId+'/quotes');const q=d.quotes.find(x=>x.id===id);if(!q)return;
@@ -1726,15 +1736,31 @@ function visibleFeedRequests(d){
 }
 function renderPrFeed(d){
   const el=document.getElementById('pr-feed-list'); if(!el)return;
-  const open=visibleFeedRequests(d);
+  const allOpen=visibleFeedRequests(d);
   const radius=d.user&&d.user.effectiveServiceRadiusMi;
-  if(!open.length){
+  // Populate the service filter's options from whatever's actually in the feed, without touching
+  // its current selection — so switching urgency doesn't reset the service pick and vice versa.
+  const serviceSel=document.getElementById('pr-feed-service-filter');
+  if(serviceSel){
+    const services=[...new Set(allOpen.map(r=>r.serviceType))].sort();
+    const current=serviceSel.value;
+    serviceSel.innerHTML='<option value="">All Services</option>'+services.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');
+    serviceSel.value=services.includes(current)?current:'';
+  }
+  const serviceFilter=serviceSel?serviceSel.value:'';
+  const urgencyFilter=(document.getElementById('pr-feed-urgency-filter')||{}).value||'';
+  const open=allOpen.filter(r=>(!serviceFilter||r.serviceType===serviceFilter)&&(!urgencyFilter||(r.urgency||'Flexible')===urgencyFilter));
+  if(!allOpen.length){
     el.innerHTML = radius!=null
       ? `<div class="notice">No open requests within ${radius} mi of ${esc(d.user.address||'your service area')} right now. <a onclick="switchPanel('provider','profile')" style="color:var(--green);font-weight:700;cursor:pointer">Widen your service area →</a></div>`
       : '<div class="notice">No new opportunities right now. Check back soon.</div>';
     return;
   }
-  el.innerHTML=open.map(r=>`<div class="request">${photoSlotHTML(serviceImage(r.serviceType),null,'req-thumb')}<div class="provider" style="flex:1"><div><span class="tag">${esc(r.serviceType.toUpperCase())}</span><h3 style="margin:8px 0 4px">${esc(r.title)}</h3><p style="color:var(--muted);font-size:14px;margin:0 0 6px">${esc(r.description||'')}</p><small style="color:var(--muted)"><svg class="icn" width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 18s6-5.6 6-10.2A6 6 0 104 7.8C4 12.4 10 18 10 18z"/><circle cx="10" cy="7.6" r="2"/></svg> ${esc(d.user.community||'Local area')}${r.distanceMi!=null?' · '+r.distanceMi+' mi away':''} · ${esc(r.urgency||'Flexible')}</small></div><div class="mini-actions"><button class="primary" onclick="openQuoteSubmit('${esc(r.id)}')">I Can Help</button></div></div></div>`).join('');
+  if(!open.length){ el.innerHTML='<div class="notice">No open requests match this filter. <a onclick="document.getElementById(\'pr-feed-service-filter\').value=\'\';document.getElementById(\'pr-feed-urgency-filter\').value=\'\';renderPrFeed(lastDashboard.provider)" style="color:var(--green);font-weight:700;cursor:pointer">Clear filters →</a></div>'; return; }
+  el.innerHTML=open.map(r=>{
+    const preferred = r.preferredDate ? `Prefers ${new Date(r.preferredDate+'T00:00').toLocaleDateString(undefined,{month:'short',day:'numeric'})}${r.preferredTime&&r.preferredTime!=='Any time'?' · '+esc(r.preferredTime):''}` : '';
+    return `<div class="request">${photoSlotHTML(serviceImage(r.serviceType),null,'req-thumb')}<div class="provider" style="flex:1"><div><span class="tag">${esc(r.serviceType.toUpperCase())}</span><h3 style="margin:8px 0 4px">${esc(r.title)}</h3><p style="color:var(--muted);font-size:14px;margin:0 0 6px">${esc(r.description||'')}</p><small style="color:var(--muted)"><svg class="icn" width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 18s6-5.6 6-10.2A6 6 0 104 7.8C4 12.4 10 18 10 18z"/><circle cx="10" cy="7.6" r="2"/></svg> ${esc(d.user.community||'Local area')}${r.distanceMi!=null?' · '+r.distanceMi+' mi away':''} · ${esc(r.urgency||'Flexible')}</small><div class="card-activity-ts" style="margin-top:3px">Posted ${timeAgo(r.createdAt)}${preferred?' · '+preferred:''}</div></div><div class="mini-actions"><button class="primary" onclick="openQuoteSubmit('${esc(r.id)}')">I Can Help</button></div></div></div>`;
+  }).join('');
 }
 function openQuoteSubmit(rid){
   if(!authToken){openLogin('provider');return}
