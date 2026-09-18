@@ -150,6 +150,8 @@ button{font:inherit;cursor:pointer}
 .filter-tab.active{background:var(--mint);color:var(--green);border-color:transparent}
 .tag.status-delisted{background:#f3e6e2;color:#8a4a2f}
 .dispatch-sub-tab.active{background:var(--mint);color:var(--green);border-color:transparent}
+.payments-sub-tab.active{background:var(--mint);color:var(--green);border-color:transparent}
+button:disabled{opacity:.45;cursor:not-allowed}
 .careplan-account{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-top:10px}
 .careplan-account-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:8px}
 .careplan-account-head .name{font-weight:800;font-size:14.5px}
@@ -458,6 +460,8 @@ button{font:inherit;cursor:pointer}
 </div>
 <div class="servicegrid hidden" id="ho-allservices">
 <div class="service" onclick="openRequest(this.querySelector('b').textContent)"><span class="service-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3c-7 0-13 5-13 12 0 1 .2 2 .2 2s7.8-1 10.8-5c2-2.5 2.5-6 2-9z"/><path d="M5 16C8.5 11.5 12.5 8 17 3"/></svg></span><b>Lawn & Landscaping</b><small>Yards, trees, cleanup</small></div><div class="service" onclick="openRequest(this.querySelector('b').textContent)"><span class="service-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7.5c1.4-1.2 2.8-1.2 4.2 0s2.8 1.2 4.2 0 2.8-1.2 4.2 0 2.8 1.2 4.2 0"/><path d="M2 12.5c1.4-1.2 2.8-1.2 4.2 0s2.8 1.2 4.2 0 2.8-1.2 4.2 0 2.8 1.2 4.2 0"/></svg></span><b>Pool Service</b><small>Cleaning & maintenance</small></div><div class="service" onclick="openRequest(this.querySelector('b').textContent)"><span class="service-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3.3a3.8 3.8 0 00-5 4.8L3.3 13.8l2.9 2.9 5.7-5.7a3.8 3.8 0 004.8-5L14 8.3 11.7 6 14 3.3z"/></svg></span><b>Handyman</b><small>Repairs & projects</small></div><div class="service" onclick="openRequest(this.querySelector('b').textContent)"><span class="service-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="5" r="1.5"/><ellipse cx="10" cy="9.5" rx="2.3" ry="2.8"/><ellipse cx="10" cy="14.5" rx="2.8" ry="3.2"/><path d="M7.5 8l-3-1.5M7.8 10h-3.3M8 12l-2.7 2M12.5 8l3-1.5M12.2 10h3.3M12 12l2.7 2"/></svg></span><b>Pest Control</b><small>Interior & exterior</small></div>
+<div class="service" onclick="openRequest(this.querySelector('b').textContent)"><span class="service-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="8" width="11" height="6" rx="1.2"/><circle cx="5.5" cy="16" r="1.6"/><circle cx="11.5" cy="16" r="1.6"/><path d="M13.5 10h2.3l1.7 2.6V14h-2"/></svg></span><b>Mobile Mechanic</b><small>Comes to you for repairs</small></div>
+<div class="service" onclick="openRequest(this.querySelector('b').textContent)"><span class="service-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17l7-11 2 2-7 11z"/><path d="M12 8l2-2 2.5 2.5-2 2z"/><path d="M3 17h6"/></svg></span><b>Power Washing</b><small>Driveways, siding, decks</small></div>
 </div>
 <div class="section-row" style="margin-top:22px"><h3 style="margin:0">Recent Requests</h3></div>
 <div id="ho-recent-request"></div>
@@ -567,6 +571,7 @@ button{font:inherit;cursor:pointer}
 <div class="sideitem active" data-panel="overview" onclick="switchAdminPanel('overview')"><svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor"><rect x="2" y="2" width="7" height="7" rx="1.5"/><rect x="11" y="2" width="7" height="7" rx="1.5"/><rect x="2" y="11" width="7" height="7" rx="1.5"/><rect x="11" y="11" width="7" height="7" rx="1.5"/></svg>Overview</div>
 <div class="sideitem" data-panel="accounts" onclick="switchAdminPanel('accounts')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="7" r="3.2"/><path d="M3.5 17c1-3.4 3.8-5.2 6.5-5.2s5.5 1.8 6.5 5.2"/></svg>Accounts</div>
 <div class="sideitem" data-panel="dispatch" onclick="switchAdminPanel('dispatch')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10h11M14 10l-3.5-3.5M14 10l-3.5 3.5"/><path d="M14 4h3v12h-3"/></svg>Dispatch</div>
+<div class="sideitem" data-panel="payments" onclick="switchAdminPanel('payments')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="15" height="10.5" rx="1.6"/><path d="M2.5 8.5h15"/><path d="M5.5 12.2h4"/></svg>Payments</div>
 <div class="sideitem" data-panel="verification" onclick="switchAdminPanel('verification')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3l6 2.5v4.3c0 4-2.6 6.7-6 7.7-3.4-1-6-3.7-6-7.7V5.5L10 3z"/><path d="M7.3 10l2 2 3.4-4"/></svg>Verification</div>
 <div class="sideitem" data-panel="gallery" onclick="switchAdminPanel('gallery')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="15" height="12" rx="1.5"/><circle cx="7" cy="8.5" r="1.4"/><path d="M2.5 14l4.5-4 3 3 3.5-4.5 3.5 4"/></svg>Gallery</div>
 <div class="sideitem" data-panel="reported" onclick="switchAdminPanel('reported')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2l7 3.5v5c0 4.5-3 7-7 7.5-4-.5-7-3-7-7.5v-5L10 2z"/><path d="M10 7v4M10 13.5h.01"/></svg>Reported</div>
@@ -594,7 +599,7 @@ button{font:inherit;cursor:pointer}
 <div class="panel hidden" data-panel="dispatch">
   <div class="mini-actions" style="margin:0 0 16px">
     <button class="secondary dispatch-sub-tab active" data-sub="careplan" onclick="switchDispatchSubTab('careplan')">Care Plan Accounts</button>
-    <button class="secondary dispatch-sub-tab" data-sub="requests" onclick="switchDispatchSubTab('requests')">Open Requests</button>
+    <button class="secondary dispatch-sub-tab" data-sub="requests" onclick="switchDispatchSubTab('requests')">Waiting on Quotes</button>
   </div>
 
   <div class="dispatch-sub" data-sub="careplan">
@@ -604,12 +609,46 @@ button{font:inherit;cursor:pointer}
 
   <div class="dispatch-sub hidden" data-sub="requests">
     <div class="mini-actions" style="margin-bottom:6px;gap:10px">
-      <span class="subtle" style="font-size:13px">Open requests with no quotes, waiting more than</span>
+      <span class="subtle" style="font-size:13px">This is a subset of Open Requests (the Overview count) — only those with zero quotes yet, waiting more than</span>
       <select id="admin-stale-hours" onchange="loadAdminDispatch()" style="border:1px solid #cbd9d3;border-radius:8px;padding:8px 10px;font:inherit;font-size:13px">
         <option value="6">6 hours</option><option value="24" selected>24 hours</option><option value="48">48 hours</option><option value="72">72 hours</option>
       </select>
     </div>
     <div id="admin-dispatch-list" style="margin-top:12px"></div>
+  </div>
+</div>
+
+<div class="panel hidden" data-panel="payments">
+  <div class="mini-actions" style="margin:0 0 16px">
+    <button class="secondary payments-sub-tab active" data-sub="history" onclick="switchPaymentsSubTab('history')">History</button>
+    <button class="secondary payments-sub-tab" data-sub="upcoming" onclick="switchPaymentsSubTab('upcoming')">Upcoming</button>
+  </div>
+
+  <div class="payments-sub" data-sub="history">
+    <div class="mini-actions" style="margin-bottom:14px;flex-wrap:wrap;gap:10px">
+      <input id="admin-payments-search" placeholder="Search name or email…" oninput="loadAdminPaymentsHistory()" style="flex:1;min-width:180px;border:1px solid #cbd9d3;border-radius:10px;padding:10px 12px;font:inherit;font-size:13.5px">
+      <select id="admin-payments-plan" onchange="loadAdminPaymentsHistory()" style="border:1px solid #cbd9d3;border-radius:10px;padding:10px 12px;font:inherit;font-size:13.5px">
+        <option value="all">All plans</option><option value="subscription">Homeowner (Plus/Premium)</option><option value="provider_plan">Provider (Pro/Elite)</option><option value="care_plan">Home Care Plan</option>
+      </select>
+      <select id="admin-payments-status" onchange="loadAdminPaymentsHistory()" style="border:1px solid #cbd9d3;border-radius:10px;padding:10px 12px;font:inherit;font-size:13.5px">
+        <option value="all">All statuses</option><option value="succeeded">Succeeded</option><option value="failed">Failed</option>
+      </select>
+      <input type="date" id="admin-payments-from" onchange="loadAdminPaymentsHistory()" style="border:1px solid #cbd9d3;border-radius:10px;padding:10px 12px;font:inherit;font-size:13.5px">
+      <span class="subtle" style="font-size:13px;align-self:center">to</span>
+      <input type="date" id="admin-payments-to" onchange="loadAdminPaymentsHistory()" style="border:1px solid #cbd9d3;border-radius:10px;padding:10px 12px;font:inherit;font-size:13.5px">
+    </div>
+    <p class="subtle" style="font-size:12px;margin:0 0 10px">Only payments made since this page went live are logged here — nothing before that is backfilled.</p>
+    <p id="admin-payments-summary" class="subtle" style="font-size:13px;margin:0 0 10px"></p>
+    <div id="admin-payments-list"></div>
+    <div class="mini-actions" style="margin-top:14px">
+      <button class="secondary" id="admin-payments-prev" onclick="pageAdminPayments(-1)">← Prev</button>
+      <button class="secondary" id="admin-payments-next" onclick="pageAdminPayments(1)">Next →</button>
+    </div>
+  </div>
+
+  <div class="payments-sub hidden" data-sub="upcoming">
+    <p class="subtle" style="font-size:13px;margin:0 0 12px">Every account on a paid plan, soonest charge first.</p>
+    <div id="admin-payments-upcoming-list"></div>
   </div>
 </div>
 
@@ -858,7 +897,7 @@ button{font:inherit;cursor:pointer}
  <div class="steps"><div class="step on"></div><div class="step on"></div><div class="step"></div></div>
  <div class="notice"><svg class="icn" width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="9" width="11" height="7.5" rx="1.5"/><path d="M6.5 9V6.3a3.5 3.5 0 017 0V9"/></svg> Your name and exact address stay private. We use your ZIP/city only to match you with nearby providers.</div>
  <div class="formgrid">
-  <div class="field"><label>SERVICE</label><select id="serviceType" onchange="populateCommonRequests()"><option>Lawn & Landscaping</option><option>House Cleaning</option><option>Pool Service</option><option>Handyman</option><option>Plumbing</option><option>Electrical</option><option>HVAC</option><option>Pest Control</option></select></div>
+  <div class="field"><label>SERVICE</label><select id="serviceType" onchange="populateCommonRequests()"><option>Lawn & Landscaping</option><option>House Cleaning</option><option>Pool Service</option><option>Handyman</option><option>Plumbing</option><option>Electrical</option><option>HVAC</option><option>Pest Control</option><option>Mobile Mechanic</option><option>Power Washing</option></select></div>
   <div class="field"><label>URGENCY</label><select id="requestUrgency"><option>Flexible</option><option>This week</option><option>ASAP</option><option>Emergency</option></select></div>
   <div class="field full"><label>COMMON REQUESTS <span class="subtle" style="font-weight:400;text-transform:none">(optional — pick any that apply)</span></label><select id="commonRequestPicker" onchange="insertCommonRequest()"></select></div>
   <div class="field full"><label>YOUR ZIP CODE OR CITY</label><input id="requestZip" placeholder="e.g. 75080 or Richardson, TX" required></div>
@@ -1578,7 +1617,9 @@ const COMMON_REQUESTS={
   'Lawn & Landscaping':['Tree or shrub trimming','Mulching','Leaf removal','Sprinkler repair','Weed control','Sod or planting','Seasonal cleanup'],
   'Pool Service':['Pump or filter repair','Green pool cleanup','Opening or closing','Leak detection','Tile or deck cleaning','Equipment install'],
   'House Cleaning':['Deep clean','Move-in or move-out clean','Post-construction clean','Window cleaning','Carpet or upholstery clean','Fridge or oven deep clean','One-time tidy'],
-  'Pest Control':['Ants','Roaches','Rodents','Termites','Mosquitoes','Spiders','Bed bugs','General inspection']
+  'Pest Control':['Ants','Roaches','Rodents','Termites','Mosquitoes','Spiders','Bed bugs','General inspection'],
+  'Mobile Mechanic':['Battery replacement or jump start',"Won't start",'Brake repair','Oil change','Flat tire or tire change','Check engine light diagnostic','Alternator or starter issue'],
+  'Power Washing':['Driveway or walkway','House siding','Deck or patio','Roof','Fence','Gutters exterior']
 };
 function populateCommonRequests(){
   const svc=document.getElementById('serviceType').value;
@@ -2346,6 +2387,7 @@ function switchAdminPanel(panelName){
   if(panelName==='overview') loadAdminOverview();
   else if(panelName==='accounts') loadAdminAccounts();
   else if(panelName==='dispatch') switchDispatchSubTab(adminDispatchSubTab);
+  else if(panelName==='payments') switchPaymentsSubTab(adminPaymentsSubTab);
   else if(panelName==='verification') loadAdminQueue(adminQueueStatus);
   else if(panelName==='gallery') loadAdminGalleryQueue(adminGalleryStatus);
   else if(panelName==='reported') loadAdminReported();
@@ -2445,6 +2487,9 @@ async function sendAdminSupportReply(){
   try{ await api('/admin/support/'+adminActiveSupportUserId,{method:'POST',body:JSON.stringify({body:text})}); ta.value=''; await openAdminSupportThread(adminActiveSupportUserId,document.getElementById('admin-support-active-name').textContent); }catch(e){toast(e.message)}
 }
 let adminDispatchSubTab='careplan';
+let adminPaymentsSubTab='history';
+let adminPaymentsOffset=0;
+const ADMIN_PAYMENTS_PAGE_SIZE=50;
 function switchDispatchSubTab(sub){
   adminDispatchSubTab=sub;
   document.querySelectorAll('.dispatch-sub-tab').forEach(b=>b.classList.toggle('active',b.dataset.sub===sub));
@@ -2594,6 +2639,75 @@ function renderAdminDispatch(requests){
       </div>
       <div class="admin-row-actions">
         <button class="primary" onclick="openAdminAssignModal('${r.id}','${jsAttr(r.title)}')">Dispatch a provider</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function switchPaymentsSubTab(sub){
+  adminPaymentsSubTab=sub;
+  document.querySelectorAll('.payments-sub-tab').forEach(b=>b.classList.toggle('active',b.dataset.sub===sub));
+  document.querySelectorAll('.payments-sub').forEach(el=>el.classList.toggle('hidden',el.dataset.sub!==sub));
+  if(sub==='history'){ adminPaymentsOffset=0; loadAdminPaymentsHistory(); }
+  else loadAdminPaymentsUpcoming();
+}
+function pageAdminPayments(dir){
+  adminPaymentsOffset=Math.max(0,adminPaymentsOffset+dir*ADMIN_PAYMENTS_PAGE_SIZE);
+  loadAdminPaymentsHistory();
+}
+async function loadAdminPaymentsHistory(){
+  const el=document.getElementById('admin-payments-list'); if(!el)return;
+  el.innerHTML='<div class="notice">Loading…</div>';
+  const params=new URLSearchParams({
+    status:document.getElementById('admin-payments-status').value,
+    plan:document.getElementById('admin-payments-plan').value,
+    q:document.getElementById('admin-payments-search').value.trim(),
+    from:document.getElementById('admin-payments-from').value,
+    to:document.getElementById('admin-payments-to').value,
+    limit:ADMIN_PAYMENTS_PAGE_SIZE,
+    offset:adminPaymentsOffset
+  });
+  try{
+    const d=await api('/admin/payments?'+params.toString());
+    renderAdminPaymentsHistory(d.payments||[],d.total||0);
+  }catch(e){ el.innerHTML=`<div class="notice">${esc(e.message)}</div>`; }
+}
+function paymentPlanKindLabel(k){ return k==='subscription'?'Homeowner plan':k==='provider_plan'?'Provider plan':k==='care_plan'?'Home Care Plan':'—'; }
+function renderAdminPaymentsHistory(payments,total){
+  const el=document.getElementById('admin-payments-list'); if(!el)return;
+  const summary=document.getElementById('admin-payments-summary');
+  const from=adminPaymentsOffset+1, to=adminPaymentsOffset+payments.length;
+  if(summary) summary.textContent = total ? `Showing ${from}-${to} of ${total}` : 'No payments match these filters.';
+  document.getElementById('admin-payments-prev').disabled = adminPaymentsOffset===0;
+  document.getElementById('admin-payments-next').disabled = adminPaymentsOffset+ADMIN_PAYMENTS_PAGE_SIZE>=total;
+  if(!payments.length){ el.innerHTML='<div class="notice">No payments match these filters.</div>'; return; }
+  el.innerHTML=payments.map(p=>{
+    const statusPill = p.status==='succeeded' ? statusPillHTML('Succeeded','ok') : statusPillHTML('Failed','bad');
+    return `<div class="admin-row">
+      <div class="admin-row-main">
+        <div class="name">${esc(p.userName||p.userEmail)} ${statusPill}</div>
+        <div class="meta">${esc(p.plan||paymentPlanKindLabel(p.planKind))} · $${Number(p.amount).toFixed(2)} · ${new Date(p.createdAt).toLocaleString()}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+async function loadAdminPaymentsUpcoming(){
+  const el=document.getElementById('admin-payments-upcoming-list'); if(!el)return;
+  el.innerHTML='<div class="notice">Loading…</div>';
+  try{
+    const d=await api('/admin/payments/upcoming');
+    renderAdminPaymentsUpcoming(d.upcoming||[]);
+  }catch(e){ el.innerHTML=`<div class="notice">${esc(e.message)}</div>`; }
+}
+function renderAdminPaymentsUpcoming(items){
+  const el=document.getElementById('admin-payments-upcoming-list'); if(!el)return;
+  if(!items.length){ el.innerHTML='<div class="notice">No accounts on a paid plan with a scheduled charge yet.</div>'; return; }
+  el.innerHTML=items.map(it=>{
+    const days=Math.round((new Date(it.nextBilling+'T00:00:00Z').getTime()-Date.now())/86400000);
+    const when = days<0 ? `${esc(it.nextBilling)} (overdue)` : days===0 ? 'Today' : `${esc(it.nextBilling)} (in ${days}d)`;
+    return `<div class="admin-row">
+      <div class="admin-row-main">
+        <div class="name">${esc(it.name||it.email)}</div>
+        <div class="meta">${esc(it.plan)}${it.amount!=null?' · $'+Number(it.amount).toFixed(2):''} · Next charge: ${when}</div>
       </div>
     </div>`;
   }).join('');

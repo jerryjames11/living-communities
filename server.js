@@ -54,9 +54,9 @@ function mapUser(r){
   if(!r) return null;
   const carePlanItems=r.care_plan_items||[];
   const u={id:r.id,role:r.role,name:r.name,email:r.email,passwordHash:r.password_hash,salt:r.salt,phone:r.phone,createdAt:toISO(r.created_at),subscription:r.subscription,carePlanItems,carePlanServices:carePlanItems.filter(i=>i.status==='active').map(i=>i.key),avatarKind:r.avatar_kind||null,avatarValue:r.avatar_value||null,address:r.address,lat:r.lat!=null?Number(r.lat):null,lng:r.lng!=null?Number(r.lng):null,billingAddress:r.billing_address||null,suspended:!!r.suspended,deleted:!!r.deleted,deletedAt:toISO(r.deleted_at),lastAnnouncementsViewAt:toISO(r.last_announcements_view_at)};
-  if(r.role==='homeowner'){ u.community=r.community; u.carePlanNextBilling=r.care_plan_next_billing?new Date(r.care_plan_next_billing).toISOString().slice(0,10):null; }
+  if(r.role==='homeowner'){ u.community=r.community; u.carePlanNextBilling=r.care_plan_next_billing?new Date(r.care_plan_next_billing).toISOString().slice(0,10):null; u.subscriptionNextBilling=r.subscription_next_billing?new Date(r.subscription_next_billing).toISOString().slice(0,10):null; }
   else if(r.role==='provider'){
-    u.serviceTypes=r.service_types||[]; u.rating=r.rating!=null?Number(r.rating):null; u.reviewCount=r.review_count||0; u.verified=!!r.verified; u.businessDescription=r.business_description; u.providerPlan=r.provider_plan||'free'; u.quotesUsed=r.quotes_sent_this_period||0; u.convosUsed=r.new_conversations_this_period||0;
+    u.serviceTypes=r.service_types||[]; u.rating=r.rating!=null?Number(r.rating):null; u.reviewCount=r.review_count||0; u.verified=!!r.verified; u.businessDescription=r.business_description; u.providerPlan=r.provider_plan||'free'; u.providerPlanNextBilling=r.provider_plan_next_billing?new Date(r.provider_plan_next_billing).toISOString().slice(0,10):null; u.quotesUsed=r.quotes_sent_this_period||0; u.convosUsed=r.new_conversations_this_period||0;
     u.serviceRadiusMi=r.service_radius_mi!=null?Number(r.service_radius_mi):null;
     // Effective radius actually used to filter the feed: Free is capped at 20mi, Pro at 50mi (even
     // if an older saved value exceeds their plan's cap), each defaulting to that cap once they have
@@ -813,6 +813,26 @@ async function initSchema(){
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS new_conversations_this_period integer DEFAULT 0`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS usage_period_start date`);
   await pool.query(`CREATE TABLE IF NOT EXISTS stripe_events (id text PRIMARY KEY, type text, created_at timestamptz DEFAULT now())`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_next_billing date`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS provider_plan_next_billing date`);
+  // Payment history log — filled by the Stripe webhook going forward (no retroactive backfill).
+  // plan_kind is one of 'subscription' (homeowner Plus/Premium), 'provider_plan' (Pro/Elite),
+  // or 'care_plan'; plan is the human label shown in the admin Payments page.
+  await pool.query(`CREATE TABLE IF NOT EXISTS payments (
+    id text PRIMARY KEY,
+    user_id text REFERENCES users(id),
+    plan text,
+    plan_kind text,
+    amount_cents integer NOT NULL DEFAULT 0,
+    currency text DEFAULT 'usd',
+    status text NOT NULL,
+    stripe_invoice_id text,
+    stripe_customer_id text,
+    stripe_subscription_id text,
+    created_at timestamptz DEFAULT now()
+  )`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_payments_user ON payments(user_id)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_payments_created ON payments(created_at DESC)`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_kind text`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_value text`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS service_radius_mi integer`);
@@ -1134,21 +1154,45 @@ const server=http.createServer(async (req,res)=>{
           if(row){
             const subId=inv.subscription;
             const periodEnd=inv.lines?.data?.[0]?.period?.end || inv.period_end;
-            const amount=((inv.amount_paid||0)/100).toFixed(2);
+            const amountCents=inv.amount_paid||0;
+            const amount=(amountCents/100).toFixed(2);
+            const nextBilling=periodEnd?new Date(periodEnd*1000).toISOString().slice(0,10):null;
+            let planKind=null, planLabel=null;
             if(subId && subId===row.care_plan_stripe_subscription_id){
-              const nextBilling=periodEnd?new Date(periodEnd*1000).toISOString().slice(0,10):null;
+              planKind='care_plan'; planLabel='Home Care Plan';
               await pool.query('UPDATE users SET care_plan_next_billing=$1, care_plan_reminder_sent_for=NULL WHERE id=$2',[nextBilling,row.id]);
               await sendEmail({to:row.email,type:'care_plan_billed',subject:'Your card was charged for your Home Care Plan',html:carePlanBilledEmailHtml(mapUser(row),carePlanActiveDetails(mapUser(row).carePlanItems),amount,nextBilling||new Date()),userId:row.id});
             } else if(subId && subId===row.stripe_subscription_id){
+              const info=HOMEOWNER_PLAN_INFO[normalizeHomeownerPlanKey(row.subscription)];
+              planKind='subscription'; planLabel=info?info.label:row.subscription;
+              await pool.query('UPDATE users SET subscription_next_billing=$1 WHERE id=$2',[nextBilling,row.id]);
               await sendEmail({to:row.email,type:'subscription_billed',subject:'Your Living Communities plan was renewed',html:emailShell('Plan renewed',`<h2 style="margin:0 0 10px;color:#17352f">Payment received</h2><p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Your card on file was charged $${amount} for your ${esc_(row.subscription)} plan.</p>`),userId:row.id});
             } else if(subId && subId===row.provider_plan_stripe_subscription_id){
+              const info=PROVIDER_PLAN_INFO[row.provider_plan];
+              planKind='provider_plan'; planLabel=info?info.label:row.provider_plan;
+              await pool.query('UPDATE users SET provider_plan_next_billing=$1 WHERE id=$2',[nextBilling,row.id]);
               await sendEmail({to:row.email,type:'provider_plan_billed',subject:'Your Pro Provider plan was renewed',html:emailShell('Plan renewed',`<h2 style="margin:0 0 10px;color:#17352f">Payment received</h2><p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Your card on file was charged $${amount} for your Pro Provider plan.</p>`),userId:row.id});
             }
+            await pool.query(
+              `INSERT INTO payments (id,user_id,plan,plan_kind,amount_cents,currency,status,stripe_invoice_id,stripe_customer_id,stripe_subscription_id)
+               VALUES ($1,$2,$3,$4,$5,$6,'succeeded',$7,$8,$9)`,
+              [id('pay'),row.id,planLabel,planKind,amountCents,inv.currency||'usd',inv.id,inv.customer,subId||null]
+            ).catch(()=>{});
           }
         } else if(event.type==='invoice.payment_failed'){
           const inv=event.data.object;
           const row=await q1('SELECT * FROM users WHERE stripe_customer_id=$1',[inv.customer]);
           if(row){
+            const subId=inv.subscription;
+            let planKind=null, planLabel=null;
+            if(subId && subId===row.care_plan_stripe_subscription_id){ planKind='care_plan'; planLabel='Home Care Plan'; }
+            else if(subId && subId===row.stripe_subscription_id){ const info=HOMEOWNER_PLAN_INFO[normalizeHomeownerPlanKey(row.subscription)]; planKind='subscription'; planLabel=info?info.label:row.subscription; }
+            else if(subId && subId===row.provider_plan_stripe_subscription_id){ const info=PROVIDER_PLAN_INFO[row.provider_plan]; planKind='provider_plan'; planLabel=info?info.label:row.provider_plan; }
+            await pool.query(
+              `INSERT INTO payments (id,user_id,plan,plan_kind,amount_cents,currency,status,stripe_invoice_id,stripe_customer_id,stripe_subscription_id)
+               VALUES ($1,$2,$3,$4,$5,$6,'failed',$7,$8,$9)`,
+              [id('pay'),row.id,planLabel,planKind,inv.amount_due||0,inv.currency||'usd',inv.id,inv.customer,subId||null]
+            ).catch(()=>{});
             await sendEmail({to:row.email,type:'payment_failed',subject:'Your payment could not be processed',html:emailShell('Payment failed',`<h2 style="margin:0 0 10px;color:#17352f">We couldn't charge your card</h2><p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Please update your payment method from your dashboard to keep your plan active.</p>`),userId:row.id});
             if(ADMIN_NOTIFY_EMAIL) sendEmail({to:ADMIN_NOTIFY_EMAIL,type:'admin_payment_failed',subject:`Payment failed: ${row.name}`,html:adminPaymentFailedEmailHtml(mapUser(row))}).catch(()=>{});
           }
@@ -1157,8 +1201,8 @@ const server=http.createServer(async (req,res)=>{
           const row=await q1('SELECT * FROM users WHERE stripe_customer_id=$1',[sub.customer]);
           if(row){
             if(sub.id===row.care_plan_stripe_subscription_id) await pool.query("UPDATE users SET care_plan_items='[]'::jsonb, care_plan_next_billing=NULL, care_plan_stripe_subscription_id=NULL WHERE id=$1",[row.id]);
-            if(sub.id===row.stripe_subscription_id) await pool.query("UPDATE users SET subscription='free', stripe_subscription_id=NULL WHERE id=$1",[row.id]);
-            if(sub.id===row.provider_plan_stripe_subscription_id) await pool.query("UPDATE users SET provider_plan='free', provider_plan_stripe_subscription_id=NULL WHERE id=$1",[row.id]);
+            if(sub.id===row.stripe_subscription_id) await pool.query("UPDATE users SET subscription='free', stripe_subscription_id=NULL, subscription_next_billing=NULL WHERE id=$1",[row.id]);
+            if(sub.id===row.provider_plan_stripe_subscription_id) await pool.query("UPDATE users SET provider_plan='free', provider_plan_stripe_subscription_id=NULL, provider_plan_next_billing=NULL WHERE id=$1",[row.id]);
           }
         }
       }catch(e){ console.error('webhook handling error:',e.message); }
@@ -1440,7 +1484,7 @@ const server=http.createServer(async (req,res)=>{
           const existing=await q1('SELECT stripe_subscription_id FROM users WHERE id=$1',[u.id]);
           if(existing?.stripe_subscription_id) await stripeRequest('DELETE','subscriptions/'+existing.stripe_subscription_id).catch(()=>{});
         }
-        row=await q1('UPDATE users SET subscription=$1, stripe_subscription_id=NULL WHERE id=$2 RETURNING *',[b.plan,u.id]);
+        row=await q1('UPDATE users SET subscription=$1, stripe_subscription_id=NULL, subscription_next_billing=NULL WHERE id=$2 RETURNING *',[b.plan,u.id]);
       }else{
         const billingAddress=sanitizeBillingAddress(b.billingAddress);
         if(!billingAddress||!billingAddress.line1||!billingAddress.city||!billingAddress.state||!billingAddress.zip){
@@ -1454,7 +1498,8 @@ const server=http.createServer(async (req,res)=>{
             const existing=await q1('SELECT stripe_subscription_id FROM users WHERE id=$1',[u.id]);
             const taxRateId=isTexasBilling(billingAddress)?await ensureTxSaasTaxRateId():null;
             const sub=await stripeSubscribe(customerId,b.paymentMethodId,existing?.stripe_subscription_id,[{unitAmount:priceCents,name:(b.plan==='plus'?'Plus':'Premium')+' plan',interval:'month',taxRateId}]);
-            row=await q1('UPDATE users SET subscription=$1, stripe_subscription_id=$2, stripe_customer_id=$3, billing_address=$4::jsonb WHERE id=$5 RETURNING *',[b.plan,sub.id,customerId,JSON.stringify(billingAddress),u.id]);
+            const nextBilling=sub.current_period_end?new Date(sub.current_period_end*1000).toISOString().slice(0,10):null;
+            row=await q1('UPDATE users SET subscription=$1, stripe_subscription_id=$2, stripe_customer_id=$3, billing_address=$4::jsonb, subscription_next_billing=$5 WHERE id=$6 RETURNING *',[b.plan,sub.id,customerId,JSON.stringify(billingAddress),nextBilling,u.id]);
           }catch(e){ return sendStripeError(res,e); }
         }else{
           row=await q1('UPDATE users SET subscription=$1, billing_address=$2::jsonb WHERE id=$3 RETURNING *',[b.plan,JSON.stringify(billingAddress),u.id]);
@@ -1598,7 +1643,7 @@ const server=http.createServer(async (req,res)=>{
           const existing=await q1('SELECT provider_plan_stripe_subscription_id FROM users WHERE id=$1',[u.id]);
           if(existing?.provider_plan_stripe_subscription_id) await stripeRequest('DELETE','subscriptions/'+existing.provider_plan_stripe_subscription_id).catch(()=>{});
         }
-        row=await q1("UPDATE users SET provider_plan='free', provider_plan_stripe_subscription_id=NULL WHERE id=$1 RETURNING *",[u.id]);
+        row=await q1("UPDATE users SET provider_plan='free', provider_plan_stripe_subscription_id=NULL, provider_plan_next_billing=NULL WHERE id=$1 RETURNING *",[u.id]);
       }else{
         const billingAddress=sanitizeBillingAddress(b.billingAddress);
         if(!billingAddress||!billingAddress.line1||!billingAddress.city||!billingAddress.state||!billingAddress.zip){
@@ -1612,7 +1657,8 @@ const server=http.createServer(async (req,res)=>{
             const existing=await q1('SELECT provider_plan_stripe_subscription_id FROM users WHERE id=$1',[u.id]);
             const taxRateId=isTexasBilling(billingAddress)?await ensureTxSaasTaxRateId():null;
             const sub=await stripeSubscribe(customerId,b.paymentMethodId,existing?.provider_plan_stripe_subscription_id,[{unitAmount:planInfo.priceCents,name:planInfo.label+' plan',interval:'month',taxRateId}]);
-            row=await q1("UPDATE users SET provider_plan=$1, provider_plan_stripe_subscription_id=$2, stripe_customer_id=$3, billing_address=$4::jsonb WHERE id=$5 RETURNING *",[plan,sub.id,customerId,JSON.stringify(billingAddress),u.id]);
+            const nextBilling=sub.current_period_end?new Date(sub.current_period_end*1000).toISOString().slice(0,10):null;
+            row=await q1("UPDATE users SET provider_plan=$1, provider_plan_stripe_subscription_id=$2, stripe_customer_id=$3, billing_address=$4::jsonb, provider_plan_next_billing=$5 WHERE id=$6 RETURNING *",[plan,sub.id,customerId,JSON.stringify(billingAddress),nextBilling,u.id]);
           }catch(e){ return sendStripeError(res,e); }
         }else{
           row=await q1("UPDATE users SET provider_plan=$1, billing_address=$2::jsonb WHERE id=$3 RETURNING *",[plan,JSON.stringify(billingAddress),u.id]);
@@ -1956,6 +2002,58 @@ const server=http.createServer(async (req,res)=>{
       for(const [tok,uid] of sessions){ if(uid===aid) sessions.delete(tok); }
       sendEmail({to:row.email,type:'account_deleted',subject:'Your account was deleted',html:accountDeletedEmailHtml(mapUser(row)),userId:row.id}).catch(()=>{});
       return send(res,200,{ok:true});
+    }
+    // Payment history — logged going forward by the Stripe webhook above (see the payments
+    // table). Filterable by account name/email, plan, status, and a created_at date range.
+    if(p==='/api/admin/payments' && req.method==='GET'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const status=url.searchParams.get('status')||'all';
+      const planKind=url.searchParams.get('plan')||'all';
+      const qstr=(url.searchParams.get('q')||'').trim();
+      const from=url.searchParams.get('from')||'';
+      const to=url.searchParams.get('to')||'';
+      const limit=Math.min(200,Math.max(1,Number(url.searchParams.get('limit'))||50));
+      const offset=Math.max(0,Number(url.searchParams.get('offset'))||0);
+      const conds=[]; const params=[];
+      if(status!=='all'){ params.push(status); conds.push(`p.status=$${params.length}`); }
+      if(planKind!=='all'){ params.push(planKind); conds.push(`p.plan_kind=$${params.length}`); }
+      if(qstr){ params.push('%'+qstr+'%'); conds.push(`(u.name ILIKE $${params.length} OR u.email ILIKE $${params.length})`); }
+      if(from){ params.push(from); conds.push(`p.created_at >= $${params.length}::date`); }
+      if(to){ params.push(to); conds.push(`p.created_at < ($${params.length}::date + interval '1 day')`); }
+      const where=conds.length?'WHERE '+conds.join(' AND '):'';
+      const rows=await q(`SELECT p.*, u.name AS user_name, u.email AS user_email, u.role AS user_role FROM payments p JOIN users u ON u.id=p.user_id ${where} ORDER BY p.created_at DESC LIMIT ${limit} OFFSET ${offset}`,params);
+      const countRow=await q1(`SELECT count(*)::int AS n FROM payments p JOIN users u ON u.id=p.user_id ${where}`,params);
+      const payments=rows.map(r=>({id:r.id,userId:r.user_id,userName:r.user_name,userEmail:r.user_email,userRole:r.user_role,plan:r.plan,planKind:r.plan_kind,amount:(r.amount_cents||0)/100,currency:r.currency,status:r.status,createdAt:toISO(r.created_at)}));
+      return send(res,200,{payments,total:countRow?countRow.n:0});
+    }
+    // Upcoming payments — next billing date + expected amount for every account with an active
+    // paid plan. Homeowner/provider subscription dates only populate once Stripe is configured
+    // (they're set at checkout and refreshed by the webhook); Care Plan dates populate either way.
+    if(p==='/api/admin/payments/upcoming' && req.method==='GET'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const rows=await q(`SELECT * FROM users WHERE deleted=false AND (
+        (subscription<>'free' AND subscription_next_billing IS NOT NULL) OR
+        (provider_plan<>'free' AND provider_plan_next_billing IS NOT NULL) OR
+        (care_plan_next_billing IS NOT NULL)
+      )`);
+      const items=[];
+      for(const r of rows){
+        const mu=mapUser(r);
+        if(mu.subscription && mu.subscription!=='free' && r.subscription_next_billing){
+          const info=HOMEOWNER_PLAN_INFO[normalizeHomeownerPlanKey(mu.subscription)];
+          items.push({userId:r.id,name:r.name,email:r.email,role:r.role,plan:info?info.label:mu.subscription,planKind:'subscription',amount:info?info.priceCents/100:null,nextBilling:new Date(r.subscription_next_billing).toISOString().slice(0,10)});
+        }
+        if(mu.providerPlan && mu.providerPlan!=='free' && r.provider_plan_next_billing){
+          const info=PROVIDER_PLAN_INFO[mu.providerPlan];
+          items.push({userId:r.id,name:r.name,email:r.email,role:r.role,plan:info?info.label:mu.providerPlan,planKind:'provider_plan',amount:info?info.priceCents/100:null,nextBilling:new Date(r.provider_plan_next_billing).toISOString().slice(0,10)});
+        }
+        if(r.care_plan_next_billing){
+          const total=carePlanMonthlyTotal(mu.carePlanItems);
+          if(total>0) items.push({userId:r.id,name:r.name,email:r.email,role:r.role,plan:'Home Care Plan',planKind:'care_plan',amount:total,nextBilling:new Date(r.care_plan_next_billing).toISOString().slice(0,10)});
+        }
+      }
+      items.sort((a,b)=>a.nextBilling<b.nextBilling?-1:(a.nextBilling>b.nextBilling?1:0));
+      return send(res,200,{upcoming:items});
     }
     if(p==='/api/admin/requests/stale' && req.method==='GET'){
       if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
