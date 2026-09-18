@@ -476,7 +476,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 </div>
 <div class="panel hidden" data-panel="quotes"><div id="ho-quotes-list"></div></div>
 <div class="panel hidden" data-panel="jobs"><div id="ho-jobs-list"></div></div>
-<div class="panel hidden" data-panel="payments"><div class="stub-notice"><div class="icon"><svg width="30" height="30" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="16" height="11" rx="1.8"/><path d="M2 9h16"/><path d="M5 13h4"/></svg></div>Payments aren't live yet. Once providers accept jobs through Living Communities, your payment history and receipts will show up here.</div></div>
+<div class="panel hidden" data-panel="payments"><div id="ho-payments-view"></div></div>
 <div class="panel hidden" data-panel="messages"><div id="ho-messages-view"></div></div>
 <div class="panel hidden" data-panel="maintenance">
   <div class="hometab-bar">
@@ -547,7 +547,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 <div class="panel hidden" data-panel="messages"><div id="pr-messages-view"></div></div>
 <div class="panel hidden" data-panel="activejobs"><div id="pr-activejobs-list"></div></div>
 <div class="panel hidden" data-panel="completedjobs"><div id="pr-completedjobs-list"></div></div>
-<div class="panel hidden" data-panel="payments"><div class="stub-notice"><div class="icon"><svg width="30" height="30" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="16" height="11" rx="1.8"/><path d="M2 9h16"/><path d="M5 13h4"/></svg></div>Payouts aren't live yet. Once payments launch, your earnings and payout history will show up here.</div></div>
+<div class="panel hidden" data-panel="payments"><div id="pr-payments-view"></div></div>
 <div class="panel hidden" data-panel="profile"><div id="pr-profile-view"></div></div>
 <div class="panel hidden" data-panel="help"><div class="stub-notice"><div class="icon"><svg width="30" height="30" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5.8A2.8 2.8 0 015.8 3h8.4A2.8 2.8 0 0117 5.8v5.4a2.8 2.8 0 01-2.8 2.8H9l-4 3.2v-3.2H5.8A2.8 2.8 0 013 11.2V5.8z"/></svg></div>Need a hand? Email us at <a href="mailto:hello@livingcommunities.example" style="color:var(--green);font-weight:800">hello@livingcommunities.example</a> and we'll get back to you.</div></div>
 </section></div></div>
@@ -599,7 +599,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 <div class="panel hidden" data-panel="dispatch">
   <div class="mini-actions" style="margin:0 0 16px">
     <button class="secondary dispatch-sub-tab active" data-sub="careplan" onclick="switchDispatchSubTab('careplan')">Care Plan Accounts</button>
-    <button class="secondary dispatch-sub-tab" data-sub="requests" onclick="switchDispatchSubTab('requests')">Waiting on Quotes</button>
+    <button class="secondary dispatch-sub-tab" data-sub="requests" onclick="switchDispatchSubTab('requests')">Open Requests</button>
   </div>
 
   <div class="dispatch-sub" data-sub="careplan">
@@ -608,10 +608,22 @@ button:disabled{opacity:.45;cursor:not-allowed}
   </div>
 
   <div class="dispatch-sub hidden" data-sub="requests">
-    <div class="mini-actions" style="margin-bottom:6px;gap:10px">
-      <span class="subtle" style="font-size:13px">This is a subset of Open Requests (the Overview count) — only those with zero quotes yet, waiting more than</span>
+    <p class="subtle" style="font-size:13px;margin:0 0 12px">Every open request and its status — matches the Overview count. Filter to find ones that need a nudge.</p>
+    <div class="mini-actions" style="margin-bottom:6px;flex-wrap:wrap;gap:10px">
+      <input id="admin-requests-search" placeholder="Search homeowner, community or title…" oninput="loadAdminDispatch()" style="flex:1;min-width:180px;border:1px solid #cbd9d3;border-radius:8px;padding:8px 10px;font:inherit;font-size:13px">
+      <select id="admin-requests-service" onchange="loadAdminDispatch()" style="border:1px solid #cbd9d3;border-radius:8px;padding:8px 10px;font:inherit;font-size:13px">
+        <option value="all">All services</option>
+        <option>Lawn & Landscaping</option><option>House Cleaning</option><option>Pool Service</option><option>Handyman</option><option>Plumbing</option><option>Electrical</option><option>HVAC</option><option>Pest Control</option><option>Mobile Mechanic</option><option>Power Washing</option>
+      </select>
+      <select id="admin-requests-quotestatus" onchange="loadAdminDispatch()" style="border:1px solid #cbd9d3;border-radius:8px;padding:8px 10px;font:inherit;font-size:13px">
+        <option value="all">Any quote status</option>
+        <option value="none">No quotes yet</option>
+        <option value="has">Has quotes</option>
+        <option value="dispatched">Dispatched</option>
+        <option value="notdispatched">Not dispatched</option>
+      </select>
       <select id="admin-stale-hours" onchange="loadAdminDispatch()" style="border:1px solid #cbd9d3;border-radius:8px;padding:8px 10px;font:inherit;font-size:13px">
-        <option value="6">6 hours</option><option value="24" selected>24 hours</option><option value="48">48 hours</option><option value="72">72 hours</option>
+        <option value="0" selected>Any age</option><option value="6">Open 6h+</option><option value="24">Open 24h+</option><option value="48">Open 48h+</option><option value="72">Open 72h+</option>
       </select>
     </div>
     <div id="admin-dispatch-list" style="margin-top:12px"></div>
@@ -1829,12 +1841,14 @@ function renderPanel(role,panelName){
     else if(panelName==='messages')renderAnnouncements('homeowner',d);
     else if(panelName==='jobs')renderHoJobs(d);
     else if(panelName==='profile')renderHoProfile(d);
+    else if(panelName==='payments')renderHoPayments(d);
   }else{
     if(panelName==='leads')renderPrLeads(d);
     else if(panelName==='messages')renderAnnouncements('provider',d);
     else if(panelName==='activejobs')renderPrJobs(d,['scheduled','in_progress'],'pr-activejobs-list');
     else if(panelName==='completedjobs')renderPrJobs(d,['completed'],'pr-completedjobs-list');
     else if(panelName==='profile')renderPrProfile(d);
+    else if(panelName==='payments')renderPrPayments(d);
   }
 }
 
@@ -1899,6 +1913,50 @@ function renderHoJobs(d){
   const jobs=d.jobs||[];
   if(!jobs.length){el.innerHTML='<div class="notice">No appointments yet. Accept a quote from My Requests to get started.</div>';return}
   el.innerHTML=jobs.map(j=>`<div class="request">${photoSlotHTML(serviceImage(j.serviceType),null,'req-thumb')}<div class="requestrow"><div><span class="tag">${esc((j.serviceType||'SERVICE').toUpperCase())}</span><span class="tag status-${esc(j.status)}">${esc(statusLabel(j.status).toUpperCase())}</span><h3>${esc(j.title||'Service job')}</h3>${j.providerName?`<p class="statusline" style="margin:2px 0">With ${esc(j.providerName)}</p>`:''}<p>Provider's proposed time: ${esc(j.scheduledFor||'—')}</p>${j.status==='completed'?`<p class="statusline" style="margin-top:4px">Closed out ${j.receiptUploadedAt?new Date(j.receiptUploadedAt).toLocaleDateString():''}${j.receiptNote?' · '+esc(j.receiptNote):''}</p>`:'<p class="statusline" style="margin-top:4px">Awaiting the provider to close this job out with a receipt.</p>'}${(j.status==='scheduled'||j.status==='in_progress')?`<p class="subtle" style="font-size:11.5px;margin-top:6px;line-height:1.4">${HANDS_OFF_NOTE}</p>`:''}</div>${j.quoteId?`<button class="secondary" onclick="openJobChat('${esc(j.quoteId)}','${esc(j.title||'Service job')}')">Chat</button>`:''}</div></div>`).join('');
+}
+function paymentHistoryRowsHTML(payments){
+  if(!payments.length) return '<div class="notice">No payments yet.</div>';
+  return payments.map(p=>{
+    const pill = p.status==='succeeded' ? statusPillHTML('Succeeded','ok') : statusPillHTML('Failed','bad');
+    return `<div class="admin-row"><div class="admin-row-main"><div class="name">${esc(p.plan||'Payment')} ${pill}</div><div class="meta">$${Number(p.amount).toFixed(2)} · ${new Date(p.createdAt).toLocaleDateString()}</div></div></div>`;
+  }).join('');
+}
+async function loadBillingHistoryInto(elId){
+  const el=document.getElementById(elId); if(!el)return;
+  el.innerHTML='<div class="notice">Loading…</div>';
+  try{
+    const d=await api('/billing/history');
+    el.innerHTML=paymentHistoryRowsHTML(d.payments||[]);
+  }catch(e){ el.innerHTML=`<div class="notice">${esc(e.message)}</div>`; }
+}
+function renderHoPayments(d){
+  const el=document.getElementById('ho-payments-view'); if(!el)return;
+  const u=d.user;
+  const planLabel = u.subscription==='premium'?'Premium':u.subscription==='plus'?'Plus':'Free';
+  const planPrice = u.subscription==='premium'?'$29.99/mo':u.subscription==='plus'?'$9.99/mo':'Free';
+  const carePlanTotal=careActiveMonthlyTotal();
+  el.innerHTML=`
+  <div class="boxgrid">
+    <div class="request">
+      <div class="requestrow" style="flex-direction:column;align-items:flex-start;gap:6px;width:100%">
+        <b style="font-size:14.5px">Community Plan</b>
+        <div class="statusline">${esc(planLabel)} · ${planPrice}${u.subscriptionNextBilling?' · Next charge '+esc(u.subscriptionNextBilling):''}</div>
+        <button class="secondary" onclick="openPlansPage('homeowner')">Manage Plan</button>
+      </div>
+    </div>
+    <div class="request">
+      <div class="requestrow" style="flex-direction:column;align-items:flex-start;gap:6px;width:100%">
+        <b style="font-size:14.5px">Home Care Plan</b>
+        <div class="statusline">${carePlanTotal>0?'$'+carePlanTotal.toFixed(2)+'/mo':'Not active'}${u.carePlanNextBilling?' · Next charge '+esc(u.carePlanNextBilling):''}</div>
+        <button class="secondary" onclick="openCarePlanPage('homeowner')">Manage Home Care Plan</button>
+      </div>
+    </div>
+  </div>
+  <div class="request" style="margin-top:14px">
+    <b style="font-size:14.5px">Payment history</b>
+    <div id="ho-payments-history" style="margin-top:10px"></div>
+  </div>`;
+  loadBillingHistoryInto('ho-payments-history');
 }
 function renderHoProfile(d){
   const el=document.getElementById('ho-profile-view'); if(!el)return; const u=d.user;
@@ -1997,6 +2055,27 @@ function renderPrJobs(d,statuses,elId){
   const jobs=(d.jobs||[]).filter(j=>statuses.includes(j.status));
   if(!jobs.length){el.innerHTML=`<div class="notice">No ${statuses.includes('completed')?'completed':'active'} jobs yet.</div>`;return}
   el.innerHTML=jobs.map(j=>`<div class="request">${photoSlotHTML(serviceImage(j.serviceType),null,'req-thumb')}<div class="requestrow"><div><span class="tag">${esc((j.serviceType||'SERVICE').toUpperCase())}</span><span class="tag status-${esc(j.status)}">${esc(statusLabel(j.status).toUpperCase())}</span><h3>${esc(j.title||'Service job')}</h3>${j.homeownerName?`<p class="statusline" style="margin:2px 0">With ${esc(j.homeownerName)}</p>`:''}<p>Your proposed time: ${esc(j.scheduledFor||'—')}</p>${j.status==='completed'&&j.receiptUploadedAt?`<p class="statusline" style="margin-top:4px">Closed out ${new Date(j.receiptUploadedAt).toLocaleDateString()}</p>`:''}${(j.status==='scheduled'||j.status==='in_progress')?`<p class="subtle" style="font-size:11.5px;margin-top:6px;line-height:1.4">${HANDS_OFF_NOTE}</p>`:''}</div><div class="mini-actions">${j.quoteId?`<button class="secondary" onclick="openJobChat('${esc(j.quoteId)}','${esc(j.title||'Service job')}')">Chat</button>`:''}${j.status!=='completed'?`<button class="primary" onclick="openReceiptModal('${esc(j.id)}')">Add Receipt &amp; Complete</button>`:''}</div></div></div>`).join('');
+}
+function renderPrPayments(d){
+  const el=document.getElementById('pr-payments-view'); if(!el)return;
+  const u=d.user;
+  const plan=u.providerPlan||'free';
+  const planLabel = plan==='elite'?'Elite Provider':plan==='pro'?'Pro Provider':'Free';
+  const planPrice = plan==='elite'?'$20.99/mo':plan==='pro'?'$9.99/mo':'Free';
+  el.innerHTML=`
+  <div class="request">
+    <div class="requestrow" style="flex-direction:column;align-items:flex-start;gap:6px;width:100%">
+      <b style="font-size:14.5px">Provider Plan</b>
+      <div class="statusline">${esc(planLabel)} · ${planPrice}${u.providerPlanNextBilling?' · Next charge '+esc(u.providerPlanNextBilling):''}</div>
+      <p class="subtle" style="font-size:12px;margin:2px 0 0">This is your Living Communities subscription — not job payouts. Homeowners pay you directly for completed work.</p>
+      <button class="secondary" onclick="openProviderPlanPage()">Manage Plan</button>
+    </div>
+  </div>
+  <div class="request" style="margin-top:14px">
+    <b style="font-size:14.5px">Payment history</b>
+    <div id="pr-payments-history" style="margin-top:10px"></div>
+  </div>`;
+  loadBillingHistoryInto('pr-payments-history');
 }
 const PROVIDER_FREE_MAX_RADIUS_MI = 20;
 const PROVIDER_PRO_MAX_RADIUS_MI = 50;
@@ -2619,22 +2698,28 @@ async function toggleAdminSuspend(accountId,suspend){
 async function loadAdminDispatch(){
   const el=document.getElementById('admin-dispatch-list'); if(!el)return;
   el.innerHTML='<div class="notice">Loading…</div>';
-  const hours=document.getElementById('admin-stale-hours').value;
+  const params=new URLSearchParams({
+    minHours:document.getElementById('admin-stale-hours').value,
+    service:document.getElementById('admin-requests-service').value,
+    quoteStatus:document.getElementById('admin-requests-quotestatus').value,
+    q:document.getElementById('admin-requests-search').value.trim()
+  });
   try{
-    const d=await api('/admin/requests/stale?hours='+encodeURIComponent(hours));
+    const d=await api('/admin/requests/open?'+params.toString());
     renderAdminDispatch(d.requests||[]);
   }catch(e){ el.innerHTML=`<div class="notice">${esc(e.message)}</div>`; }
 }
 function renderAdminDispatch(requests){
   const el=document.getElementById('admin-dispatch-list'); if(!el)return;
-  if(!requests.length){ el.innerHTML='<div class="notice">Nothing stale right now. Every open request already has at least one quote.</div>'; return; }
+  if(!requests.length){ el.innerHTML='<div class="notice">No open requests match these filters.</div>'; return; }
   el.innerHTML=requests.map(r=>{
     const age=Math.max(0,Math.round((Date.now()-new Date(r.createdAt).getTime())/3600000));
-    const dispatched = r.dispatchedProviderId ? `<div class="meta" style="color:var(--green);font-weight:700">Already dispatched${r.dispatchedAt?' '+new Date(r.dispatchedAt).toLocaleString():''}</div>` : '';
+    const quotePill = r.quoteCount>0 ? statusPillHTML(r.quoteCount+' quote'+(r.quoteCount===1?'':'s'),'ok') : statusPillHTML('No quotes yet','warn');
+    const dispatched = r.dispatchedProviderId ? `<div class="meta" style="color:var(--green);font-weight:700">Dispatched${r.dispatchedAt?' '+new Date(r.dispatchedAt).toLocaleString():''}</div>` : '';
     return `<div class="admin-row">
       <div class="admin-row-main">
-        <div class="name">${esc(r.title)} ${statusPillHTML(r.serviceType,'neutral')}</div>
-        <div class="meta">${esc(r.homeownerName||'')}${r.homeownerCommunity?' · '+esc(r.homeownerCommunity):''} · Open ${age}h · ${r.quoteCount||0} quote${r.quoteCount===1?'':'s'}</div>
+        <div class="name">${esc(r.title)} ${statusPillHTML(r.serviceType,'neutral')} ${quotePill}</div>
+        <div class="meta">${esc(r.homeownerName||'')}${r.homeownerCommunity?' · '+esc(r.homeownerCommunity):''} · Open ${age}h</div>
         ${dispatched}
       </div>
       <div class="admin-row-actions">

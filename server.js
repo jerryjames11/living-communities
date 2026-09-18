@@ -1211,6 +1211,14 @@ const server=http.createServer(async (req,res)=>{
 
     const u=await requireAuth(req,res); if(!u)return;
 
+    // Self-service billing history — the logged-in account's own payments only (never another
+    // user's), for the Payments tab on the homeowner/provider dashboards.
+    if(p==='/api/billing/history' && req.method==='GET'){
+      const rows=await q('SELECT * FROM payments WHERE user_id=$1 ORDER BY created_at DESC LIMIT 100',[u.id]);
+      const payments=rows.map(r=>({id:r.id,plan:r.plan,planKind:r.plan_kind,amount:(r.amount_cents||0)/100,currency:r.currency,status:r.status,createdAt:toISO(r.created_at)}));
+      return send(res,200,{payments});
+    }
+
     if(p==='/api/billing/setup-intent' && req.method==='POST'){
       if(!stripeConfigured()) return send(res,501,{error:'Stripe is not configured on this server yet.',demoMode:true});
       try{
@@ -2055,19 +2063,34 @@ const server=http.createServer(async (req,res)=>{
       items.sort((a,b)=>a.nextBilling<b.nextBilling?-1:(a.nextBilling>b.nextBilling?1:0));
       return send(res,200,{upcoming:items});
     }
-    if(p==='/api/admin/requests/stale' && req.method==='GET'){
+    // Every open request (quoted or not, dispatched or not) with its live status, filterable by
+    // minimum age, service type, quote/dispatch status, and a homeowner/title search. Supersedes
+    // the old "stale only" dispatch list — the Dispatch tab now shows the whole open-requests
+    // picture, not just the ones with zero quotes.
+    if(p==='/api/admin/requests/open' && req.method==='GET'){
       if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
-      const hours=Math.max(1,Number(url.searchParams.get('hours'))||24);
+      const minHours=Math.max(0,Number(url.searchParams.get('minHours'))||0);
+      const service=url.searchParams.get('service')||'all';
+      const qstr=(url.searchParams.get('q')||'').trim();
+      const conds=[`r.status='open'`]; const params=[];
+      if(minHours>0){ params.push(String(minHours)); conds.push(`r.created_at < now() - ($${params.length} || ' hours')::interval`); }
+      if(service!=='all'){ params.push(service); conds.push(`r.service_type ILIKE $${params.length}`); }
+      if(qstr){ params.push('%'+qstr+'%'); conds.push(`(uh.name ILIKE $${params.length} OR uh.community ILIKE $${params.length} OR r.title ILIKE $${params.length})`); }
+      const where='WHERE '+conds.join(' AND ');
       const rows=await q(
         `SELECT r.*, uh.name AS homeowner_name, uh.community AS homeowner_community,
                 (SELECT count(*)::int FROM quotes qq WHERE qq.request_id=r.id) AS quote_count
          FROM requests r JOIN users uh ON uh.id=r.homeowner_id
-         WHERE r.status='open' AND r.created_at < now() - ($1 || ' hours')::interval
-           AND NOT EXISTS (SELECT 1 FROM quotes qq WHERE qq.request_id=r.id)
+         ${where}
          ORDER BY r.created_at ASC`,
-        [String(hours)]
+        params
       );
-      const requests=rows.map(r=>({...mapRequest(r),homeownerName:r.homeowner_name,homeownerCommunity:r.homeowner_community,quoteCount:r.quote_count}));
+      let requests=rows.map(r=>({...mapRequest(r),homeownerName:r.homeowner_name,homeownerCommunity:r.homeowner_community,quoteCount:r.quote_count}));
+      const quoteStatus=url.searchParams.get('quoteStatus')||'all';
+      if(quoteStatus==='none') requests=requests.filter(r=>r.quoteCount===0);
+      else if(quoteStatus==='has') requests=requests.filter(r=>r.quoteCount>0);
+      else if(quoteStatus==='dispatched') requests=requests.filter(r=>!!r.dispatchedProviderId);
+      else if(quoteStatus==='notdispatched') requests=requests.filter(r=>!r.dispatchedProviderId);
       return send(res,200,{requests});
     }
     if(p.startsWith('/api/admin/requests/') && p.endsWith('/candidates') && req.method==='GET'){
