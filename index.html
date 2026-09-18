@@ -643,7 +643,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
         <option value="all">All plans</option><option value="subscription">Homeowner (Plus/Premium)</option><option value="provider_plan">Provider (Pro/Elite)</option><option value="care_plan">Home Care Plan</option>
       </select>
       <select id="admin-payments-status" onchange="loadAdminPaymentsHistory()" style="border:1px solid #cbd9d3;border-radius:10px;padding:10px 12px;font:inherit;font-size:13.5px">
-        <option value="all">All statuses</option><option value="succeeded">Succeeded</option><option value="failed">Failed</option>
+        <option value="all">All statuses</option><option value="succeeded">Succeeded</option><option value="failed">Failed</option><option value="refunded">Refunded</option>
       </select>
       <input type="date" id="admin-payments-from" onchange="loadAdminPaymentsHistory()" style="border:1px solid #cbd9d3;border-radius:10px;padding:10px 12px;font:inherit;font-size:13.5px">
       <span class="subtle" style="font-size:13px;align-self:center">to</span>
@@ -1917,7 +1917,7 @@ function renderHoJobs(d){
 function paymentHistoryRowsHTML(payments){
   if(!payments.length) return '<div class="notice">No payments yet.</div>';
   return payments.map(p=>{
-    const pill = p.status==='succeeded' ? statusPillHTML('Succeeded','ok') : statusPillHTML('Failed','bad');
+    const pill = p.status==='succeeded' ? statusPillHTML('Succeeded','ok') : p.status==='refunded' ? statusPillHTML('Refunded','neutral') : statusPillHTML('Failed','bad');
     return `<div class="admin-row"><div class="admin-row-main"><div class="name">${esc(p.plan||'Payment')} ${pill}</div><div class="meta">$${Number(p.amount).toFixed(2)} · ${new Date(p.createdAt).toLocaleDateString()}</div></div></div>`;
   }).join('');
 }
@@ -2766,14 +2766,24 @@ function renderAdminPaymentsHistory(payments,total){
   document.getElementById('admin-payments-next').disabled = adminPaymentsOffset+ADMIN_PAYMENTS_PAGE_SIZE>=total;
   if(!payments.length){ el.innerHTML='<div class="notice">No payments match these filters.</div>'; return; }
   el.innerHTML=payments.map(p=>{
-    const statusPill = p.status==='succeeded' ? statusPillHTML('Succeeded','ok') : statusPillHTML('Failed','bad');
+    const statusPill = p.status==='succeeded' ? statusPillHTML('Succeeded','ok') : p.status==='refunded' ? statusPillHTML('Refunded','neutral') : statusPillHTML('Failed','bad');
+    const refundBtn = p.status==='succeeded' ? `<button class="secondary" onclick="refundAdminPayment('${esc(p.id)}')">Refund</button>` : '';
     return `<div class="admin-row">
       <div class="admin-row-main">
         <div class="name">${esc(p.userName||p.userEmail)} ${statusPill}</div>
-        <div class="meta">${esc(p.plan||paymentPlanKindLabel(p.planKind))} · $${Number(p.amount).toFixed(2)} · ${new Date(p.createdAt).toLocaleString()}</div>
+        <div class="meta">${esc(p.plan||paymentPlanKindLabel(p.planKind))} · $${Number(p.amount).toFixed(2)} · ${new Date(p.createdAt).toLocaleString()}${p.refundedAt?' · Refunded '+new Date(p.refundedAt).toLocaleDateString():''}</div>
       </div>
+      <div class="admin-row-actions">${refundBtn}</div>
     </div>`;
   }).join('');
+}
+async function refundAdminPayment(paymentId){
+  if(!confirm("Refund this payment through Stripe? Stripe's own processing fee on the original charge is not returned to you. This won't change the account's plan or access — do that separately if needed."))return;
+  try{
+    await api('/admin/payments/'+paymentId+'/refund',{method:'POST'});
+    toast('Refunded.');
+    await loadAdminPaymentsHistory();
+  }catch(e){ toast(e.message); }
 }
 async function loadAdminPaymentsUpcoming(){
   const el=document.getElementById('admin-payments-upcoming-list'); if(!el)return;

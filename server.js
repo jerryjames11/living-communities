@@ -102,6 +102,7 @@ function publicProviderView(u){
   };
 }
 function mapRequest(r){ return {id:r.id,homeownerId:r.homeowner_id,serviceType:r.service_type,title:r.title,description:r.description,urgency:r.urgency,preferredDate:r.preferred_date,preferredTime:r.preferred_time,status:r.status,createdAt:toISO(r.created_at),dispatchedProviderId:r.dispatched_provider_id||null,dispatchedAt:toISO(r.dispatched_at)||null,delisted:!!r.delisted,delistedAt:toISO(r.delisted_at)}; }
+function mapPayment(r){ return {id:r.id,userId:r.user_id,plan:r.plan,planKind:r.plan_kind,amount:(r.amount_cents||0)/100,currency:r.currency,status:r.status,createdAt:toISO(r.created_at),refundedAt:toISO(r.refunded_at)||null}; }
 // Slim account view for the admin accounts list — everything an admin needs to monitor an
 // account and its subscription at a glance, but never the heavy/sensitive stuff (password data,
 // uploaded verification document images) that a bulk list endpoint has no business returning.
@@ -300,21 +301,38 @@ async function ensureStripeCustomer(u){
   await pool.query('UPDATE users SET stripe_customer_id=$1 WHERE id=$2',[customer.id,u.id]);
   return customer.id;
 }
+// Stripe's inline price_data used to accept product_data (create-a-product-on-the-fly) directly
+// on a subscription item; current API versions reject that param and want an existing Product
+// id instead ("Received unknown parameter: items[0][price_data][product_data]. Did you mean
+// product?"). This looks up a Product by name (so redeploys don't spawn duplicates) and creates
+// one on first use, caching the id in memory for the life of the process.
+const _stripeProductIdCache = new Map();
+async function ensureStripeProductId(name){
+  if(_stripeProductIdCache.has(name)) return _stripeProductIdCache.get(name);
+  const existing=await stripeRequest('GET','products?active=true&limit=100').catch(()=>null);
+  const found=existing?.data?.find(p=>p.name===name);
+  if(found){ _stripeProductIdCache.set(name,found.id); return found.id; }
+  const created=await stripeRequest('POST','products',{name});
+  _stripeProductIdCache.set(name,created.id);
+  return created.id;
+}
 // Attaches the payment method, sets it as the customer's default, cancels any prior subscription
 // for this slot (community plan / care plan / provider plan each track their own), and creates a
-// fresh subscription with one inline price_data item per line (no pre-created Price objects needed).
+// fresh subscription with one inline price_data item per line (each referencing a Product looked
+// up/created by name via ensureStripeProductId — no pre-created Price objects needed).
 // This "cancel & recreate" approach keeps the integration simple; the tradeoff is that changing a
 // plan resets that plan's billing-anchor date rather than prorating in place.
 async function stripeSubscribe(customerId, paymentMethodId, existingSubId, items){
   await stripeRequest('POST','payment_methods/'+paymentMethodId+'/attach',{customer:customerId});
   await stripeRequest('POST','customers/'+customerId,{invoice_settings:{default_payment_method:paymentMethodId}});
   if(existingSubId) await stripeRequest('DELETE','subscriptions/'+existingSubId).catch(()=>{});
+  const resolvedItems=await Promise.all(items.map(async it=>({
+    price_data:{currency:'usd',unit_amount:it.unitAmount,recurring:{interval:it.interval||'month'},product:await ensureStripeProductId(it.name)},
+    ...(it.taxRateId?{tax_rates:[it.taxRateId]}:{})
+  })));
   const sub=await stripeRequest('POST','subscriptions',{
     customer:customerId,
-    items:items.map(it=>({
-      price_data:{currency:'usd',unit_amount:it.unitAmount,recurring:{interval:it.interval||'month'},product_data:{name:it.name}},
-      ...(it.taxRateId?{tax_rates:[it.taxRateId]}:{})
-    })),
+    items:resolvedItems,
     default_payment_method:paymentMethodId,
   });
   return sub;
@@ -833,6 +851,7 @@ async function initSchema(){
   )`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_payments_user ON payments(user_id)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_payments_created ON payments(created_at DESC)`);
+  await pool.query(`ALTER TABLE payments ADD COLUMN IF NOT EXISTS refunded_at timestamptz`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_kind text`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_value text`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS service_radius_mi integer`);
@@ -1215,7 +1234,7 @@ const server=http.createServer(async (req,res)=>{
     // user's), for the Payments tab on the homeowner/provider dashboards.
     if(p==='/api/billing/history' && req.method==='GET'){
       const rows=await q('SELECT * FROM payments WHERE user_id=$1 ORDER BY created_at DESC LIMIT 100',[u.id]);
-      const payments=rows.map(r=>({id:r.id,plan:r.plan,planKind:r.plan_kind,amount:(r.amount_cents||0)/100,currency:r.currency,status:r.status,createdAt:toISO(r.created_at)}));
+      const payments=rows.map(mapPayment);
       return send(res,200,{payments});
     }
 
@@ -2031,8 +2050,38 @@ const server=http.createServer(async (req,res)=>{
       const where=conds.length?'WHERE '+conds.join(' AND '):'';
       const rows=await q(`SELECT p.*, u.name AS user_name, u.email AS user_email, u.role AS user_role FROM payments p JOIN users u ON u.id=p.user_id ${where} ORDER BY p.created_at DESC LIMIT ${limit} OFFSET ${offset}`,params);
       const countRow=await q1(`SELECT count(*)::int AS n FROM payments p JOIN users u ON u.id=p.user_id ${where}`,params);
-      const payments=rows.map(r=>({id:r.id,userId:r.user_id,userName:r.user_name,userEmail:r.user_email,userRole:r.user_role,plan:r.plan,planKind:r.plan_kind,amount:(r.amount_cents||0)/100,currency:r.currency,status:r.status,createdAt:toISO(r.created_at)}));
+      const payments=rows.map(r=>({...mapPayment(r),userName:r.user_name,userEmail:r.user_email,userRole:r.user_role}));
       return send(res,200,{payments,total:countRow?countRow.n:0});
+    }
+    // Refund a logged payment. Stripe only refunds against the underlying charge/PaymentIntent,
+    // not the invoice id we store, so this looks the invoice up first. Invoice shape has moved
+    // around across Stripe API versions (payment_intent/charge directly on the invoice in older
+    // versions, a separate /invoices/:id/payments list in newer ones) — this tries both rather
+    // than assuming one. Marks our own row 'refunded' on success; does NOT touch the account's
+    // plan or access — that's a separate, deliberate admin decision (see Accounts panel).
+    if(p.startsWith('/api/admin/payments/') && p.endsWith('/refund') && req.method==='POST'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const paymentId=p.split('/')[4];
+      const row=await q1('SELECT * FROM payments WHERE id=$1',[paymentId]);
+      if(!row) return send(res,404,{error:'Payment not found'});
+      if(row.status==='refunded') return send(res,400,{error:'This payment was already refunded'});
+      if(row.status!=='succeeded') return send(res,400,{error:'Only a succeeded payment can be refunded'});
+      if(!stripeConfigured()) return send(res,400,{error:'Stripe is not configured on this server yet.'});
+      if(!row.stripe_invoice_id) return send(res,400,{error:"This payment has no Stripe invoice on file — refund it directly in the Stripe Dashboard instead."});
+      try{
+        const inv=await stripeRequest('GET','invoices/'+row.stripe_invoice_id);
+        let target=inv.payment_intent||inv.charge||null;
+        if(!target){
+          const payLog=await stripeRequest('GET','invoices/'+row.stripe_invoice_id+'/payments').catch(()=>null);
+          const paid=payLog?.data?.find(pp=>pp.status==='paid');
+          target=paid?.payment?.payment_intent||paid?.payment?.charge||null;
+        }
+        if(!target) return send(res,400,{error:"Couldn't find the underlying charge for this invoice — refund it directly in the Stripe Dashboard instead."});
+        const isCharge=String(target).startsWith('ch_');
+        await stripeRequest('POST','refunds',isCharge?{charge:target}:{payment_intent:target});
+        const updated=await q1("UPDATE payments SET status='refunded', refunded_at=now() WHERE id=$1 RETURNING *",[row.id]);
+        return send(res,200,{payment:mapPayment(updated)});
+      }catch(e){ return sendStripeError(res,e); }
     }
     // Upcoming payments — next billing date + expected amount for every account with an active
     // paid plan. Homeowner/provider subscription dates only populate once Stripe is configured
