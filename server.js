@@ -447,8 +447,8 @@ function welcomeEmailHtml(u){
   const isProvider=u.role==='provider';
   return emailShell('Welcome to Living Communities',
     `<h2 style="margin:0 0 10px;color:#17352f">Welcome, ${esc_(u.name.split(' ')[0])}!</h2>
-     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">${isProvider?"Your provider account is ready. Browse open requests and start sending quotes to local homeowners.":"Your account is ready. Post a request and local providers will start sending you quotes."}</p>
-     ${btn(isProvider?'View Request Feed':'Go to My Dashboard',APP_URL)}`);
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">${isProvider?"Your provider account is ready. You can browse open requests now, but you'll need to submit verification documents from Business Profile before you can send quotes — our team usually reviews within a couple of business days.":"Your account is ready. Post a request and local providers will start sending you quotes."}</p>
+     ${btn(isProvider?'Submit Verification Docs':'Go to My Dashboard',APP_URL)}`);
 }
 function newQuoteEmailHtml(homeowner,request,quote,provider){
   return emailShell('You received a new quote',
@@ -1855,15 +1855,15 @@ const server=http.createServer(async (req,res)=>{
       return send(res,201,{post:{id:row.id,userId:u.id,authorName:u.name,body:row.body,createdAt:toISO(row.created_at),distanceMi:0}});
     }
     if(p==='/api/providers' && req.method==='GET'){
-      const rows=await q("SELECT * FROM users WHERE role='provider' ORDER BY rating DESC NULLS LAST");
+      const rows=await q("SELECT * FROM users WHERE role='provider' AND deleted=false ORDER BY rating DESC NULLS LAST");
       return send(res,200,{providers:rows.map(r=>publicProviderView(mapUser(r)))});
     }
     if(p==='/api/admin/verifications' && req.method==='GET'){
       if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
       const status=String(url.searchParams.get('status')||'pending');
       const rows = status==='all'
-        ? await q("SELECT * FROM users WHERE role='provider' AND verification_status<>'unverified' ORDER BY verification_submitted_at DESC NULLS LAST")
-        : await q("SELECT * FROM users WHERE role='provider' AND verification_status=$1 ORDER BY verification_submitted_at ASC NULLS LAST",[status]);
+        ? await q("SELECT * FROM users WHERE role='provider' AND deleted=false AND verification_status<>'unverified' ORDER BY verification_submitted_at DESC NULLS LAST")
+        : await q("SELECT * FROM users WHERE role='provider' AND deleted=false AND verification_status=$1 ORDER BY verification_submitted_at ASC NULLS LAST",[status]);
       // Admin sees the full record — including uploaded documents — since reviewing them is the point.
       return send(res,200,{providers:rows.map(r=>safeUser(mapUser(r)))});
     }
@@ -1930,13 +1930,13 @@ const server=http.createServer(async (req,res)=>{
     if(p==='/api/admin/stats' && req.method==='GET'){
       if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
       const [homeownerPlans,providerPlans,verif,openReqs,staleReqs,carePlanActive,suspendedCount]=await Promise.all([
-        q("SELECT subscription, count(*)::int AS n FROM users WHERE role='homeowner' GROUP BY subscription"),
-        q("SELECT provider_plan, count(*)::int AS n FROM users WHERE role='provider' GROUP BY provider_plan"),
-        q("SELECT verification_status, count(*)::int AS n FROM users WHERE role='provider' GROUP BY verification_status"),
+        q("SELECT subscription, count(*)::int AS n FROM users WHERE role='homeowner' AND deleted=false GROUP BY subscription"),
+        q("SELECT provider_plan, count(*)::int AS n FROM users WHERE role='provider' AND deleted=false GROUP BY provider_plan"),
+        q("SELECT verification_status, count(*)::int AS n FROM users WHERE role='provider' AND deleted=false GROUP BY verification_status"),
         q("SELECT count(*)::int AS n FROM requests WHERE status='open'"),
         q("SELECT count(*)::int AS n FROM requests r WHERE r.status='open' AND r.created_at < now() - interval '24 hours' AND NOT EXISTS (SELECT 1 FROM quotes qq WHERE qq.request_id=r.id)"),
-        q("SELECT count(*)::int AS n FROM users WHERE role='homeowner' AND EXISTS (SELECT 1 FROM jsonb_array_elements(care_plan_items) x WHERE x->>'status'='active')"),
-        q("SELECT count(*)::int AS n FROM users WHERE suspended=true"),
+        q("SELECT count(*)::int AS n FROM users WHERE role='homeowner' AND deleted=false AND EXISTS (SELECT 1 FROM jsonb_array_elements(care_plan_items) x WHERE x->>'status'='active')"),
+        q("SELECT count(*)::int AS n FROM users WHERE suspended=true AND deleted=false"),
       ]);
       const toObj=(rows,key)=>Object.fromEntries(rows.map(r=>[r[key]||'unknown',r.n]));
       return send(res,200,{
@@ -2148,7 +2148,7 @@ const server=http.createServer(async (req,res)=>{
       const r=await q1('SELECT * FROM requests WHERE id=$1',[rid]);
       if(!r) return send(res,404,{error:'Request not found'});
       const homeowner=await q1('SELECT * FROM users WHERE id=$1',[r.homeowner_id]);
-      const providerRows=await q("SELECT * FROM users WHERE role='provider' ORDER BY rating DESC NULLS LAST");
+      const providerRows=await q("SELECT * FROM users WHERE role='provider' AND deleted=false ORDER BY rating DESC NULLS LAST");
       const candidates=providerRows.map(pr=>{
         const mu=mapUser(pr);
         const matchesService=(mu.serviceTypes||[]).some(s=>s.toLowerCase()===String(r.service_type).toLowerCase());
@@ -2255,7 +2255,7 @@ const server=http.createServer(async (req,res)=>{
       const homeownerId=String(url.searchParams.get('homeownerId')||'');
       const wantType=(CARE_SERVICE_TO_PROVIDER_TYPE[serviceKey]||'').toLowerCase();
       const homeowner=homeownerId?await q1('SELECT * FROM users WHERE id=$1',[homeownerId]):null;
-      const providerRows=await q("SELECT * FROM users WHERE role='provider' ORDER BY rating DESC NULLS LAST");
+      const providerRows=await q("SELECT * FROM users WHERE role='provider' AND deleted=false ORDER BY rating DESC NULLS LAST");
       const candidates=providerRows.map(pr=>{
         const mu=mapUser(pr);
         const matchesService=wantType ? (mu.serviceTypes||[]).some(s=>s.toLowerCase()===wantType) : false;

@@ -666,6 +666,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 
 <div class="panel hidden" data-panel="verification">
   <div class="mini-actions" style="margin:0 0 16px">
+    <button class="secondary admin-status-tab" data-status="unverified" onclick="loadAdminQueue('unverified')">Unverified</button>
     <button class="secondary admin-status-tab active" data-status="pending" onclick="loadAdminQueue('pending')">Pending</button>
     <button class="secondary admin-status-tab" data-status="verified" onclick="loadAdminQueue('verified')">Verified</button>
     <button class="secondary admin-status-tab" data-status="rejected" onclick="loadAdminQueue('rejected')">Rejected</button>
@@ -2379,7 +2380,7 @@ function renderAdminQueue(providers){
   el.innerHTML=providers.map(p=>{
     const docs=(p.verificationDocuments||[]).map(docPreviewHTML).join('');
     const submitted = p.verificationSubmittedAt ? new Date(p.verificationSubmittedAt).toLocaleDateString() : 'N/A';
-    const actions = adminQueueStatus==='pending' || p.verificationStatus==='pending' ? `
+    const actions = adminQueueStatus==='pending' || adminQueueStatus==='unverified' || p.verificationStatus==='pending' ? `
       <div class="field full"><label>REVIEW NOTES ${p.verificationStatus==='pending'?'(required to reject)':''}</label><textarea id="admin-notes-${p.id}" placeholder="Optional note to the provider..."></textarea></div>
       <div class="mini-actions">
         <button class="primary" onclick="submitAdminDecision('${esc(p.id)}','approve')">Approve</button>
