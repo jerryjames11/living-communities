@@ -54,7 +54,7 @@ function mapUser(r){
   if(!r) return null;
   const carePlanItems=r.care_plan_items||[];
   const u={id:r.id,role:r.role,name:r.name,email:r.email,passwordHash:r.password_hash,salt:r.salt,phone:r.phone,createdAt:toISO(r.created_at),subscription:r.subscription,carePlanItems,carePlanServices:carePlanItems.filter(i=>i.status==='active').map(i=>i.key),avatarKind:r.avatar_kind||null,avatarValue:r.avatar_value||null,address:r.address,lat:r.lat!=null?Number(r.lat):null,lng:r.lng!=null?Number(r.lng):null,billingAddress:r.billing_address||null,suspended:!!r.suspended,deleted:!!r.deleted,deletedAt:toISO(r.deleted_at),lastAnnouncementsViewAt:toISO(r.last_announcements_view_at)};
-  if(r.role==='homeowner'){ u.community=r.community; u.carePlanNextBilling=r.care_plan_next_billing?new Date(r.care_plan_next_billing).toISOString().slice(0,10):null; u.subscriptionNextBilling=r.subscription_next_billing?new Date(r.subscription_next_billing).toISOString().slice(0,10):null; }
+  if(r.role==='homeowner'){ u.community=r.community; u.carePlanNextBilling=r.care_plan_next_billing?new Date(r.care_plan_next_billing).toISOString().slice(0,10):null; u.subscriptionNextBilling=r.subscription_next_billing?new Date(r.subscription_next_billing).toISOString().slice(0,10):null; u.homeProfile=r.home_profile||{}; u.homeDocuments=r.home_documents||[]; }
   else if(r.role==='provider'){
     u.serviceTypes=r.service_types||[]; u.rating=r.rating!=null?Number(r.rating):null; u.reviewCount=r.review_count||0; u.verified=!!r.verified; u.businessDescription=r.business_description; u.providerPlan=r.provider_plan||'free'; u.providerPlanNextBilling=r.provider_plan_next_billing?new Date(r.provider_plan_next_billing).toISOString().slice(0,10):null; u.quotesUsed=r.quotes_sent_this_period||0; u.convosUsed=r.new_conversations_this_period||0;
     u.serviceRadiusMi=r.service_radius_mi!=null?Number(r.service_radius_mi):null;
@@ -442,6 +442,95 @@ function normalizeHomeownerPlanKey(v){ return v==='pro' ? 'premium' : (v||'free'
 // "assign a provider" picker can rank providers who actually offer that kind of work first.
 const CARE_SERVICE_TO_PROVIDER_TYPE={landscaping:'Lawn & Landscaping',pest:'Pest Control',cleaning:'House Cleaning',pool:'Pool Service'};
 function fmtDate(d){ return new Date(d).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}); }
+
+// --- Home Profile (Plus/Premium perk): "Your Home" status list, maintenance timeline, Home Health score ---
+const HOME_DOC_CATEGORIES=['warranty','receipt','manual','other'];
+const HOME_MAX_DOCS=30;
+function daysBetween(a,b){ return Math.round((b-a)/86400000); }
+function addMonths(d,months){ const r=new Date(d); r.setMonth(r.getMonth()+months); return r; }
+// True once the homeowner has actually entered something (vs. an empty {} default) — the client
+// uses this to decide between the "Build Your Home Profile" empty state and the full dashboard.
+function homeProfileHasData(hp){
+  hp=hp||{};
+  return !!(hp.hvac?.brand||hp.hvac?.installYear||hp.waterHeater?.installYear||hp.roof?.installYear||
+    hp.pool||hp.sprinkler||(hp.appliances&&Object.values(hp.appliances).some(v=>v&&String(v).trim()))||
+    (hp.reminders&&hp.reminders.length));
+}
+// Pure/deterministic — no DB or network calls — so it's cheap to recompute on every load rather than
+// caching a stale status. carePlanItems drives the Lawn/Pest/Pool rows so this stays in sync with the
+// Home Care Plan the homeowner already manages, instead of tracking those twice.
+function computeHomeStatus(hp,carePlanItems){
+  hp=hp||{};
+  const today=new Date(); today.setHours(0,0,0,0);
+  const items=[]; const upcoming=[];
+  const activeCareKeys=new Set((carePlanItems||[]).filter(i=>i.status==='active').map(i=>i.key));
+  const careItem=(key,label)=>{ items.push(activeCareKeys.has(key)?{key,label,tone:'ok',detail:'Current'}:{key,label,tone:'neutral',detail:'Not on Home Care Plan'}); };
+  careItem('landscaping','Lawn');
+  careItem('pest','Pest Control');
+  if(hp.pool) careItem('pool','Pool');
+
+  if(hp.hvac && (hp.hvac.brand||hp.hvac.installYear)){
+    const filterBase=hp.hvac.lastFilterChange?new Date(hp.hvac.lastFilterChange):(hp.hvac.installYear?new Date(Number(hp.hvac.installYear),0,1):today);
+    let filterDue=addMonths(filterBase,3); while(filterDue<today) filterDue=addMonths(filterDue,3);
+    const serviceBase=hp.hvac.lastService?new Date(hp.hvac.lastService):(hp.hvac.installYear?new Date(Number(hp.hvac.installYear),0,1):today);
+    let serviceDue=addMonths(serviceBase,12); while(serviceDue<today) serviceDue=addMonths(serviceDue,12);
+    const soonestIsFilter=filterDue<=serviceDue;
+    const days=daysBetween(today,soonestIsFilter?filterDue:serviceDue);
+    const tone=days<0?'bad':(days<=30?'warn':'ok');
+    const what=soonestIsFilter?'Filter change':'Annual service';
+    items.push({key:'hvac',label:'HVAC',tone,detail:days<0?`${what} overdue`:(days===0?`${what} due today`:`${what} due in ${days} day${days===1?'':'s'}`)});
+    const filterDays=daysBetween(today,filterDue), serviceDays=daysBetween(today,serviceDue);
+    upcoming.push({label:`Replace HVAC filter${hp.hvac.filterSize?' — '+hp.hvac.filterSize:''}`,detail:'Reminder',date:filterDue});
+    upcoming.push({label:'HVAC annual service due',detail:serviceDays<0?'Overdue':`Due in ${serviceDays} day${serviceDays===1?'':'s'}`,date:serviceDue});
+  }
+
+  if(hp.waterHeater && hp.waterHeater.installYear){
+    const age=today.getFullYear()-Number(hp.waterHeater.installYear);
+    const tone=age>=12?'bad':(age>=10?'warn':'ok');
+    items.push({key:'waterHeater',label:'Water Heater',tone,detail:age>=12?`${age} yrs old — past typical lifespan`:(age>=10?`${age} yrs old — nearing end of lifespan`:`${age} yrs old — current`)});
+  }
+
+  if(hp.roof && hp.roof.installYear){
+    const age=today.getFullYear()-Number(hp.roof.installYear);
+    const tone=age>=25?'bad':(age>=15?'warn':'ok');
+    items.push({key:'roof',label:'Roof',tone,detail:age>=25?`${age} yrs old — inspection strongly recommended`:(age>=15?`${age} yrs old — consider an inspection`:`${age} yrs old — current`)});
+    if(age>=15) upcoming.push({label:'Roof inspection recommended',detail:`${age} years old`,date:today});
+  }
+
+  if(hp.sprinkler){
+    // No real usage data to key off — a simple twice-a-year cadence (spring start-up / fall winterization).
+    const year=today.getFullYear();
+    let start=new Date(year,2,15), winterize=new Date(year,10,1);
+    if(start<today) start=new Date(year+1,2,15);
+    if(winterize<today) winterize=new Date(year+1,10,1);
+    const next=start<winterize?start:winterize;
+    const days=daysBetween(today,next);
+    items.push({key:'sprinkler',label:'Sprinkler System',tone:days<=30?'warn':'ok',detail:days<=30?`Inspection due in ${days} day${days===1?'':'s'}`:'Current'});
+    upcoming.push({label:next.getTime()===start.getTime()?'Sprinkler inspection due':'Sprinkler system winterization',detail:'Reminder',date:next});
+  }
+
+  for(const rem of (hp.reminders||[])){
+    if(!rem||!rem.name) continue;
+    const freq=Math.max(7,Number(rem.frequencyDays)||90);
+    const base=rem.lastDone?new Date(rem.lastDone):today;
+    let due=new Date(base.getTime()+freq*86400000); while(due<today) due=new Date(due.getTime()+freq*86400000);
+    const days=daysBetween(today,due);
+    const tone=days<0?'bad':(days<=30?'warn':'ok');
+    items.push({key:'custom-'+rem.name,label:rem.name,tone,detail:days<0?'Overdue':(days<=30?`Due in ${days} day${days===1?'':'s'}`:'Current')});
+    upcoming.push({label:rem.name,detail:days<0?'Overdue':'Reminder',date:due});
+  }
+
+  upcoming.sort((a,b)=>a.date-b.date);
+  const overdueCount=items.filter(i=>i.tone==='bad').length;
+  const warnCount=items.filter(i=>i.tone==='warn').length;
+  const homeHealth=Math.max(0,Math.min(100,100-overdueCount*15-warnCount*7));
+  return {
+    items,
+    upcoming:upcoming.slice(0,8).map(x=>({label:x.label,detail:x.detail,date:x.date.toISOString().slice(0,10)})),
+    homeHealth,
+    hasProfile:homeProfileHasData(hp)
+  };
+}
 
 function welcomeEmailHtml(u){
   const isProvider=u.role==='provider';
@@ -887,6 +976,12 @@ async function initSchema(){
   // Tracks when a user last opened the Messages panel, so new announcements since then can badge
   // the nav item instead of it always looking the same regardless of anything new.
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_announcements_view_at timestamptz`);
+  // Home Profile — a Plus/Premium perk. Structured facts about the house (HVAC, water heater, roof,
+  // appliances, pool/sprinkler/pest) that computeHomeStatus() turns into the "Your Home" status list,
+  // a maintenance timeline, and a Home Health score — plus a small document repository (warranties,
+  // receipts, manuals) stored the same way verification_documents are (dataUrl in jsonb, no blob store).
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS home_profile jsonb DEFAULT '{}'::jsonb`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS home_documents jsonb DEFAULT '[]'::jsonb`);
   await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS dispatched_provider_id text`);
   await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS dispatched_at timestamptz`);
   await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS dispatched_note text`);
@@ -1659,6 +1754,74 @@ const server=http.createServer(async (req,res)=>{
       const newItems=items.filter(i=>i.key!==serviceKey);
       const row=await q1('UPDATE users SET care_plan_items=$1::jsonb WHERE id=$2 RETURNING *',[JSON.stringify(newItems),u.id]);
       return send(res,200,{user:safeUser(mapUser(row))});
+    }
+    if(p==='/api/home-profile' && req.method==='GET'){
+      if(u.role!=='homeowner')return send(res,403,{error:'Only homeowners have a Home Profile'});
+      return send(res,200,{homeProfile:u.homeProfile||{},homeDocuments:u.homeDocuments||[],status:computeHomeStatus(u.homeProfile,u.carePlanItems),locked:!isPaidPlan(u)});
+    }
+    if(p==='/api/home-profile' && req.method==='PUT'){
+      if(u.role!=='homeowner')return send(res,403,{error:'Only homeowners have a Home Profile'});
+      if(!isPaidPlan(u)) return send(res,403,{error:'The Home Profile is a Plus & Premium perk — upgrade your Community Plan to build yours.',requiresUpgrade:true});
+      const b=await body(req);
+      const dateOrNull=v=>/^\d{4}-\d{2}-\d{2}$/.test(v||'')?v:null;
+      const clean={
+        hvac:{
+          brand:String(b?.hvac?.brand||'').trim().slice(0,80),
+          installYear:String(b?.hvac?.installYear||'').trim().slice(0,4),
+          filterSize:String(b?.hvac?.filterSize||'').trim().slice(0,20),
+          lastFilterChange:dateOrNull(b?.hvac?.lastFilterChange),
+          lastService:dateOrNull(b?.hvac?.lastService)
+        },
+        waterHeater:{
+          brand:String(b?.waterHeater?.brand||'').trim().slice(0,80),
+          installYear:String(b?.waterHeater?.installYear||'').trim().slice(0,4),
+          type:String(b?.waterHeater?.type||'').trim().slice(0,20)
+        },
+        roof:{
+          installYear:String(b?.roof?.installYear||'').trim().slice(0,4),
+          material:String(b?.roof?.material||'').trim().slice(0,40)
+        },
+        appliances:{
+          fridge:String(b?.appliances?.fridge||'').trim().slice(0,80),
+          washerDryer:String(b?.appliances?.washerDryer||'').trim().slice(0,80),
+          dishwasher:String(b?.appliances?.dishwasher||'').trim().slice(0,80)
+        },
+        pool:!!b?.pool,
+        sprinkler:!!b?.sprinkler,
+        pestFrequency:['none','monthly','quarterly','biannual'].includes(b?.pestFrequency)?b.pestFrequency:'none',
+        reminders:Array.isArray(b?.reminders)?b.reminders.slice(0,15).map(r=>({
+          name:String(r?.name||'').trim().slice(0,60),
+          frequencyDays:Math.max(7,Math.min(730,Number(r?.frequencyDays)||90)),
+          lastDone:dateOrNull(r?.lastDone)
+        })).filter(r=>r.name):[]
+      };
+      const row=await q1('UPDATE users SET home_profile=$1::jsonb WHERE id=$2 RETURNING *',[JSON.stringify(clean),u.id]);
+      const mu=mapUser(row);
+      return send(res,200,{user:safeUser(mu),status:computeHomeStatus(mu.homeProfile,mu.carePlanItems)});
+    }
+    if(p==='/api/home-profile/documents' && req.method==='POST'){
+      if(u.role!=='homeowner')return send(res,403,{error:'Only homeowners have a Home Profile'});
+      if(!isPaidPlan(u)) return send(res,403,{error:'Saving documents is a Plus & Premium perk — upgrade your Community Plan first.',requiresUpgrade:true});
+      const b=await body(req);
+      const name=String(b.name||'Document').trim().slice(0,120);
+      const category=HOME_DOC_CATEGORIES.includes(b.category)?b.category:'other';
+      const dataUrl=String(b.dataUrl||'');
+      if(!VERIFICATION_DOC_RE.test(dataUrl)) return send(res,400,{error:'Documents must be a PNG, JPEG, WEBP, or PDF file.'});
+      if(dataUrl.length>VERIFICATION_MAX_DOC_BYTES) return send(res,400,{error:'That file is too large. Please keep it under 4MB.'});
+      const current=u.homeDocuments||[];
+      if(current.length>=HOME_MAX_DOCS) return send(res,400,{error:`You can keep up to ${HOME_MAX_DOCS} documents. Delete one first.`});
+      const doc={id:id('doc'),name,category,dataUrl,uploadedAt:new Date().toISOString()};
+      const row=await q1('UPDATE users SET home_documents=$1::jsonb WHERE id=$2 RETURNING *',[JSON.stringify([...current,doc]),u.id]);
+      return send(res,201,{document:doc,homeDocuments:mapUser(row).homeDocuments});
+    }
+    if(p.startsWith('/api/home-profile/documents/') && req.method==='DELETE'){
+      if(u.role!=='homeowner')return send(res,403,{error:'Only homeowners have a Home Profile'});
+      const docId=p.split('/')[4];
+      const current=u.homeDocuments||[];
+      const next=current.filter(d=>d.id!==docId);
+      if(next.length===current.length) return send(res,404,{error:'Document not found'});
+      const row=await q1('UPDATE users SET home_documents=$1::jsonb WHERE id=$2 RETURNING *',[JSON.stringify(next),u.id]);
+      return send(res,200,{homeDocuments:mapUser(row).homeDocuments});
     }
     if(p==='/api/provider-plan' && req.method==='POST'){
       if(u.role!=='provider')return send(res,403,{error:'Only providers have a paid provider plan'});

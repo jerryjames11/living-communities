@@ -369,7 +369,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 <p class="lead">Choose the plan that works best for your home.</p>
 <div class="pricing3">
   <div class="price"><h3>Basic</h3><div class="sub">For small jobs and quick fixes</div><div class="amount">$0<small>/month</small></div><div style="color:var(--muted);font-size:12.5px;margin-top:-8px">Pay per service</div><ul><li>Quick access to providers</li><li>Compare & message providers</li></ul><button class="secondary" style="width:100%" onclick="choosePlan('free')">Get Started</button></div>
-  <div class="price featured"><div class="price-badge">Most Popular</div><div class="price-body"><h3>Plus</h3><div class="sub">For homeowners who need more</div><div class="amount">$9.99<small>/month</small></div><ul><li>Everything in Basic, plus:</li><li>Home Care Plan access</li><li>Priority matching</li><li>Customer support</li><li>“Top-rated” provider filter (4.8+ only)</li></ul><button class="primary" style="width:100%" onclick="choosePlan('plus')">Get Started</button></div></div>
+  <div class="price featured"><div class="price-badge">Most Popular</div><div class="price-body"><h3>Plus</h3><div class="sub">For homeowners who need more</div><div class="amount">$9.99<small>/month</small></div><ul><li>Everything in Basic, plus:</li><li>Home Care Plan access</li><li>Home Info Database &amp; maintenance alerts</li><li>Customer support</li><li>“Top-rated” provider filter (4.8+ only)</li></ul><button class="primary" style="width:100%" onclick="choosePlan('plus')">Get Started</button></div></div>
   <div class="price"><h3>Premium</h3><div class="sub">For ongoing home care</div><div class="amount">$29.99<small>/month</small></div><ul><li>Everything in Plus, plus:</li><li>Annual home check-up with inspection report</li><li>HOA or city code compliance check</li><li>Pause or swap a Care Plan service without penalty</li><li>VIP support</li><li>Priority scheduling</li><li>Percent off Home Care Plan pricing</li><li>Exclusive discounts</li><li>Manage more than one home on one account</li></ul><button class="secondary" style="width:100%" onclick="choosePlan('pro')">Get Started</button></div>
 </div>
 </section>
@@ -483,7 +483,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
     <button type="button" class="hometab active" id="hometab-btn-maintenance" onclick="switchHomeTab('maintenance')">Maintenance</button>
     <button type="button" class="hometab" id="hometab-btn-neighborhood" onclick="switchHomeTab('neighborhood')"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7.2" stroke-dasharray="2 2.4"/><path d="M10 6.3a2.5 2.5 0 0 1 2.5 2.5c0 1.9-2.5 4.7-2.5 4.7S7.5 10.7 7.5 8.8A2.5 2.5 0 0 1 10 6.3Z"/><circle cx="10" cy="8.8" r="0.75" fill="currentColor" stroke="none"/></svg>Neighborhood</button>
   </div>
-  <div id="hometab-maintenance"><div class="stub-notice"><div class="icon"><svg width="30" height="30" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10l7-6.3 7 6.3"/><path d="M5 9v7a.7.7 0 00.7.7h8.6a.7.7 0 00.7-.7V9"/><path d="M8 16.7v-4a1 1 0 011-1h2a1 1 0 011 1v4"/></svg></div>Home maintenance reminders and seasonal checklists are coming soon.</div></div>
+  <div id="hometab-maintenance"></div>
   <div id="hometab-neighborhood" class="hidden"></div>
 </div>
 <div class="panel hidden" data-panel="profile"><div id="ho-profile-view"></div></div>
@@ -760,7 +760,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 <div class="current-plan-banner"><div>You're currently on the <b id="plans-current-label">Basic</b> plan.</div></div>
 <div class="pricing3">
   <div class="price" id="plan-card-free"><h3>Basic</h3><div class="sub">For small jobs and quick fixes</div><div class="amount">$0<small>/month</small></div><div style="color:var(--muted);font-size:12.5px;margin-top:-8px">Pay per service</div><ul><li>Quick access to providers</li><li>Compare & message providers</li></ul><button class="secondary" style="width:100%" id="plan-btn-free" onclick="selectPlan('free')">Choose Plan</button></div>
-  <div class="price featured" id="plan-card-plus"><div class="price-badge">Most Popular</div><div class="price-body"><h3>Plus</h3><div class="sub">For homeowners who need more</div><div class="amount">$9.99<small>/month</small></div><ul><li>Everything in Basic, plus:</li><li>Home Care Plan access</li><li>Priority matching</li><li>Customer support</li><li>“Top-rated” provider filter (4.8+ only)</li></ul><button class="primary" style="width:100%" id="plan-btn-plus" onclick="selectPlan('plus')">Choose Plan</button></div></div>
+  <div class="price featured" id="plan-card-plus"><div class="price-badge">Most Popular</div><div class="price-body"><h3>Plus</h3><div class="sub">For homeowners who need more</div><div class="amount">$9.99<small>/month</small></div><ul><li>Everything in Basic, plus:</li><li>Home Care Plan access</li><li>Home Info Database &amp; maintenance alerts</li><li>Customer support</li><li>“Top-rated” provider filter (4.8+ only)</li></ul><button class="primary" style="width:100%" id="plan-btn-plus" onclick="selectPlan('plus')">Choose Plan</button></div></div>
   <div class="price" id="plan-card-pro"><h3>Premium</h3><div class="sub">For ongoing home care</div><div class="amount">$29.99<small>/month</small></div><ul><li>Everything in Plus, plus:</li><li>Annual home check-up with inspection report</li><li>HOA or city code compliance check</li><li>Pause or swap a Care Plan service without penalty</li><li>VIP support</li><li>Priority scheduling</li><li>Percent off Home Care Plan pricing</li><li>Exclusive discounts</li><li>Manage more than one home on one account</li></ul><button class="secondary" style="width:100%" id="plan-btn-pro" onclick="selectPlan('pro')">Choose Plan</button></div>
 </div>
 </div>
@@ -966,6 +966,46 @@ button:disabled{opacity:.45;cursor:not-allowed}
  <div class="field"><label>RECEIPT (PHOTO OR PDF)</label><input type="file" id="receiptFile" accept="image/png,image/jpeg,image/webp,application/pdf"></div>
  <div class="field"><label>NOTE (OPTIONAL)</label><textarea id="receiptNote" placeholder="e.g. Paid $200 via Zelle"></textarea></div>
  <div class="mini-actions"><button class="secondary" onclick="closeModal()">Cancel</button><button class="primary" onclick="submitReceipt()">Close Out Job</button></div>
+</div></div>
+
+<div id="homeProfileModal" class="modal"><div class="modalbox" style="max-width:640px">
+ <div class="modalhead"><div><div class="eyebrow">Plus perk</div><h2>Build Your Home Profile</h2></div><button class="close" onclick="closeModal()">×</button></div>
+ <p class="subtle" style="font-size:13px;line-height:1.6;margin:0 0 16px">Tell us what's in your home once — we'll turn it into a maintenance schedule and reminders automatically.</p>
+ <div class="formgrid">
+  <div class="field full"><label>HVAC — BRAND &amp; MODEL</label><input id="hp-hvac-brand" placeholder="e.g. Lennox XC16"></div>
+  <div class="field"><label>HVAC INSTALL YEAR</label><input id="hp-hvac-year" placeholder="2018"></div>
+  <div class="field"><label>FILTER SIZE</label><input id="hp-hvac-filter" placeholder="20 × 25 × 1"></div>
+  <div class="field"><label>LAST FILTER CHANGE</label><input type="date" id="hp-hvac-lastfilter"></div>
+  <div class="field"><label>LAST HVAC SERVICE</label><input type="date" id="hp-hvac-lastservice"></div>
+
+  <div class="field full"><label>WATER HEATER — BRAND &amp; MODEL</label><input id="hp-wh-brand" placeholder="e.g. Bradford White"></div>
+  <div class="field"><label>WATER HEATER INSTALL YEAR</label><input id="hp-wh-year" placeholder="2020"></div>
+  <div class="field"><label>TYPE</label><select id="hp-wh-type"><option value="">—</option><option>Tank</option><option>Tankless</option></select></div>
+
+  <div class="field"><label>ROOF INSTALLED</label><input id="hp-roof-year" placeholder="2016"></div>
+  <div class="field"><label>ROOF MATERIAL</label><select id="hp-roof-material"><option value="">—</option><option>Asphalt Shingle</option><option>Metal</option><option>Tile</option></select></div>
+
+  <div class="field"><label>REFRIGERATOR</label><input id="hp-app-fridge" placeholder="Brand / model"></div>
+  <div class="field"><label>WASHER &amp; DRYER</label><input id="hp-app-washer" placeholder="Brand / model"></div>
+  <div class="field"><label>DISHWASHER</label><input id="hp-app-dw" placeholder="Brand / model"></div>
+
+  <div class="field"><label>POOL</label><select id="hp-pool"><option value="">No</option><option value="yes">Yes</option></select></div>
+  <div class="field"><label>SPRINKLER SYSTEM</label><select id="hp-sprinkler"><option value="">No</option><option value="yes">Yes</option></select></div>
+  <div class="field"><label>PEST CONTROL SERVICE</label><select id="hp-pest"><option value="none">None</option><option value="monthly">Monthly</option><option value="quarterly">Quarterly</option><option value="biannual">Bi-annual</option></select></div>
+ </div>
+ <div style="margin-top:18px">
+   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b style="font-size:13.5px">Other reminders</b><a onclick="addHomeReminderRow()" style="color:var(--green);font-weight:700;font-size:12.5px;cursor:pointer">+ Add reminder</a></div>
+   <div id="hp-reminders-list" style="display:flex;flex-direction:column;gap:8px"></div>
+ </div>
+ <div class="mini-actions"><button class="secondary" onclick="closeModal()">Cancel</button><button class="primary" onclick="saveHomeProfile()">Save Home Profile</button></div>
+</div></div>
+
+<div id="homeDocUploadModal" class="modal"><div class="modalbox">
+ <div class="modalhead"><div><div class="eyebrow">Home Profile</div><h2>Add document</h2></div><button class="close" onclick="closeModal()">×</button></div>
+ <div class="field"><label>FILE (PHOTO OR PDF)</label><input type="file" id="homeDocFile" accept="image/png,image/jpeg,image/webp,application/pdf"></div>
+ <div class="field"><label>NAME</label><input id="homeDocName" placeholder="e.g. Roof Warranty"></div>
+ <div class="field"><label>CATEGORY</label><select id="homeDocCategory"><option value="warranty">Warranty</option><option value="receipt">Receipt</option><option value="manual">Manual</option><option value="other">Other</option></select></div>
+ <div class="mini-actions"><button class="secondary" onclick="closeModal()">Cancel</button><button class="primary" onclick="submitHomeDocument()">Save Document</button></div>
 </div></div>
 
 <div id="quotesModal" class="modal"><div class="modalbox">
@@ -1514,6 +1554,7 @@ function switchHomeTab(tab){
   if(paneM)paneM.classList.toggle('hidden',tab!=='maintenance');
   if(paneN)paneN.classList.toggle('hidden',tab!=='neighborhood');
   if(tab==='neighborhood') loadNeighborhood();
+  else if(tab==='maintenance') loadHomeMaintenance();
 }
 async function loadNeighborhood(){
   const el=document.getElementById('hometab-neighborhood'); if(!el)return;
@@ -1843,6 +1884,7 @@ function renderPanel(role,panelName){
     else if(panelName==='jobs')renderHoJobs(d);
     else if(panelName==='profile')renderHoProfile(d);
     else if(panelName==='payments')renderHoPayments(d);
+    else if(panelName==='maintenance') loadHomeMaintenance();
   }else{
     if(panelName==='leads')renderPrLeads(d);
     else if(panelName==='messages')renderAnnouncements('provider',d);
@@ -1959,6 +2001,225 @@ function renderHoPayments(d){
   </div>`;
   loadBillingHistoryInto('ho-payments-history');
 }
+
+// --- Home Profile (Plus/Premium perk): HVAC/water heater/roof/appliances, maintenance status,
+// Home Health score, and a small document repository for warranties/receipts/manuals. ---
+let homeMaintenanceData=null;
+async function loadHomeMaintenance(){
+  const el=document.getElementById('hometab-maintenance'); if(!el)return;
+  if(!currentUser||currentUser.role!=='homeowner')return;
+  el.innerHTML='<div class="notice">Loading…</div>';
+  try{
+    const d=await api('/home-profile');
+    homeMaintenanceData=d;
+    renderHomeMaintenance(d);
+  }catch(e){ el.innerHTML=`<div class="notice">${esc(e.message)}</div>`; }
+}
+function toneDot(tone){ return tone==='ok'?'#286b58':tone==='warn'?'#d9a84e':tone==='bad'?'#b23b2e':'#9aa39d'; }
+function toneText(tone){ return tone==='ok'?'#286b58':tone==='warn'?'#8a6600':tone==='bad'?'#b23b2e':'#54655f'; }
+function homeStatusRowsHTML(items){
+  if(!items.length) return '<div class="notice">Nothing tracked yet.</div>';
+  return items.map(i=>`<div class="admin-row"><div class="admin-row-main"><div class="name"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${toneDot(i.tone)};margin-right:9px;vertical-align:middle"></span>${esc(i.label)}</div><div class="meta" style="color:${toneText(i.tone)};font-weight:700">${esc(i.detail)}</div></div></div>`).join('');
+}
+function homeUpcomingRowsHTML(upcoming){
+  if(!upcoming.length) return '<div class="notice">Nothing scheduled yet — build your Home Profile to see reminders here.</div>';
+  return upcoming.map(x=>{
+    const dt=new Date(x.date+'T00:00:00');
+    const mon=dt.toLocaleDateString('en-US',{month:'short'}).toUpperCase();
+    const day=dt.getDate();
+    return `<div class="admin-row"><div class="admin-row-main" style="display:flex;align-items:center;gap:12px">
+      <div style="width:46px;height:46px;border-radius:10px;background:var(--mint);color:var(--green-dark);display:flex;flex-direction:column;align-items:center;justify-content:center;flex:0 0 auto">
+        <div style="font-size:9px;font-weight:800">${esc(mon)}</div><div style="font-size:14px;font-weight:800;line-height:1">${day}</div>
+      </div>
+      <div><div class="name">${esc(x.label)}</div><div class="meta">${esc(x.detail)}</div></div>
+    </div></div>`;
+  }).join('');
+}
+function homeDocIcon(){
+  return `<svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="#6d7b77" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 auto"><path d="M6 2.5h6l3 3V16a1 1 0 01-1 1H6a1 1 0 01-1-1V3.5a1 1 0 011-1z"/><path d="M12 2.5V6h3.5"/></svg>`;
+}
+function homeDocRowsHTML(docs){
+  if(!docs.length) return '<div class="notice">No documents yet.</div>';
+  const catLabel={warranty:'Warranty',receipt:'Receipt',manual:'Manual',other:'Other'};
+  return docs.map(doc=>`<div class="admin-row"><div class="admin-row-main" style="display:flex;align-items:center;gap:10px">
+    ${homeDocIcon()}
+    <a href="${doc.dataUrl}" download="${esc(doc.name)}" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink);font-weight:600;font-size:13px">${esc(doc.name)}</a>
+    <span class="tag">${catLabel[doc.category]||'Other'}</span>
+    <a onclick="deleteHomeDocument('${esc(doc.id)}')" style="color:#b23b2e;font-size:12px;font-weight:700;cursor:pointer;flex:0 0 auto">Remove</a>
+  </div></div>`).join('');
+}
+function homeProfileSummaryHTML(hp){
+  hp=hp||{};
+  const rows=[];
+  if(hp.hvac&&(hp.hvac.brand||hp.hvac.installYear)) rows.push(['HVAC',[hp.hvac.installYear,hp.hvac.brand].filter(Boolean).join(' ')+(hp.hvac.filterSize?' · Filter '+hp.hvac.filterSize:'')]);
+  if(hp.waterHeater&&hp.waterHeater.installYear) rows.push(['Water Heater',[hp.waterHeater.installYear,hp.waterHeater.brand].filter(Boolean).join(' ')]);
+  if(hp.roof&&hp.roof.installYear) rows.push(['Roof','Installed '+hp.roof.installYear]);
+  if(hp.appliances&&hp.appliances.fridge) rows.push(['Refrigerator',hp.appliances.fridge]);
+  if(hp.appliances&&hp.appliances.washerDryer) rows.push(['Washer & Dryer',hp.appliances.washerDryer]);
+  if(hp.appliances&&hp.appliances.dishwasher) rows.push(['Dishwasher',hp.appliances.dishwasher]);
+  rows.push(['Pool',hp.pool?'Yes':'No']);
+  rows.push(['Sprinkler System',hp.sprinkler?'Yes':'No']);
+  const pestLabels={none:'None',monthly:'Monthly',quarterly:'Quarterly',biannual:'Bi-annual'};
+  rows.push(['Pest Service',pestLabels[hp.pestFrequency]||'None']);
+  return `<div style="display:flex;flex-direction:column;gap:9px;font-size:13px">${rows.map(([k,v])=>`<div><div style="color:var(--muted);font-size:11px">${esc(k)}</div><div style="font-weight:700">${esc(v)}</div></div>`).join('')}</div>`;
+}
+function renderHomeMaintenance(d){
+  const el=document.getElementById('hometab-maintenance'); if(!el)return;
+  if(d.locked){
+    el.innerHTML=`<div class="care-gate">
+      <div style="width:52px;height:52px;border-radius:50%;background:var(--mint);display:grid;place-items:center;margin:0 auto 16px">
+        <svg width="24" height="24" viewBox="0 0 20 20" fill="none" stroke="var(--green)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l7-6 7 6"/><path d="M5 8v9h10V8"/></svg>
+      </div>
+      <h3 style="margin:0 0 8px;font-size:19px;text-align:center">Home Profile is a Plus &amp; Premium perk</h3>
+      <p class="subtle" style="margin:0 0 22px;font-size:14px;line-height:1.6;text-align:center;max-width:440px">Upgrade your Community Plan to Plus or Premium to track your home's HVAC, water heater, roof and more — with automatic maintenance reminders and a document repository for warranties and receipts.</p>
+      <button class="primary" onclick="openPlansPage('homeowner')">Upgrade to Plus →</button>
+    </div>`;
+    return;
+  }
+  if(!d.status.hasProfile){
+    el.innerHTML=`<div class="care-gate">
+      <div style="width:52px;height:52px;border-radius:50%;background:var(--mint);display:grid;place-items:center;margin:0 auto 16px">
+        <svg width="24" height="24" viewBox="0 0 20 20" fill="none" stroke="var(--green)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l7-6 7 6"/><path d="M5 8v9h10V8"/></svg>
+      </div>
+      <h3 style="margin:0 0 8px;font-size:19px;text-align:center">Build Your Home Profile</h3>
+      <p class="subtle" style="margin:0 0 22px;font-size:14px;line-height:1.6;text-align:center;max-width:440px">Tell us what's in your home once — HVAC, water heater, roof, filter size — and we'll turn it into a maintenance schedule and reminders automatically.</p>
+      <button class="primary" onclick="openHomeProfileEditor()">Set Up My Home →</button>
+    </div>`;
+    return;
+  }
+  const hh=d.status.homeHealth;
+  const hhColor = hh>=80?'#286b58':hh>=50?'#d9a84e':'#b23b2e';
+  el.innerHTML=`
+  <div class="request" style="margin-bottom:14px">
+    <div class="requestrow" style="align-items:center;gap:20px;width:100%">
+      <div style="width:80px;height:80px;border-radius:50%;background:conic-gradient(${hhColor} 0% ${hh}%, #eef1ef ${hh}% 100%);display:flex;align-items:center;justify-content:center;flex:0 0 auto">
+        <div style="width:62px;height:62px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center">
+          <div style="font-size:18px;font-weight:800;color:var(--ink);line-height:1">${hh}</div>
+          <div style="font-size:9px;color:var(--muted)">/ 100</div>
+        </div>
+      </div>
+      <div><b style="font-size:14.5px">Home Health: ${hh}</b><div class="statusline" style="margin-top:4px">${hh>=80?'Nice shape overall.':'A couple of things need attention — check Status below.'}</div></div>
+    </div>
+  </div>
+  <div class="boxgrid">
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="request">
+        <b style="font-size:13px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)">Status</b>
+        <div style="margin-top:8px">${homeStatusRowsHTML(d.status.items)}</div>
+      </div>
+      <div class="request">
+        <b style="font-size:13px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)">Upcoming Maintenance</b>
+        <div style="margin-top:8px">${homeUpcomingRowsHTML(d.status.upcoming)}</div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="request">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <b style="font-size:13px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)">Home Profile</b>
+          <span class="tag">Plus perk</span>
+        </div>
+        ${homeProfileSummaryHTML(d.homeProfile)}
+        <button class="secondary" style="width:100%;margin-top:12px" onclick="openHomeProfileEditor()">Edit Profile</button>
+      </div>
+      <div class="request">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <b style="font-size:13px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)">Documents</b>
+          <span class="tag">Plus perk</span>
+        </div>
+        <div>${homeDocRowsHTML(d.homeDocuments||[])}</div>
+        <button class="secondary" style="width:100%;margin-top:12px" onclick="openHomeDocUpload()">Upload Document</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+// --- Home Profile editor ---
+let homeReminderSeq=0;
+function addHomeReminderRow(name,frequencyDays,lastDone){
+  const list=document.getElementById('hp-reminders-list'); if(!list)return;
+  const rowId='hp-rem-'+(homeReminderSeq++);
+  const row=document.createElement('div');
+  row.id=rowId; row.style.cssText='display:flex;gap:8px;align-items:center';
+  row.innerHTML=`<input placeholder="e.g. Dryer Vent Cleaning" value="${esc(name||'')}" class="hp-rem-name" style="flex:2;border:1px solid #cbd9d3;border-radius:10px;padding:9px 10px;font:inherit;font-size:13px">
+    <input type="number" min="7" max="730" placeholder="Days" value="${frequencyDays||90}" class="hp-rem-freq" style="width:80px;border:1px solid #cbd9d3;border-radius:10px;padding:9px 10px;font:inherit;font-size:13px">
+    <input type="date" value="${lastDone||''}" class="hp-rem-lastdone" style="border:1px solid #cbd9d3;border-radius:10px;padding:9px 10px;font:inherit;font-size:13px">
+    <a onclick="document.getElementById('${rowId}').remove()" style="color:#b23b2e;font-size:12px;font-weight:700;cursor:pointer;flex:0 0 auto">Remove</a>`;
+  list.appendChild(row);
+}
+function openHomeProfileEditor(){
+  const hp=(currentUser&&currentUser.homeProfile)||{};
+  document.getElementById('hp-hvac-brand').value=hp.hvac?.brand||'';
+  document.getElementById('hp-hvac-year').value=hp.hvac?.installYear||'';
+  document.getElementById('hp-hvac-filter').value=hp.hvac?.filterSize||'';
+  document.getElementById('hp-hvac-lastfilter').value=hp.hvac?.lastFilterChange||'';
+  document.getElementById('hp-hvac-lastservice').value=hp.hvac?.lastService||'';
+  document.getElementById('hp-wh-brand').value=hp.waterHeater?.brand||'';
+  document.getElementById('hp-wh-year').value=hp.waterHeater?.installYear||'';
+  document.getElementById('hp-wh-type').value=hp.waterHeater?.type||'';
+  document.getElementById('hp-roof-year').value=hp.roof?.installYear||'';
+  document.getElementById('hp-roof-material').value=hp.roof?.material||'';
+  document.getElementById('hp-app-fridge').value=hp.appliances?.fridge||'';
+  document.getElementById('hp-app-washer').value=hp.appliances?.washerDryer||'';
+  document.getElementById('hp-app-dw').value=hp.appliances?.dishwasher||'';
+  document.getElementById('hp-pool').value=hp.pool?'yes':'';
+  document.getElementById('hp-sprinkler').value=hp.sprinkler?'yes':'';
+  document.getElementById('hp-pest').value=hp.pestFrequency||'none';
+  const list=document.getElementById('hp-reminders-list'); if(list)list.innerHTML='';
+  (hp.reminders||[]).forEach(r=>addHomeReminderRow(r.name,r.frequencyDays,r.lastDone));
+  document.getElementById('homeProfileModal').classList.add('show');
+}
+async function saveHomeProfile(){
+  const reminders=Array.from(document.querySelectorAll('#hp-reminders-list > div')).map(row=>({
+    name:row.querySelector('.hp-rem-name').value.trim(),
+    frequencyDays:Number(row.querySelector('.hp-rem-freq').value)||90,
+    lastDone:row.querySelector('.hp-rem-lastdone').value||null
+  })).filter(r=>r.name);
+  const payload={
+    hvac:{brand:document.getElementById('hp-hvac-brand').value.trim(),installYear:document.getElementById('hp-hvac-year').value.trim(),filterSize:document.getElementById('hp-hvac-filter').value.trim(),lastFilterChange:document.getElementById('hp-hvac-lastfilter').value||null,lastService:document.getElementById('hp-hvac-lastservice').value||null},
+    waterHeater:{brand:document.getElementById('hp-wh-brand').value.trim(),installYear:document.getElementById('hp-wh-year').value.trim(),type:document.getElementById('hp-wh-type').value},
+    roof:{installYear:document.getElementById('hp-roof-year').value.trim(),material:document.getElementById('hp-roof-material').value},
+    appliances:{fridge:document.getElementById('hp-app-fridge').value.trim(),washerDryer:document.getElementById('hp-app-washer').value.trim(),dishwasher:document.getElementById('hp-app-dw').value.trim()},
+    pool:document.getElementById('hp-pool').value==='yes',
+    sprinkler:document.getElementById('hp-sprinkler').value==='yes',
+    pestFrequency:document.getElementById('hp-pest').value,
+    reminders
+  };
+  try{
+    const d=await api('/home-profile',{method:'PUT',body:JSON.stringify(payload)});
+    currentUser=d.user;
+    closeModal(); toast('Home Profile saved');
+    loadHomeMaintenance();
+  }catch(e){ toast(e.message); }
+}
+
+// --- Home documents ---
+function openHomeDocUpload(){
+  document.getElementById('homeDocFile').value='';
+  document.getElementById('homeDocName').value='';
+  document.getElementById('homeDocCategory').value='warranty';
+  document.getElementById('homeDocUploadModal').classList.add('show');
+}
+async function submitHomeDocument(){
+  const fileInput=document.getElementById('homeDocFile');
+  const file=fileInput.files&&fileInput.files[0];
+  if(!file){toast('Choose a file to upload.');return}
+  const name=document.getElementById('homeDocName').value.trim()||file.name;
+  const category=document.getElementById('homeDocCategory').value;
+  try{
+    const dataUrl=await fileToDataUrl(file);
+    await api('/home-profile/documents',{method:'POST',body:JSON.stringify({name,category,dataUrl})});
+    closeModal(); toast('Document saved');
+    loadHomeMaintenance();
+  }catch(e){ toast(e.message); }
+}
+async function deleteHomeDocument(docId){
+  try{
+    await api('/home-profile/documents/'+docId,{method:'DELETE'});
+    toast('Document removed');
+    loadHomeMaintenance();
+  }catch(e){ toast(e.message); }
+}
+
 function renderHoProfile(d){
   const el=document.getElementById('ho-profile-view'); if(!el)return; const u=d.user;
   const geoStatus = u.address ? (u.lat!=null ? '<span style="color:var(--green)">✓ located</span>' : '<span style="color:#b3432e">could not locate. Try a more complete address</span>') : '';
