@@ -78,6 +78,8 @@ function mapUser(r){
     u.skills=r.skills||[];
     u.specializations=r.specializations||[];
     u.galleryPhotos=r.gallery_photos||[];
+    u.notifyEmailEnabled=r.notify_email_enabled!==false;
+    u.notifyServiceTypes=r.notify_service_types||[];
   }
   return u;
 }
@@ -557,6 +559,34 @@ function newMessageEmailHtml(recipientName,senderName,body){
      <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px;background:#eaf4ef;border-radius:10px;padding:12px 14px">${esc_(body).slice(0,200)}</p>
      ${btn('Reply',APP_URL)}`);
 }
+function newMatchingRequestEmailHtml(provider,request,distanceMi){
+  const distLine = distanceMi!=null ? `${distanceMi} mi from your service area. ` : '';
+  return emailShell(`New ${request.serviceType} request near you`,
+    `<h2 style="margin:0 0 10px;color:#17352f">New ${esc_(request.serviceType)} request</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px"><b>${esc_(request.title)}</b><br>${distLine}Posted just now. You're getting this because you turned on email notifications for ${esc_(request.serviceType)} in Business Profile.</p>
+     ${btn('View Request',APP_URL)}`);
+}
+// Emails every provider who opted in to hear about this service type, right after a homeowner
+// posts a new request. Best-effort and fire-and-forget from the caller (POST /api/requests) so a
+// slow or failing email never delays or breaks the request actually being created.
+async function notifyProvidersOfNewRequest(request,homeowner){
+  const rows=await pool.query(
+    `SELECT * FROM users WHERE role='provider' AND deleted=false AND suspended=false AND notify_email_enabled=true`
+  );
+  for(const row of rows.rows){
+    const provider=mapUser(row);
+    const offered=provider.serviceTypes||[];
+    if(!offered.includes(request.serviceType)) continue;
+    const chosen=provider.notifyServiceTypes&&provider.notifyServiceTypes.length ? provider.notifyServiceTypes : offered;
+    if(!chosen.includes(request.serviceType)) continue;
+    let distanceMi=null;
+    if(provider.lat!=null&&provider.lng!=null&&homeowner.lat!=null&&homeowner.lng!=null){
+      distanceMi=Math.round(haversineMiles(provider.lat,provider.lng,homeowner.lat,homeowner.lng)*10)/10;
+      if(provider.effectiveServiceRadiusMi!=null && distanceMi>provider.effectiveServiceRadiusMi) continue;
+    }
+    sendEmail({to:provider.email,type:'new_matching_request',subject:`New ${request.serviceType} request near you`,html:newMatchingRequestEmailHtml(provider,request,distanceMi),userId:provider.id}).catch(()=>{});
+  }
+}
 // details: [{key,name,billing,price}] — every ACTIVE, priced service, so the homeowner sees exactly
 // what they're being charged for, not just a total.
 function carePlanItemRowsHtml(details){
@@ -962,6 +992,12 @@ async function initSchema(){
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS skills jsonb DEFAULT '[]'::jsonb`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS specializations jsonb DEFAULT '[]'::jsonb`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS gallery_photos jsonb DEFAULT '[]'::jsonb`);
+  // Provider email notification preferences: whether to email them at all when a new request
+  // comes in, and which of their service types should trigger one. notify_service_types being
+  // empty is treated client-side as "all offered services" (see providerNotificationsHTML), but
+  // once the provider has saved preferences at least once it holds their explicit chosen subset.
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_email_enabled boolean DEFAULT true`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_service_types jsonb DEFAULT '[]'::jsonb`);
   // background_check_status / background_check_requested_at columns were used by a removed
   // feature and are no longer read or written; left in place (harmless, unused) rather than
   // dropped, so this stays idempotent if an older deploy still references them.
@@ -1422,6 +1458,7 @@ const server=http.createServer(async (req,res)=>{
       const serviceType=b.serviceType||'Handyman';
       const row=await q1('INSERT INTO requests (id,homeowner_id,service_type,title,description,urgency,preferred_date,preferred_time,status) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *',
         [id('req'),u.id,serviceType,String(b.title||`${serviceType} service request`).slice(0,120),String(b.description||'').slice(0,2000),b.urgency||'Flexible',b.preferredDate||'',b.preferredTime||'Any time','open']);
+      notifyProvidersOfNewRequest(mapRequest(row),{...u,lat,lng}).catch(()=>{});
       return send(res,201,{request:mapRequest(row)});
     }
     // Delist/relist: the homeowner's own on/off switch for whether their still-open request is
@@ -1943,6 +1980,19 @@ const server=http.createServer(async (req,res)=>{
       const skills=clean(b.skills,SKILLS_MAX_COUNT);
       const specializations=clean(b.specializations,SPECIALIZATIONS_MAX_COUNT);
       const row=await q1('UPDATE users SET skills=$1::jsonb, specializations=$2::jsonb WHERE id=$3 RETURNING *',[JSON.stringify(skills),JSON.stringify(specializations),u.id]);
+      return send(res,200,{user:safeUser(mapUser(row))});
+    }
+    // Provider's email notification preferences — whether to email them at all when a new request
+    // is posted, and which of their offered service types should trigger one. Chosen types are
+    // restricted to services the provider actually lists (no point emailing about work they don't
+    // do) — see the new-request dispatch in POST /api/requests for where this is read.
+    if(p==='/api/profile/notifications' && req.method==='POST'){
+      if(u.role!=='provider')return send(res,403,{error:'Only providers have notification preferences'});
+      const b=await body(req);
+      const enabled=b.enabled!==false;
+      const offered=new Set(u.serviceTypes||[]);
+      const serviceTypes=Array.from(new Set((Array.isArray(b.serviceTypes)?b.serviceTypes:[]).map(s=>String(s||'').trim()).filter(s=>offered.has(s))));
+      const row=await q1('UPDATE users SET notify_email_enabled=$1, notify_service_types=$2::jsonb WHERE id=$3 RETURNING *',[enabled,JSON.stringify(serviceTypes),u.id]);
       return send(res,200,{user:safeUser(mapUser(row))});
     }
     // Provider uploads a work photo. It's stored immediately (so they see it on their own profile

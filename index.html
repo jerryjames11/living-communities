@@ -17,8 +17,10 @@ button{font:inherit;cursor:pointer}
 
 /* ---------- marketing nav ---------- */
 .nav{height:76px;padding:0 6%;display:flex;align-items:center;justify-content:space-between;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
-.logo{font-weight:800;font-size:21px;letter-spacing:-.5px}
+.logo{font-weight:800;font-size:21px;letter-spacing:-.5px;display:flex;align-items:center;gap:.45em}
 .logo span{color:var(--green)}
+.logo-badge{width:1.6em;height:1.6em;border-radius:.32em;background:var(--green);display:flex;align-items:center;justify-content:center;flex:0 0 auto;padding:.2em}
+.logo-badge img{width:100%;height:100%;object-fit:contain;display:block}
 .navlinks{display:flex;gap:30px;color:#3f4f4a;font-size:14.5px;font-weight:500}
 .navlinks a{cursor:pointer}
 .navlinks a:hover{color:var(--green)}
@@ -312,7 +314,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 </head>
 <body>
 <nav class="nav">
-  <div class="logo">Living <span>Communities</span></div>
+  <div class="logo"><span class="logo-badge"><img src="/assets/logo.png" alt="Living Communities"></span>Living <span>Communities</span></div>
   <div class="navlinks">
     <a onclick="scrollToSection('how-it-works')">How It Works</a>
     <a onclick="scrollToSection('services')">Services</a>
@@ -420,7 +422,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 
 <main id="homeowner" class="page">
 <div class="dash-header">
-  <div class="logo">Living <span>Communities</span></div>
+  <div class="logo"><span class="logo-badge"><img src="/assets/logo.png" alt="Living Communities"></span>Living <span>Communities</span></div>
   <div class="dash-header-right">
     <button class="icon-btn" id="ho-notif-bell" title="Notifications" type="button" onclick="switchPanel('homeowner','messages')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8a5 5 0 0 1 10 0c0 4 1.5 5 1.5 5h-13S5 12 5 8Z"/><path d="M8.2 16a1.8 1.8 0 0 0 3.6 0"/></svg></button>
     <button id="ho-viewplans-btn" class="header-plans-btn" onclick="openPlansPage('homeowner')">View Plans</button>
@@ -493,7 +495,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 
 <main id="provider" class="page">
 <div class="dash-header">
-  <div class="logo">Living <span>Communities</span></div>
+  <div class="logo"><span class="logo-badge"><img src="/assets/logo.png" alt="Living Communities"></span>Living <span>Communities</span></div>
   <div class="dash-header-right">
     <button class="icon-btn" id="pr-notif-bell" title="Notifications" type="button" onclick="switchPanel('provider','messages')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8a5 5 0 0 1 10 0c0 4 1.5 5 1.5 5h-13S5 12 5 8Z"/><path d="M8.2 16a1.8 1.8 0 0 0 3.6 0"/></svg></button>
     <div class="profile-menu-wrap" id="pr-profile-menu-wrap">
@@ -555,7 +557,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 
 <main id="admin" class="page">
 <div class="dash-header">
-  <div class="logo">Living <span>Communities</span></div>
+  <div class="logo"><span class="logo-badge"><img src="/assets/logo.png" alt="Living Communities"></span>Living <span>Communities</span></div>
   <div class="dash-header-right">
     <div class="profile-menu-wrap" id="admin-profile-menu-wrap">
       <button class="dash-user" type="button" onclick="toggleProfileMenu(event,'admin')"><div class="avatar-slot" data-label=""><span class="avatar-fallback">AD</span></div><div><b id="admin-header-name">Admin</b><small>Admin</small></div><svg class="chev" width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7.5l5 5 5-5"/></svg></button>
@@ -753,7 +755,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 <main id="plans" class="page">
 <div class="plans-header">
   <button class="back-link" onclick="backFromPlans()"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 4.5L6 10l6.5 5.5"/></svg>Back to Dashboard</button>
-  <div class="logo" style="margin-left:4px">Living <span>Communities</span></div>
+  <div class="logo" style="margin-left:4px"><span class="logo-badge"><img src="/assets/logo.png" alt="Living Communities"></span>Living <span>Communities</span></div>
 </div>
 <div class="app">
 <div class="dash-titlebar"><div><h1>Plans & Pricing</h1><p class="subtle">Pick the plan that fits how you use Living Communities.</p></div></div>
@@ -769,7 +771,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 <main id="providerplan" class="page">
 <div class="plans-header">
   <button class="back-link" onclick="show('provider')"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 4.5L6 10l6.5 5.5"/></svg>Back to Dashboard</button>
-  <div class="logo" style="margin-left:4px">Living <span>Communities</span></div>
+  <div class="logo" style="margin-left:4px"><span class="logo-badge"><img src="/assets/logo.png" alt="Living Communities"></span>Living <span>Communities</span></div>
 </div>
 <div class="app">
 <div class="dash-titlebar"><div><h1>Provider Plan</h1><p class="subtle">Free: 3 quotes/convos a month, 20mi service area. Pro: 20 quotes/convos a month, 50mi. Elite: unlimited quotes, convos, and service area, plus a Featured badge (requires a 4.5★ rating and 10 completed jobs), priority placement, and quote analytics.</p></div></div>
@@ -796,7 +798,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 <main id="carebuilder" class="page">
 <div class="plans-header">
   <button class="back-link" onclick="backFromCarePlan()"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 4.5L6 10l6.5 5.5"/></svg>Back</button>
-  <div class="logo" style="margin-left:4px">Living <span>Communities</span></div>
+  <div class="logo" style="margin-left:4px"><span class="logo-badge"><img src="/assets/logo.png" alt="Living Communities"></span>Living <span>Communities</span></div>
 </div>
 <div class="app">
 <div class="dash-titlebar"><div><h1>Build Your Home Care Plan</h1><p class="subtle">Pick the recurring services you want. We line up trusted local pros and bill you once a month.</p></div></div>
@@ -2061,7 +2063,7 @@ function homeProfileSummaryHTML(hp){
   rows.push(['Sprinkler System',hp.sprinkler?'Yes':'No']);
   const pestLabels={none:'None',monthly:'Monthly',quarterly:'Quarterly',biannual:'Bi-annual'};
   rows.push(['Pest Service',pestLabels[hp.pestFrequency]||'None']);
-  return `<div style="display:flex;flex-direction:column;gap:9px;font-size:13px">${rows.map(([k,v])=>`<div><div style="color:var(--muted);font-size:11px">${esc(k)}</div><div style="font-weight:700">${esc(v)}</div></div>`).join('')}</div>`;
+  return `<div style="display:grid;grid-template-columns:auto 1fr;column-gap:14px;row-gap:9px;font-size:13px;align-items:baseline">${rows.map(([k,v])=>`<div style="color:var(--muted);font-size:11px;white-space:nowrap">${esc(k)}</div><div style="font-weight:700;text-align:right">${esc(v)}</div>`).join('')}</div>`;
 }
 function renderHomeMaintenance(d){
   const el=document.getElementById('hometab-maintenance'); if(!el)return;
@@ -2103,17 +2105,17 @@ function renderHomeMaintenance(d){
   </div>
   <div class="boxgrid">
     <div style="display:flex;flex-direction:column;gap:14px">
-      <div class="request">
+      <div class="request" style="display:flex;flex-direction:column;align-items:stretch">
         <b style="font-size:13px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)">Status</b>
         <div style="margin-top:8px">${homeStatusRowsHTML(d.status.items)}</div>
       </div>
-      <div class="request">
+      <div class="request" style="display:flex;flex-direction:column;align-items:stretch">
         <b style="font-size:13px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)">Upcoming Maintenance</b>
         <div style="margin-top:8px">${homeUpcomingRowsHTML(d.status.upcoming)}</div>
       </div>
     </div>
     <div style="display:flex;flex-direction:column;gap:14px">
-      <div class="request">
+      <div class="request" style="display:flex;flex-direction:column;align-items:stretch">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
           <b style="font-size:13px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)">Home Profile</b>
           <span class="tag">Plus perk</span>
@@ -2121,7 +2123,7 @@ function renderHomeMaintenance(d){
         ${homeProfileSummaryHTML(d.homeProfile)}
         <button class="secondary" style="width:100%;margin-top:12px" onclick="openHomeProfileEditor()">Edit Profile</button>
       </div>
-      <div class="request">
+      <div class="request" style="display:flex;flex-direction:column;align-items:stretch">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
           <b style="font-size:13px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)">Documents</b>
           <span class="tag">Plus perk</span>
@@ -2391,7 +2393,48 @@ async function clearProviderServiceArea(){
 function renderPrProfile(d){
   const el=document.getElementById('pr-profile-view'); if(!el)return; const u=d.user;
   el.innerHTML=`<div class="request"><div class="avatar-slot" style="width:56px;height:56px;overflow:hidden">${avatarInnerHTML(u,56)}</div><div class="requestrow" style="flex-direction:column;align-items:flex-start;gap:6px"><div><b style="font-size:16px">${esc(u.name)}</b><div class="statusline">★ ${esc(u.rating||'New')} · ${esc(u.reviewCount||0)} jobs${u.verified?' · Verified':''} · Plan: ${esc(u.subscription)}</div></div><p style="margin:6px 0 0">${esc(u.businessDescription||'')}</p><p style="margin:4px 0 0">Services: ${esc((u.serviceTypes||[]).join(', '))}<br>Phone: ${esc(u.phone||'N/A')}</p></div></div>
-  <div class="boxgrid">${providerVerificationHTML(u)}${providerServiceAreaHTML(u)}${providerSkillsHTML(u)}${providerGalleryHTML(u)}${avatarEditorHTML('provider',u)}${dangerZoneHTML()}</div>`;
+  <div class="boxgrid">${providerVerificationHTML(u)}${providerServiceAreaHTML(u)}${providerNotificationsHTML(u)}${providerSkillsHTML(u)}${providerGalleryHTML(u)}${avatarEditorHTML('provider',u)}${dangerZoneHTML()}</div>`;
+}
+
+// --- provider business profile: email notification preferences ---
+const ALL_SERVICE_TYPES=['Lawn & Landscaping','House Cleaning','Pool Service','Handyman','Plumbing','Electrical','HVAC','Pest Control','Mobile Mechanic','Power Washing'];
+function providerNotificationsHTML(u){
+  const offered=(u.serviceTypes&&u.serviceTypes.length)?u.serviceTypes:ALL_SERVICE_TYPES;
+  const notifyOn=u.notifyEmailEnabled!==false;
+  const selected=new Set(u.notifyServiceTypes&&u.notifyServiceTypes.length?u.notifyServiceTypes:offered);
+  const rows=offered.map(s=>`<label style="display:flex;align-items:center;gap:9px;font-size:13.5px;padding:7px 0;cursor:pointer">
+      <input type="checkbox" class="notify-service-cb" value="${esc(s)}" ${selected.has(s)?'checked':''} ${notifyOn?'':'disabled'} style="width:16px;height:16px;accent-color:var(--green)">
+      ${esc(s)}
+    </label>`).join('');
+  return `<div class="request">
+    <div class="requestrow" style="flex-direction:column;align-items:flex-start;gap:8px;width:100%">
+      <div style="display:flex;justify-content:space-between;width:100%;align-items:center">
+        <b style="font-size:14.5px">Email Notifications</b>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="notifyEmailToggle" ${notifyOn?'checked':''} onchange="toggleNotifyServiceRows(this.checked)" style="width:16px;height:16px;accent-color:var(--green)">
+        </label>
+      </div>
+      <div class="subtle" style="font-size:12.5px;margin-top:-4px">Get an email the moment a new request comes in for the services you pick below.</div>
+      <div id="notifyServiceRows" style="width:100%;display:flex;flex-direction:column;opacity:${notifyOn?'1':'.45'}">${rows}</div>
+      <div id="notifyError" class="notice hidden"></div>
+      <div class="mini-actions" style="margin-top:2px">
+        <button class="primary" onclick="saveNotificationPreferences()">Save Preferences</button>
+      </div>
+    </div>
+  </div>`;
+}
+function toggleNotifyServiceRows(on){
+  document.getElementById('notifyServiceRows').style.opacity=on?'1':'.45';
+  document.querySelectorAll('.notify-service-cb').forEach(cb=>cb.disabled=!on);
+}
+async function saveNotificationPreferences(){
+  const err=document.getElementById('notifyError'); if(err)err.classList.add('hidden');
+  const enabled=document.getElementById('notifyEmailToggle').checked;
+  const serviceTypes=Array.from(document.querySelectorAll('.notify-service-cb:checked')).map(cb=>cb.value);
+  try{
+    const d=await api('/profile/notifications',{method:'POST',body:JSON.stringify({enabled,serviceTypes})});
+    currentUser=d.user; toast('Notification preferences saved'); await loadDashboard(); renderPanel('provider','profile');
+  }catch(e){ if(err){err.textContent=e.message;err.classList.remove('hidden')} }
 }
 
 // Compact, read-only skills/specializations + approved-photo strip shown to a homeowner looking at
