@@ -129,6 +129,14 @@ button{font:inherit;cursor:pointer}
 .profile-menu-item:hover{background:#f0f4f2}
 .profile-menu-item.danger{color:#b3432e}
 .profile-menu-divider{height:1px;background:var(--line);margin:6px 4px}
+.notify-select{position:relative;width:100%}
+.notify-select.disabled{opacity:.45;pointer-events:none}
+.notify-select-trigger{display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13.5px;color:var(--ink);cursor:pointer;background:#fff}
+.notify-select-trigger:hover{border-color:#9bbbae}
+.notify-select-panel{position:absolute;top:calc(100% + 6px);left:0;right:0;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 14px 34px #17352f26;padding:8px;z-index:20;max-height:260px;overflow-y:auto}
+.notify-select-item{display:flex;align-items:center;gap:9px;font-size:13.5px;padding:8px;border-radius:8px;cursor:pointer}
+.notify-select-item:hover{background:#f0f4f2}
+.notify-select-item input{width:16px;height:16px;accent-color:var(--green);flex:0 0 auto}
 
 .app{padding:22px 5% 40px}
 .dash-titlebar{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:16px;flex-wrap:wrap;gap:12px}
@@ -2394,20 +2402,35 @@ async function clearProviderServiceArea(){
     currentUser=d.user; toast('Showing every open request again.'); await loadDashboard(); renderPanel('provider','profile');
   }catch(e){ handleUpgradeError(e); }
 }
+function providerBioHTML(u){
+  return `<div class="request">
+    <div class="requestrow" style="flex-direction:column;align-items:flex-start;gap:6px;width:100%">
+      <b style="font-size:16px">${esc(u.name)}</b>
+      <div class="statusline">★ ${esc(u.rating||'New')} · ${esc(u.reviewCount||0)} jobs${u.verified?' · Verified':''} · Plan: ${esc(u.subscription)}</div>
+      <p style="margin:6px 0 0">${esc(u.businessDescription||'')}</p>
+      <p style="margin:4px 0 0">Services: ${esc((u.serviceTypes||[]).join(', '))}<br>Phone: ${esc(u.phone||'N/A')}</p>
+    </div>
+  </div>`;
+}
 function renderPrProfile(d){
   const el=document.getElementById('pr-profile-view'); if(!el)return; const u=d.user;
-  el.innerHTML=`<div class="request"><div class="avatar-slot" style="width:56px;height:56px;overflow:hidden">${avatarInnerHTML(u,56)}</div><div class="requestrow" style="flex-direction:column;align-items:flex-start;gap:6px"><div><b style="font-size:16px">${esc(u.name)}</b><div class="statusline">★ ${esc(u.rating||'New')} · ${esc(u.reviewCount||0)} jobs${u.verified?' · Verified':''} · Plan: ${esc(u.subscription)}</div></div><p style="margin:6px 0 0">${esc(u.businessDescription||'')}</p><p style="margin:4px 0 0">Services: ${esc((u.serviceTypes||[]).join(', '))}<br>Phone: ${esc(u.phone||'N/A')}</p></div></div>
-  <div class="boxgrid">${providerVerificationHTML(u)}${providerServiceAreaHTML(u)}${providerNotificationsHTML(u)}${providerSkillsHTML(u)}${providerGalleryHTML(u)}${avatarEditorHTML('provider',u)}${dangerZoneHTML()}</div>`;
+  el.innerHTML=`<div class="boxgrid">${providerBioHTML(u)}${avatarEditorHTML('provider',u)}${providerServiceAreaHTML(u)}${providerNotificationsHTML(u)}${providerVerificationHTML(u)}${dangerZoneHTML()}${providerGalleryHTML(u)}${providerSkillsHTML(u)}</div>`;
 }
 
 // --- provider business profile: email notification preferences ---
 const ALL_SERVICE_TYPES=['Lawn & Landscaping','House Cleaning','Pool Service','Handyman','Plumbing','Electrical','HVAC','Pest Control','Mobile Mechanic','Power Washing','Bulk Trash Pickup','Moving Services','Pet Waste Cleanup'];
+function notifySelectedSummaryText(selected){
+  if(!selected.length)return 'Select services…';
+  if(selected.length===1)return selected[0];
+  return `${selected.length} services selected`;
+}
 function providerNotificationsHTML(u){
   const notifyOn=u.notifyEmailEnabled!==false;
   const fallback=(u.serviceTypes&&u.serviceTypes.length)?u.serviceTypes:[];
-  const selected=new Set(u.notifyServiceTypes&&u.notifyServiceTypes.length?u.notifyServiceTypes:fallback);
-  const rows=ALL_SERVICE_TYPES.map(s=>`<label style="display:flex;align-items:center;gap:9px;font-size:13.5px;padding:7px 0;cursor:pointer">
-      <input type="checkbox" class="notify-service-cb" value="${esc(s)}" ${selected.has(s)?'checked':''} ${notifyOn?'':'disabled'} style="width:16px;height:16px;accent-color:var(--green)">
+  const selected=(u.notifyServiceTypes&&u.notifyServiceTypes.length)?u.notifyServiceTypes:fallback;
+  const selectedSet=new Set(selected);
+  const rows=ALL_SERVICE_TYPES.map(s=>`<label class="notify-select-item">
+      <input type="checkbox" class="notify-service-cb" value="${esc(s)}" ${selectedSet.has(s)?'checked':''} ${notifyOn?'':'disabled'} onchange="updateNotifySelectedSummary()">
       ${esc(s)}
     </label>`).join('');
   return `<div class="request">
@@ -2418,8 +2441,14 @@ function providerNotificationsHTML(u){
           <input type="checkbox" id="notifyEmailToggle" ${notifyOn?'checked':''} onchange="toggleNotifyServiceRows(this.checked)" style="width:16px;height:16px;accent-color:var(--green)">
         </label>
       </div>
-      <div class="subtle" style="font-size:12.5px;margin-top:-4px">Get an email the moment a new request comes in for any services you pick below — not just the ones you offer.</div>
-      <div id="notifyServiceRows" style="width:100%;display:flex;flex-direction:column;opacity:${notifyOn?'1':'.45'}">${rows}</div>
+      <div class="subtle" style="font-size:12.5px;margin-top:-4px">Get an email the moment a new request comes in for any services you pick below, not just the ones you offer.</div>
+      <div class="notify-select${notifyOn?'':' disabled'}" id="notifyServiceSelect">
+        <div class="notify-select-trigger" onclick="toggleNotifyDropdown(event)">
+          <span id="notifySelectedSummary">${esc(notifySelectedSummaryText(selected))}</span>
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8l5 5 5-5"/></svg>
+        </div>
+        <div class="notify-select-panel hidden" id="notifyServicePanel" onclick="event.stopPropagation()">${rows}</div>
+      </div>
       <div id="notifyError" class="notice hidden"></div>
       <div class="mini-actions" style="margin-top:2px">
         <button class="primary" onclick="saveNotificationPreferences()">Save Preferences</button>
@@ -2427,9 +2456,30 @@ function providerNotificationsHTML(u){
     </div>
   </div>`;
 }
+function toggleNotifyDropdown(evt){
+  evt.stopPropagation();
+  const panel=document.getElementById('notifyServicePanel');
+  const wrap=document.getElementById('notifyServiceSelect');
+  if(!panel||!wrap||wrap.classList.contains('disabled'))return;
+  const isOpen=!panel.classList.contains('hidden');
+  closeNotifyDropdown();
+  if(!isOpen)panel.classList.remove('hidden');
+}
+function closeNotifyDropdown(){
+  const panel=document.getElementById('notifyServicePanel');
+  if(panel)panel.classList.add('hidden');
+}
+document.addEventListener('click',closeNotifyDropdown);
+function updateNotifySelectedSummary(){
+  const summary=document.getElementById('notifySelectedSummary'); if(!summary)return;
+  const checked=Array.from(document.querySelectorAll('.notify-service-cb:checked')).map(cb=>cb.value);
+  summary.textContent=notifySelectedSummaryText(checked);
+}
 function toggleNotifyServiceRows(on){
-  document.getElementById('notifyServiceRows').style.opacity=on?'1':'.45';
+  const wrap=document.getElementById('notifyServiceSelect');
+  if(wrap)wrap.classList.toggle('disabled',!on);
   document.querySelectorAll('.notify-service-cb').forEach(cb=>cb.disabled=!on);
+  if(!on)closeNotifyDropdown();
 }
 async function saveNotificationPreferences(){
   const err=document.getElementById('notifyError'); if(err)err.classList.add('hidden');
