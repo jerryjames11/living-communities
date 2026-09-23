@@ -143,6 +143,10 @@ async function geocodeAddress(address){
     return {lat,lng};
   }catch(e){ console.error('geocode error:',e.message); return null; }
 }
+// Full one-off request service-type catalog (kept in sync with index.html's copies:
+// the signup/request-form <select> options, the "view all services" grid, and the
+// client-side ALL_SERVICE_TYPES fallback used to render this same list).
+const ALL_SERVICE_TYPES=['Lawn & Landscaping','House Cleaning','Pool Service','Handyman','Plumbing','Electrical','HVAC','Pest Control','Mobile Mechanic','Power Washing','Bulk Trash Pickup','Moving Services','Pet Waste Cleanup'];
 function haversineMiles(lat1,lon1,lat2,lon2){
   const R=3958.8; // earth radius, miles
   const toRad=d=>d*Math.PI/180;
@@ -575,9 +579,10 @@ async function notifyProvidersOfNewRequest(request,homeowner){
   );
   for(const row of rows.rows){
     const provider=mapUser(row);
-    const offered=provider.serviceTypes||[];
-    if(!offered.includes(request.serviceType)) continue;
-    const chosen=provider.notifyServiceTypes&&provider.notifyServiceTypes.length ? provider.notifyServiceTypes : offered;
+    // Notify list is opt-in and no longer limited to the provider's offered service types, so a
+    // provider can pick up lead types outside their usual work. Falls back to their offered
+    // services only if they've never saved a preference.
+    const chosen=provider.notifyServiceTypes&&provider.notifyServiceTypes.length ? provider.notifyServiceTypes : (provider.serviceTypes||[]);
     if(!chosen.includes(request.serviceType)) continue;
     let distanceMi=null;
     if(provider.lat!=null&&provider.lng!=null&&homeowner.lat!=null&&homeowner.lng!=null){
@@ -1983,15 +1988,16 @@ const server=http.createServer(async (req,res)=>{
       return send(res,200,{user:safeUser(mapUser(row))});
     }
     // Provider's email notification preferences — whether to email them at all when a new request
-    // is posted, and which of their offered service types should trigger one. Chosen types are
-    // restricted to services the provider actually lists (no point emailing about work they don't
-    // do) — see the new-request dispatch in POST /api/requests for where this is read.
+    // is posted, and which service types should trigger one. Providers can opt into any type in the
+    // full catalog, not just the ones they currently list as offered (e.g. a handyman may still want
+    // a heads-up on moving jobs) — see the new-request dispatch in POST /api/requests for where this
+    // is read.
     if(p==='/api/profile/notifications' && req.method==='POST'){
       if(u.role!=='provider')return send(res,403,{error:'Only providers have notification preferences'});
       const b=await body(req);
       const enabled=b.enabled!==false;
-      const offered=new Set(u.serviceTypes||[]);
-      const serviceTypes=Array.from(new Set((Array.isArray(b.serviceTypes)?b.serviceTypes:[]).map(s=>String(s||'').trim()).filter(s=>offered.has(s))));
+      const allTypes=new Set(ALL_SERVICE_TYPES);
+      const serviceTypes=Array.from(new Set((Array.isArray(b.serviceTypes)?b.serviceTypes:[]).map(s=>String(s||'').trim()).filter(s=>allTypes.has(s))));
       const row=await q1('UPDATE users SET notify_email_enabled=$1, notify_service_types=$2::jsonb WHERE id=$3 RETURNING *',[enabled,JSON.stringify(serviceTypes),u.id]);
       return send(res,200,{user:safeUser(mapUser(row))});
     }
