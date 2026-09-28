@@ -1405,7 +1405,13 @@ const server=http.createServer(async (req,res)=>{
       // carry a distanceMi from this provider — used to filter/label the feed by service area.
       // Requests whose homeowner has no geocoded location get distanceMi:null and are never
       // filtered out, so incomplete address data never silently hides real leads.
-      const openRows=await q("SELECT r.*, uh.lat AS h_lat, uh.lng AS h_lng FROM requests r JOIN users uh ON uh.id=r.homeowner_id WHERE r.status='open' AND r.delisted=false ORDER BY r.created_at DESC");
+      // A request stays in the feed from posting all the way through an assigned provider's job,
+      // and only drops off once that job is completed or cancelled (or the homeowner delists it
+      // pre-award) — accepting a quote alone should never make it vanish for everyone else.
+      const openRows=await q(`SELECT r.*, uh.lat AS h_lat, uh.lng AS h_lng FROM requests r JOIN users uh ON uh.id=r.homeowner_id
+        WHERE r.delisted=false AND (r.status='open' OR (r.status='scheduled' AND EXISTS (
+          SELECT 1 FROM jobs j WHERE j.request_id=r.id AND j.status NOT IN ('completed','cancelled')
+        ))) ORDER BY r.created_at DESC`);
       const myQuotes=openRows.length?await q('SELECT * FROM quotes WHERE request_id = ANY($1::text[]) AND provider_id=$2',[openRows.map(r=>r.id),u.id]):[];
       const myActivity=await quoteActivity(myQuotes.map(qq=>qq.id),u.id);
       const quoteByReq=Object.fromEntries(myQuotes.map(qq=>[qq.request_id,{...mapQuote(qq),...myActivity[qq.id]}]));
@@ -1443,7 +1449,12 @@ const server=http.createServer(async (req,res)=>{
     }
 
     if(p==='/api/requests' && req.method==='GET'){
-      const rows=u.role==='homeowner'?await q('SELECT * FROM requests WHERE homeowner_id=$1 ORDER BY created_at DESC',[u.id]):await q("SELECT * FROM requests WHERE status='open' AND delisted=false ORDER BY created_at DESC");
+      // Same feed rule as the dashboard load: stays visible through an assigned provider's job,
+      // only drops off once that job is completed/cancelled or the homeowner delists it.
+      const rows=u.role==='homeowner'?await q('SELECT * FROM requests WHERE homeowner_id=$1 ORDER BY created_at DESC',[u.id]):await q(`SELECT * FROM requests r
+        WHERE r.delisted=false AND (r.status='open' OR (r.status='scheduled' AND EXISTS (
+          SELECT 1 FROM jobs j WHERE j.request_id=r.id AND j.status NOT IN ('completed','cancelled')
+        ))) ORDER BY r.created_at DESC`);
       return send(res,200,{requests:rows.map(mapRequest)});
     }
     if(p==='/api/requests' && req.method==='POST'){
