@@ -220,6 +220,18 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .tag.status-completed{background:#e8effc;color:#2c4f8c}
 .provider{display:flex;justify-content:space-between;gap:15px;align-items:center}
 .stub-notice{background:#fff;border:1px solid var(--line);border-radius:17px;padding:20px;text-align:center;color:var(--muted);line-height:1.6}
+.ringbtn{all:unset;cursor:pointer;width:80px;height:80px;border-radius:50%;flex:0 0 auto;position:relative}
+.ringbtn:hover .ring-hint{opacity:1}
+.ringbtn:focus-visible{outline:2px solid var(--green);outline-offset:3px;border-radius:50%}
+.ring-hint{position:absolute;inset:-5px;border-radius:50%;border:2px solid var(--green);opacity:0;transition:opacity .15s}
+.score-sub{font-size:11px;color:var(--green);font-weight:700;display:flex;align-items:center;gap:4px;margin-top:4px;cursor:pointer}
+.bd-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+.bd-row:last-of-type{border-bottom:none}
+.bd-label{display:flex;align-items:center;gap:8px}
+.bd-points{font-weight:700;font-size:12.5px;flex:0 0 auto;text-align:right}
+.bd-points.neg{color:#b7791f}
+.bd-points.zero{color:var(--muted);font-weight:600}
+.bd-total{display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:14px;border-top:1.5px solid var(--ink);font-weight:800;font-size:15px}
 .plans-header{background:#fff;border-bottom:1px solid var(--line);padding:14px 6%;display:flex;align-items:center;gap:14px}
 .back-link{border:0;background:none;color:#3f4f4a;font-weight:700;font-size:14px;display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 8px;border-radius:8px}
 .back-link:hover{background:#f3f6f4}
@@ -897,7 +909,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
  <div class="field"><label>EMAIL</label><input id="signupEmail" type="email" placeholder="you@example.com"></div>
  <div class="field"><label>PASSWORD</label><div class="pwfield"><input id="signupPassword" type="password" placeholder="At least 8 characters"><button type="button" class="pwtoggle" onclick="togglePasswordVisibility('signupPassword',this)">SHOW</button></div></div>
  <div class="field"><label>PHONE</label><input id="signupPhone" placeholder="(214) 555-0100"></div>
- <div id="signupHomeownerFields"><div class="field"><label>COMMUNITY / CITY</label><input id="signupCommunity" placeholder="Richardson Community"></div><div class="field"><label>HOME ADDRESS <span class="subtle" style="font-weight:600;text-transform:none">(optional: unlocks Neighborhood on a Home Care Plan)</span></label><input id="signupAddress" placeholder="123 Main St, Richardson, TX"></div></div>
+ <div id="signupHomeownerFields"><div class="field"><label>COMMUNITY / CITY</label><input id="signupCommunity" placeholder="Richardson Community"></div><div class="field"><label>HOME ADDRESS <span class="subtle" style="font-weight:600;text-transform:none">(optional: unlocks Neighborhood on Plus)</span></label><input id="signupAddress" placeholder="123 Main St, Richardson, TX"></div></div>
  <div id="signupProviderFields" class="hidden">
    <div class="field"><label>SERVICES OFFERED</label><input id="signupServiceTypes" placeholder="Plumbing, Handyman"></div>
    <div class="field"><label>BUSINESS DESCRIPTION</label><textarea id="signupBusinessDescription" placeholder="Tell homeowners what you do..."></textarea></div>
@@ -1018,6 +1030,8 @@ button:disabled{opacity:.45;cursor:not-allowed}
  <div class="field"><label>CATEGORY</label><select id="homeDocCategory"><option value="warranty">Warranty</option><option value="receipt">Receipt</option><option value="manual">Manual</option><option value="other">Other</option></select></div>
  <div class="mini-actions"><button class="secondary" onclick="closeModal()">Cancel</button><button class="primary" onclick="submitHomeDocument()">Save Document</button></div>
 </div></div>
+
+<div id="homeHealthBreakdownModal" class="modal"><div class="modalbox" style="max-width:420px"><div class="modalhead" style="margin-bottom:0"><div></div><button class="close" onclick="closeModal()">×</button></div><div id="homeHealthBreakdownBody"></div></div></div>
 
 <div id="quotesModal" class="modal"><div class="modalbox">
  <div class="modalhead"><div><div class="eyebrow">Compare providers</div><h2 id="quotesModalCount">0 responses</h2></div><button class="close" onclick="closeModal()">×</button></div>
@@ -1569,14 +1583,14 @@ function switchHomeTab(tab){
 }
 async function loadNeighborhood(){
   const el=document.getElementById('hometab-neighborhood'); if(!el)return;
-  if(!currentUser||!currentUser.carePlanServices||!currentUser.carePlanServices.length){
+  if(!currentUser||!['plus','premium'].includes(currentUser.subscription)){
     el.innerHTML=`<div class="nb-upsell">
       <div style="width:48px;height:48px;border-radius:50%;background:var(--mint);display:grid;place-items:center;margin:0 auto 16px">
         <svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="var(--green)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7.2" stroke-dasharray="2 2.4"/><path d="M10 6.3a2.5 2.5 0 0 1 2.5 2.5c0 1.9-2.5 4.7-2.5 4.7S7.5 10.7 7.5 8.8A2.5 2.5 0 0 1 10 6.3Z"/><circle cx="10" cy="8.8" r="0.75" fill="var(--green)" stroke="none"/></svg>
       </div>
       <h3 style="margin:0 0 8px;font-size:17px">See what's happening near you</h3>
-      <p class="subtle" style="margin:0 0 22px;font-size:13.5px;line-height:1.6">Neighborhood connects you with homes within 0.25 mi to swap recommendations, share alerts, and get to know your street. It's included with every Home Care Plan.</p>
-      <button class="primary" onclick="openCarePlanPage('homeowner')">View Home Care Plan →</button>
+      <p class="subtle" style="margin:0 0 22px;font-size:13.5px;line-height:1.6">Neighborhood connects you with homes within 0.25 mi to swap recommendations, share alerts, and get to know your street. It's included with Plus.</p>
+      <button class="primary" onclick="openPlansPage('homeowner')">Upgrade to Plus →</button>
     </div>`;
     return;
   }
@@ -2103,48 +2117,81 @@ function renderHomeMaintenance(d){
   }
   const hh=d.status.homeHealth;
   const hhColor = hh>=80?'#286b58':hh>=50?'#d9a84e':'#b23b2e';
+  lastHomeStatus=d.status;
   el.innerHTML=`
-  <div class="request" style="margin-bottom:14px">
-    <div class="requestrow" style="align-items:center;gap:20px;width:100%">
-      <div style="width:80px;height:80px;border-radius:50%;background:conic-gradient(${hhColor} 0% ${hh}%, #eef1ef ${hh}% 100%);display:flex;align-items:center;justify-content:center;flex:0 0 auto">
-        <div style="width:62px;height:62px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center">
-          <div style="font-size:18px;font-weight:800;color:var(--ink);line-height:1">${hh}</div>
-          <div style="font-size:9px;color:var(--muted)">/ 100</div>
+  <div class="boxgrid">
+    <div class="request" style="align-items:center">
+      <button class="ringbtn" onclick="openHomeHealthBreakdown()" aria-label="See Home Health score breakdown">
+        <div class="ring-hint"></div>
+        <div style="width:80px;height:80px;border-radius:50%;background:conic-gradient(${hhColor} 0% ${hh}%, #eef1ef ${hh}% 100%);display:flex;align-items:center;justify-content:center">
+          <div style="width:62px;height:62px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center">
+            <div style="font-size:18px;font-weight:800;color:var(--ink);line-height:1">${hh}</div>
+            <div style="font-size:9px;color:var(--muted)">/ 100</div>
+          </div>
+        </div>
+      </button>
+      <div>
+        <b style="font-size:14.5px">Home Health: ${hh}</b>
+        <div class="statusline" style="margin-top:4px">${hh>=80?'Nice shape overall.':'A couple of things need attention — check Status below.'}</div>
+        <div class="score-sub" onclick="openHomeHealthBreakdown()">See breakdown
+          <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4l6 6-6 6"/></svg>
         </div>
       </div>
-      <div><b style="font-size:14.5px">Home Health: ${hh}</b><div class="statusline" style="margin-top:4px">${hh>=80?'Nice shape overall.':'A couple of things need attention — check Status below.'}</div></div>
+    </div>
+    <div class="request" style="display:flex;flex-direction:column;align-items:stretch">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <b style="font-size:13px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)">Home Profile</b>
+        <span class="tag">Plus perk</span>
+      </div>
+      ${homeProfileSummaryHTML(d.homeProfile)}
+      <button class="secondary" style="width:100%;margin-top:12px" onclick="openHomeProfileEditor()">Edit Profile</button>
     </div>
   </div>
-  <div class="boxgrid">
-    <div style="display:flex;flex-direction:column;gap:14px">
-      <div class="request" style="display:flex;flex-direction:column;align-items:stretch">
-        <b style="font-size:13px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)">Status</b>
-        <div style="margin-top:8px">${homeStatusRowsHTML(d.status.items)}</div>
-      </div>
-      <div class="request" style="display:flex;flex-direction:column;align-items:stretch">
-        <b style="font-size:13px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)">Upcoming Maintenance</b>
-        <div style="margin-top:8px">${homeUpcomingRowsHTML(d.status.upcoming)}</div>
-      </div>
+  <div class="request" style="display:flex;flex-direction:column;align-items:stretch;margin-top:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <b style="font-size:13px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)">Documents</b>
+      <span class="tag">Plus perk</span>
     </div>
-    <div style="display:flex;flex-direction:column;gap:14px">
-      <div class="request" style="display:flex;flex-direction:column;align-items:stretch">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <b style="font-size:13px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)">Home Profile</b>
-          <span class="tag">Plus perk</span>
-        </div>
-        ${homeProfileSummaryHTML(d.homeProfile)}
-        <button class="secondary" style="width:100%;margin-top:12px" onclick="openHomeProfileEditor()">Edit Profile</button>
-      </div>
-      <div class="request" style="display:flex;flex-direction:column;align-items:stretch">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <b style="font-size:13px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)">Documents</b>
-          <span class="tag">Plus perk</span>
-        </div>
-        <div>${homeDocRowsHTML(d.homeDocuments||[])}</div>
-        <button class="secondary" style="width:100%;margin-top:12px" onclick="openHomeDocUpload()">Upload Document</button>
-      </div>
+    <div>${homeDocRowsHTML(d.homeDocuments||[])}</div>
+    <button class="secondary" style="width:100%;margin-top:12px" onclick="openHomeDocUpload()">Upload Document</button>
+  </div>
+  <div class="boxgrid" style="margin-top:14px">
+    <div class="request" style="display:flex;flex-direction:column;align-items:stretch">
+      <b style="font-size:13px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)">Status</b>
+      <div style="margin-top:8px">${homeStatusRowsHTML(d.status.items)}</div>
+    </div>
+    <div class="request" style="display:flex;flex-direction:column;align-items:stretch">
+      <b style="font-size:13px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)">Upcoming Maintenance</b>
+      <div style="margin-top:8px">${homeUpcomingRowsHTML(d.status.upcoming)}</div>
     </div>
   </div>`;
+}
+let lastHomeStatus=null;
+function homeHealthBreakdownRowsHTML(items){
+  const toneLabel={bad:'Overdue',warn:'Due soon',ok:'Current',neutral:'Not scored'};
+  const toneColor={bad:'#b23b2e',warn:'var(--gold)',ok:'var(--green)',neutral:'#c7d0cb'};
+  const tonePoints={bad:-15,warn:-7,ok:0,neutral:0};
+  if(!items||!items.length) return '<div class="bd-row"><div class="bd-label">No tracked items yet</div></div>';
+  return items.map(it=>{
+    const pts=tonePoints[it.tone]||0;
+    const ptsHTML = pts<0 ? `<span class="bd-points neg">${pts}</span>` : `<span class="bd-points zero">${it.tone==='neutral'?esc(toneLabel[it.tone]):'No change'}</span>`;
+    return `<div class="bd-row">
+      <div class="bd-label"><span class="dot" style="background:${toneColor[it.tone]||'#c7d0cb'}"></span>${esc(it.label)}, ${esc(it.detail)}</div>
+      ${ptsHTML}
+    </div>`;
+  }).join('');
+}
+function openHomeHealthBreakdown(){
+  if(!lastHomeStatus) return;
+  const hh=lastHomeStatus.homeHealth;
+  document.getElementById('homeHealthBreakdownBody').innerHTML=`
+    <div style="font-size:11px;font-weight:700;letter-spacing:.4px;color:var(--green);text-transform:uppercase">Home Health breakdown</div>
+    <div style="font-size:21px;font-weight:800;margin-top:4px">${hh} / 100</div>
+    <div class="muted" style="font-size:12.5px;margin-top:4px;color:var(--muted)">Starts at 100. Each item due soon takes off 7, each overdue item takes off 15.</div>
+    <div style="margin-top:14px">${homeHealthBreakdownRowsHTML(lastHomeStatus.items)}</div>
+    <div class="bd-total"><span>Home Health</span><span>${hh} / 100</span></div>
+  `;
+  document.getElementById('homeHealthBreakdownModal').classList.add('show');
 }
 
 // --- Home Profile editor ---
@@ -2242,7 +2289,7 @@ function renderHoProfile(d){
     <div class="request">
       <div class="requestrow" style="flex-direction:column;align-items:flex-start;gap:8px;width:100%">
         <b style="font-size:14.5px">Home Address</b>
-        <div class="subtle" style="font-size:12.5px;margin-top:-4px">Used only to find neighbors within 0.25 mi for the Home Care Plan Neighborhood feed. ${geoStatus}</div>
+        <div class="subtle" style="font-size:12.5px;margin-top:-4px">Used only to find neighbors within 0.25 mi for the Plus Neighborhood feed. ${geoStatus}</div>
         <div class="field" style="width:100%;margin:6px 0 0"><input id="profileAddressInput" value="${esc(u.address||'')}" placeholder="123 Main St, Richardson, TX"></div>
         <div id="profileAddressError" class="notice hidden"></div>
         <button class="secondary" onclick="saveProfileAddress()">Save Address</button>

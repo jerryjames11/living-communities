@@ -2065,7 +2065,7 @@ const server=http.createServer(async (req,res)=>{
     }
     if(p==='/api/neighborhood' && req.method==='GET'){
       if(u.role!=='homeowner')return send(res,403,{error:'Neighborhood is for homeowners'});
-      if(!u.carePlanServices||!u.carePlanServices.length)return send(res,403,{error:'Neighborhood is a Home Care Plan perk',needsPlan:true});
+      if(!['plus','premium'].includes(u.subscription))return send(res,403,{error:'Neighborhood is a Plus perk',needsPlan:true});
       if(u.lat==null||u.lng==null)return send(res,200,{needsAddress:true,posts:[]});
       const rows=await q('SELECT np.*, us.name AS author_name, us.avatar_kind AS author_avatar_kind, us.avatar_value AS author_avatar_value FROM neighborhood_posts np JOIN users us ON us.id=np.user_id ORDER BY np.created_at DESC LIMIT 200');
       const posts=rows
@@ -2076,7 +2076,7 @@ const server=http.createServer(async (req,res)=>{
     }
     if(p==='/api/neighborhood' && req.method==='POST'){
       if(u.role!=='homeowner')return send(res,403,{error:'Neighborhood is for homeowners'});
-      if(!u.carePlanServices||!u.carePlanServices.length)return send(res,403,{error:'Neighborhood is a Home Care Plan perk'});
+      if(!['plus','premium'].includes(u.subscription))return send(res,403,{error:'Neighborhood is a Plus perk'});
       if(u.lat==null||u.lng==null)return send(res,400,{error:'Add your home address first.',needsAddress:true});
       const b=await body(req);
       const text=String(b.body||'').trim().slice(0,600);
