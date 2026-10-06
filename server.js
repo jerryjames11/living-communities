@@ -68,6 +68,7 @@ function mapUser(r){
     // Verification workflow
     u.entityType=r.provider_entity_type||null;
     u.verificationStatus=r.verification_status||'unverified';
+    u.approved=r.provider_approved!==false; // admin approval to respond to requests (separate from document verification)
     u.verificationNotes=r.verification_notes||null;
     u.verificationSubmittedAt=toISO(r.verification_submitted_at);
     u.verificationReviewedAt=toISO(r.verification_reviewed_at);
@@ -540,10 +541,18 @@ function computeHomeStatus(hp,carePlanItems){
 
 function welcomeEmailHtml(u){
   const isProvider=u.role==='provider';
+  if(isProvider){
+    return emailShell('Welcome to Living Communities',
+      `<h2 style="margin:0 0 10px;color:#17352f">Welcome, ${esc_(u.name.split(' ')[0])}!</h2>
+       <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px"><b>Next step: get verified.</b> Upload your verification documents from Business Profile right now. It only takes a few minutes, and verified providers get a trust badge homeowners see on your profile and every quote.</p>
+       <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Individual contractors only need a government-issued photo ID. Registered businesses upload a business license and certificate of insurance.</p>
+       <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Your account is also waiting on a quick admin approval, usually within a couple of business days. You can browse open requests now, and you'll be able to respond to them once you're approved. We'll email you.</p>
+       ${btn('Upload My Documents',APP_URL)}`);
+  }
   return emailShell('Welcome to Living Communities',
     `<h2 style="margin:0 0 10px;color:#17352f">Welcome, ${esc_(u.name.split(' ')[0])}!</h2>
-     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">${isProvider?"Your provider account is ready. You can browse open requests now, but you'll need to submit verification documents from Business Profile before you can send quotes — our team usually reviews within a couple of business days.":"Your account is ready. Post a request and local providers will start sending you quotes."}</p>
-     ${btn(isProvider?'Submit Verification Docs':'Go to My Dashboard',APP_URL)}`);
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Your account is ready. Post a request and local providers will start sending you quotes.</p>
+     ${btn('Go to My Dashboard',APP_URL)}`);
 }
 function newQuoteEmailHtml(homeowner,request,quote,provider){
   return emailShell('You received a new quote',
@@ -704,6 +713,12 @@ function verificationApprovedEmailHtml(u){
      <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Your provider account is now verified. A verified badge now shows on your profile, which homeowners trust more when comparing quotes.</p>
      ${btn('View My Profile',APP_URL)}`);
 }
+function providerAccountApprovedEmailHtml(u){
+  return emailShell('Your account was approved',
+    `<h2 style="margin:0 0 10px;font-size:22px">You're approved, ${esc_(u.name)}</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">An admin approved your provider account. You can now respond to open requests and message homeowners.${u.verificationStatus==='verified'?'':' If you haven\'t yet, upload your verification documents from Business Profile to earn the Verified badge.'}</p>
+     ${btn('Browse Open Requests',APP_URL)}`);
+}
 function verificationRejectedEmailHtml(u,notes){
   return emailShell('Update needed on your verification',
     `<h2 style="margin:0 0 10px;color:#17352f">We couldn't verify your account yet</h2>
@@ -840,7 +855,7 @@ async function runAdminDigest(){
     q1("SELECT count(*)::int AS n FROM users WHERE role='provider' AND created_at > now() - interval '24 hours'"),
     q1("SELECT count(*)::int AS n FROM requests WHERE status='open'"),
     q1("SELECT count(*)::int AS n FROM requests r WHERE r.status='open' AND r.created_at < now() - interval '24 hours' AND NOT EXISTS (SELECT 1 FROM quotes qq WHERE qq.request_id=r.id)"),
-    q1("SELECT count(*)::int AS n FROM users WHERE role='provider' AND verification_status='pending'"),
+    q1("SELECT count(*)::int AS n FROM users WHERE role='provider' AND deleted=false AND (provider_approved=false OR (verification_status='unverified' AND jsonb_array_length(COALESCE(verification_documents,'[]'::jsonb))>0))"),
     q1("SELECT count(*)::int AS n FROM users WHERE suspended=true"),
   ]);
   const stats={
@@ -991,6 +1006,14 @@ async function initSchema(){
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_submitted_at timestamptz`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_reviewed_at timestamptz`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_documents jsonb DEFAULT '[]'::jsonb`);
+  // Admin approval (needed to respond to requests) is separate from document verification.
+  // Default true so every existing provider stays approved; new signups insert false.
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS provider_approved boolean DEFAULT true`);
+  // 'pending' is no longer a verification_status value. Older rows: docs submitted -> 'unverified' (docs awaiting review);
+  // no docs (accounts created under the short-lived "approve before upload" build) -> 'unverified' and not yet approved.
+  // Safe to rerun: once no 'pending' rows remain these match nothing.
+  await pool.query(`UPDATE users SET verification_status='unverified' WHERE role='provider' AND verification_status='pending' AND jsonb_array_length(COALESCE(verification_documents,'[]'::jsonb))>0`);
+  await pool.query(`UPDATE users SET verification_status='unverified', provider_approved=false WHERE role='provider' AND verification_status='pending'`);
   // Provider business-profile: skills/specializations tags + a work-photo gallery. Each gallery
   // photo is stored with its own moderation status so a photo never appears to homeowners until
   // an admin approves it (mirrors the verification-document review flow above).
@@ -1257,8 +1280,8 @@ const server=http.createServer(async (req,res)=>{
         }
       }else{
         const serviceTypes=Array.isArray(b.serviceTypes)?b.serviceTypes.map(s=>String(s).trim()).filter(Boolean).slice(0,10):[];
-        row=await q1('INSERT INTO users (id,role,name,email,password_hash,salt,phone,service_types,rating,review_count,verified,subscription,business_description) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *',
-          [uid,'provider',name,email,hash(password,salt),salt,phone,serviceTypes,null,0,false,'free',String(b.businessDescription||'').trim().slice(0,1000)]);
+        row=await q1('INSERT INTO users (id,role,name,email,password_hash,salt,phone,service_types,rating,review_count,verified,subscription,business_description,provider_approved) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *',
+          [uid,'provider',name,email,hash(password,salt),salt,phone,serviceTypes,null,0,false,'free',String(b.businessDescription||'').trim().slice(0,1000),false]);
       }
       const u=mapUser(row);
       const token=crypto.randomBytes(24).toString('hex'); sessions.set(token,u.id);
@@ -1506,7 +1529,7 @@ const server=http.createServer(async (req,res)=>{
       // (quote, message, get scheduled) until an admin has reviewed and approved their
       // verification documents — see providerVerificationHTML/submitVerification client-side and
       // /api/profile/verification + /api/admin/verifications/:id/decision server-side.
-      if(u.verificationStatus!=='verified') return send(res,403,{error:'Your account needs to be verified before you can respond to requests. Submit your verification documents from Business Profile — our team usually reviews within a couple of business days.',verificationRequired:true});
+      if(!u.approved) return send(res,403,{error:'Your account is waiting on admin approval before you can respond to requests. You can upload your verification documents in the meantime from Business Profile.',verificationRequired:true,accountPending:true});
       const rid=p.split('/')[3], r=await q1('SELECT * FROM requests WHERE id=$1',[rid]); if(!r)return send(res,404,{error:'Request not found'});
       if(r.delisted) return send(res,410,{error:'This homeowner took the request down. It\'s no longer accepting quotes.'});
       if(r.status!=='open') return send(res,409,{error:'This request already has a provider scheduled.'});
@@ -1569,7 +1592,7 @@ const server=http.createServer(async (req,res)=>{
       const qid=p.split('/')[3], t=await loadQuoteThread(qid); if(!t)return send(res,404,{error:'Quote not found'});
       const isHomeowner=t.request.homeowner_id===u.id, isProvider=t.quote.provider_id===u.id;
       if(!isHomeowner && !isProvider) return send(res,403,{error:'Not authorized'});
-      if(isProvider && u.verificationStatus!=='verified') return send(res,403,{error:'Your account needs to be verified before you can message about a request. Submit your verification documents from Business Profile.',verificationRequired:true});
+      if(isProvider && !u.approved) return send(res,403,{error:'Your account is waiting on admin approval before you can message about a request.',verificationRequired:true,accountPending:true});
       const b=await body(req);
       const text=String(b.body||'').trim().slice(0,2000); if(!text)return send(res,400,{error:'Message cannot be empty'});
       const recipientId=isHomeowner?t.quote.provider_id:t.request.homeowner_id;
@@ -1978,7 +2001,7 @@ const server=http.createServer(async (req,res)=>{
         documents.push({type:docType,label,dataUrl,uploadedAt:new Date().toISOString()});
       }
       const row=await q1(
-        `UPDATE users SET provider_entity_type=$1, verification_documents=$2::jsonb, verification_status='pending',
+        `UPDATE users SET provider_entity_type=$1, verification_documents=$2::jsonb, verification_status='unverified',
          verification_notes=NULL, verification_submitted_at=now(), verification_reviewed_at=NULL
          WHERE id=$3 RETURNING *`,
         [entityType, JSON.stringify(documents), u.id]
@@ -2088,12 +2111,31 @@ const server=http.createServer(async (req,res)=>{
       const rows=await q("SELECT * FROM users WHERE role='provider' AND deleted=false ORDER BY rating DESC NULLS LAST");
       return send(res,200,{providers:rows.map(r=>publicProviderView(mapUser(r)))});
     }
+    if(p==='/api/admin/verifications/counts' && req.method==='GET'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const c=await q1(`SELECT
+        count(*) FILTER (WHERE provider_approved=false AND verification_status<>'rejected')::int AS pending,
+        count(*) FILTER (WHERE provider_approved<>false AND verification_status='unverified' AND jsonb_array_length(COALESCE(verification_documents,'[]'::jsonb))>0)::int AS unverified
+        FROM users WHERE role='provider' AND deleted=false`);
+      return send(res,200,{pending:c.pending,unverified:c.unverified});
+    }
     if(p==='/api/admin/verifications' && req.method==='GET'){
       if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
       const status=String(url.searchParams.get('status')||'pending');
+      // pending = new accounts waiting on admin approval. unverified = approved accounts that have
+      // uploaded documents and are waiting on the document review. Approved accounts with no docs yet
+      // are still 'unverified' in the DB but stay out of the tabs until they upload something.
+      const HAS_DOCS="jsonb_array_length(COALESCE(verification_documents,'[]'::jsonb))>0";
+      // pending = new accounts waiting on admin approval (approval lets them respond to requests; they can
+      // upload documents any time). unverified = approved accounts that have uploaded documents awaiting review.
+      // Approved accounts with no docs are 'unverified' in the DB but stay out of the tabs until they upload.
       const rows = status==='all'
-        ? await q("SELECT * FROM users WHERE role='provider' AND deleted=false AND verification_status<>'unverified' ORDER BY verification_submitted_at DESC NULLS LAST")
-        : await q("SELECT * FROM users WHERE role='provider' AND deleted=false AND verification_status=$1 ORDER BY verification_submitted_at ASC NULLS LAST",[status]);
+        ? await q(`SELECT * FROM users WHERE role='provider' AND deleted=false AND (provider_approved=false OR verification_status<>'unverified' OR ${HAS_DOCS}) ORDER BY verification_submitted_at DESC NULLS LAST, created_at DESC`)
+        : status==='unverified'
+          ? await q(`SELECT * FROM users WHERE role='provider' AND deleted=false AND provider_approved<>false AND verification_status='unverified' AND ${HAS_DOCS} ORDER BY verification_submitted_at ASC NULLS LAST`)
+          : status==='pending'
+            ? await q("SELECT * FROM users WHERE role='provider' AND deleted=false AND provider_approved=false AND verification_status<>'rejected' ORDER BY created_at ASC")
+            : await q("SELECT * FROM users WHERE role='provider' AND deleted=false AND verification_status=$1 ORDER BY verification_submitted_at ASC NULLS LAST",[status]);
       // Admin sees the full record — including uploaded documents — since reviewing them is the point.
       return send(res,200,{providers:rows.map(r=>safeUser(mapUser(r)))});
     }
@@ -2107,12 +2149,20 @@ const server=http.createServer(async (req,res)=>{
       if(decision==='reject' && !notes) return send(res,400,{error:'Add a note explaining why, so the provider knows what to fix.'});
       const target=await q1("SELECT * FROM users WHERE id=$1 AND role='provider'",[pid]);
       if(!target) return send(res,404,{error:'Provider not found'});
-      const verified = decision==='approve';
+      const approving = decision==='approve';
+      // Two separate approvals. Account step (provider_approved=false): approving lets them respond to requests;
+      // rejecting sets status 'rejected' (they can fix and re-upload, which puts them back in Pending).
+      // Doc step (already approved): approving verifies them (badge), rejecting sends them back with notes.
+      const accountStep = target.provider_approved===false;
+      const verified = approving && !accountStep;
+      const nextStatus = approving ? (accountStep?target.verification_status:'verified') : 'rejected';
       const row=await q1(
-        `UPDATE users SET verified=$1, verification_status=$2, verification_notes=$3, verification_reviewed_at=now() WHERE id=$4 RETURNING *`,
-        [verified, verified?'verified':'rejected', notes||null, pid]
+        `UPDATE users SET verified=$1, verification_status=$2, provider_approved=$3, verification_notes=$4, verification_reviewed_at=CASE WHEN $6::boolean AND $7::boolean THEN verification_reviewed_at ELSE now() END WHERE id=$5 RETURNING *`,
+        [verified, nextStatus, approving?true:(accountStep?false:true), notes||null, pid, accountStep, approving]
       );
-      if(verified){
+      if(approving && accountStep){
+        sendEmail({to:row.email,type:'provider_account_approved',subject:'Your account was approved',html:providerAccountApprovedEmailHtml(mapUser(row)),userId:row.id}).catch(()=>{});
+      }else if(verified){
         sendEmail({to:row.email,type:'verification_approved',subject:"You're verified",html:verificationApprovedEmailHtml(mapUser(row)),userId:row.id}).catch(()=>{});
       }else{
         sendEmail({to:row.email,type:'verification_rejected',subject:'Update needed on your verification',html:verificationRejectedEmailHtml(mapUser(row),notes),userId:row.id}).catch(()=>{});
@@ -2162,7 +2212,7 @@ const server=http.createServer(async (req,res)=>{
       const [homeownerPlans,providerPlans,verif,openReqs,staleReqs,carePlanActive,suspendedCount]=await Promise.all([
         q("SELECT subscription, count(*)::int AS n FROM users WHERE role='homeowner' AND deleted=false GROUP BY subscription"),
         q("SELECT provider_plan, count(*)::int AS n FROM users WHERE role='provider' AND deleted=false GROUP BY provider_plan"),
-        q("SELECT verification_status, count(*)::int AS n FROM users WHERE role='provider' AND deleted=false GROUP BY verification_status"),
+        q("SELECT CASE WHEN provider_approved=false AND verification_status<>'rejected' THEN 'pending' WHEN verification_status='unverified' AND jsonb_array_length(COALESCE(verification_documents,'[]'::jsonb))=0 THEN 'approved_no_docs' ELSE verification_status END AS verification_status, count(*)::int AS n FROM users WHERE role='provider' AND deleted=false GROUP BY 1"),
         q("SELECT count(*)::int AS n FROM requests WHERE status='open'"),
         q("SELECT count(*)::int AS n FROM requests r WHERE r.status='open' AND r.created_at < now() - interval '24 hours' AND NOT EXISTS (SELECT 1 FROM quotes qq WHERE qq.request_id=r.id)"),
         q("SELECT count(*)::int AS n FROM users WHERE role='homeowner' AND deleted=false AND EXISTS (SELECT 1 FROM jsonb_array_elements(care_plan_items) x WHERE x->>'status'='active')"),
