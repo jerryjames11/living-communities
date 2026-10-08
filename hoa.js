@@ -11,7 +11,7 @@
 //    data when sponsorship ends; Plus features lock and they can keep Plus themselves.
 //  - HOA contacts (role 'hoa') only ever see addresses and status, never homeowner names/contact info.
 module.exports=function initHoa(D){
-const {pool,q,q1,id,sendEmail,emailShell,btn,esc_,APP_URL,send,body,mapUser,safeUser,crypto,hash,newSalt,geocodeAddress,sessions,hashInviteToken,INVITE_TTL_MS,adminNotifyEmail}=D;
+const {pool,q,q1,id,sendEmail,emailShell,btn,esc_,appUrl,send,body,mapUser,safeUser,crypto,hash,newSalt,geocodeAddress,sessions,hashInviteToken,INVITE_TTL_MS,adminNotifyEmail}=D;
 
 class HttpErr extends Error{ constructor(status,msg,extra){ super(msg); this.status=status; this.extra=extra||{}; } }
 const bad=(msg,extra)=>new HttpErr(400,msg,extra);
@@ -49,8 +49,8 @@ function haversineMi(lat1,lng1,lat2,lng2){
   return 2*R*Math.asin(Math.sqrt(a));
 }
 function newJoinCode(){ const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s=''; const b=crypto.randomBytes(8); for(let i=0;i<8;i++) s+=A[b[i]%A.length]; return s; }
-const joinLinkFor=org=>`${APP_URL}/#join=${org.join_code}`;
-const PORTAL_LINK=`${APP_URL}/#hoa`;
+const joinLinkFor=org=>`${appUrl()}/#join=${org.join_code}`;
+const portalLink=()=>`${appUrl()}/#hoa`;
 const confirmSecret=()=>process.env.HOA_TOKEN_SECRET||process.env.INTERNAL_JOB_KEY||process.env.DATABASE_URL||'hoa-dev-secret';
 const confirmToken=orgId=>orgId+'.'+crypto.createHmac('sha256',confirmSecret()).update('confirm:'+orgId).digest('hex').slice(0,32);
 function verifyConfirmToken(t){
@@ -184,20 +184,20 @@ function joinInviteHtml(org,link){
   return emailShell('Your HOA covers Living Communities Plus for your home',h2(`${esc_(org.name)} covers Plus for your home`)+para(`Your HOA has set up Living Communities for your neighborhood. Join with the link below and your home gets Plus at no cost to you: the Home Info Database, maintenance reminders, the Neighborhood feed, and more.`)+btn('Join now',link)+`<p style="color:#6b7a75;font-size:12.5px;margin-top:16px">Create an account (or sign in) with your home address so we can match it to your HOA's list.</p>`);
 }
 function sponsorStartedHtml(user,orgName,review){
-  return emailShell(`${orgName} covers your Plus plan`,h2(`Welcome, ${esc_(user.name.split(' ')[0])}`)+para(review?`Your HOA, <b>${esc_(orgName)}</b>, needs to confirm your address on its list. You have Plus access in the meantime.`:`Your HOA, <b>${esc_(orgName)}</b>, now covers your Plus plan. Nothing to pay.`)+btn('Open my home',APP_URL+'/#homeowner'));
+  return emailShell(`${orgName} covers your Plus plan`,h2(`Welcome, ${esc_(user.name.split(' ')[0])}`)+para(review?`Your HOA, <b>${esc_(orgName)}</b>, needs to confirm your address on its list. You have Plus access in the meantime.`:`Your HOA, <b>${esc_(orgName)}</b>, now covers your Plus plan. Nothing to pay.`)+btn('Open my home',appUrl()+'/#homeowner'));
 }
 function sponsorEndedHtml(user,orgName){
-  return emailShell(`${orgName} ended your covered Plus plan`,h2('Your HOA-covered Plus plan has ended')+para(`<b>${esc_(orgName)}</b> no longer covers Plus for your home. Your account is now on the Free plan. Everything you saved, including your Home Profile and documents, is still here. Plus features are locked until you subscribe.`)+para(`You can keep Plus yourself for $9.99/month and everything unlocks right away.`)+btn('Keep Plus',APP_URL+'/#homeowner'));
+  return emailShell(`${orgName} ended your covered Plus plan`,h2('Your HOA-covered Plus plan has ended')+para(`<b>${esc_(orgName)}</b> no longer covers Plus for your home. Your account is now on the Free plan. Everything you saved, including your Home Profile and documents, is still here. Plus features are locked until you subscribe.`)+para(`You can keep Plus yourself for $9.99/month and everything unlocks right away.`)+btn('Keep Plus',appUrl()+'/#homeowner'));
 }
 function confirmEmailHtml(org,link){
-  return emailShell('Please confirm your HOA roster',h2('Quick check: is your roster still right?')+para(`It has been a while since <b>${esc_(org.name)}</b> confirmed its list of homes. Homes that have sold or changed hands are the usual reason it drifts. One click confirms it is current. Open the portal to fix anything first.`)+btn('Confirm my roster',link)+para(`<a href="${PORTAL_LINK}" style="color:#286b58">Open the HOA portal</a>`));
+  return emailShell('Please confirm your HOA roster',h2('Quick check: is your roster still right?')+para(`It has been a while since <b>${esc_(org.name)}</b> confirmed its list of homes. Homes that have sold or changed hands are the usual reason it drifts. One click confirms it is current. Open the portal to fix anything first.`)+btn('Confirm my roster',link)+para(`<a href="${portalLink()}" style="color:#286b58">Open the HOA portal</a>`));
 }
 function invoiceHtml(org,inv,kind){
   const pre=kind==='preview';
-  return emailShell(pre?'Your invoice preview':'Your HOA invoice',h2(pre?`Invoice preview for ${esc_(fmtDay(inv.period))}`:`Invoice for ${esc_(fmtDay(inv.period))}`)+para(`<b>${esc_(org.name)}</b>: ${inv.billable} home${inv.billable===1?'':'s'} at ${money(inv.price_cents)} = <b>${money(inv.amount_cents)}</b>.`)+para(`${inv.active_count} home${inv.active_count===1?' is':'s are'} active${inv.floor_seats>inv.active_count?`; your agreed minimum is ${inv.floor_seats}`:''}.`)+(pre?para(`This is a preview. If a home has sold or changed hands, update your roster in the portal before ${esc_(fmtDay(inv.period))} and the next invoice will reflect it.`):para(`We will follow up with payment details. Questions? Reply to this email.`))+btn('Open the HOA portal',PORTAL_LINK));
+  return emailShell(pre?'Your invoice preview':'Your HOA invoice',h2(pre?`Invoice preview for ${esc_(fmtDay(inv.period))}`:`Invoice for ${esc_(fmtDay(inv.period))}`)+para(`<b>${esc_(org.name)}</b>: ${inv.billable} home${inv.billable===1?'':'s'} at ${money(inv.price_cents)} = <b>${money(inv.amount_cents)}</b>.`)+para(`${inv.active_count} home${inv.active_count===1?' is':'s are'} active${inv.floor_seats>inv.active_count?`; your agreed minimum is ${inv.floor_seats}`:''}.`)+(pre?para(`This is a preview. If a home has sold or changed hands, update your roster in the portal before ${esc_(fmtDay(inv.period))} and the next invoice will reflect it.`):para(`We will follow up with payment details. Questions? Reply to this email.`))+btn('Open the HOA portal',portalLink()));
 }
 function adminChangeHtml(org,ch){
-  return emailShell('HOA change reported',h2(`${esc_(org.name)}: ${esc_(ch.kind.replace('_',' '))}`)+para(`${esc_(ch.address||'')}${ch.reason?` (reason: ${esc_(ch.reason)})`:''}${ch.note?`<br>${esc_(ch.note)}`:''}`)+(ch.flagged?para('<b style="color:#a33a2e">Flagged:</b> removals without a verified reason are above 10% of seats this quarter.'):'')+btn('Review in Admin',APP_URL+'/#admin'));
+  return emailShell('HOA change reported',h2(`${esc_(org.name)}: ${esc_(ch.kind.replace('_',' '))}`)+para(`${esc_(ch.address||'')}${ch.reason?` (reason: ${esc_(ch.reason)})`:''}${ch.note?`<br>${esc_(ch.note)}`:''}`)+(ch.flagged?para('<b style="color:#a33a2e">Flagged:</b> removals without a verified reason are above 10% of seats this quarter.'):'')+btn('Review in Admin',appUrl()+'/#admin'));
 }
 async function emailContacts(org,subject,type,html){
   const cs=await orgContacts(org.id);
@@ -355,7 +355,7 @@ async function inviteContact(org,{name,email},inviterName){
   const tok=crypto.randomBytes(32).toString('hex'); const salt=newSalt();
   const row=await q1("INSERT INTO users (id,role,name,email,password_hash,salt,hoa_org_id,invite_token_hash,invite_expires_at,invited_by) VALUES ($1,'hoa',$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *",
     [id('usr'),name,email,hash(crypto.randomBytes(24).toString('hex'),salt),salt,org.id,hashInviteToken(tok),new Date(Date.now()+INVITE_TTL_MS),inviterName]);
-  const link=`${APP_URL}/#invite=${tok}`;
+  const link=`${appUrl()}/#invite=${tok}`;
   const em=await sendEmail({to:email,type:'hoa_invite',subject:`You're invited to manage ${org.name} on Living Communities`,html:contactInviteHtml(name,org.name,inviterName,link),userId:row.id});
   return {contact:contactView(row),inviteLink:link,emailSent:!!(em&&em.ok&&!em.dryRun)};
 }
@@ -461,7 +461,7 @@ async function runMaintenance(asOf){
       const stale=(now.getTime()-new Date(base).getTime())/86400000>90;
       const lastRem=org.last_confirm_reminder_at?new Date(org.last_confirm_reminder_at).getTime():0;
       if(stale && (org.confirm_reminders||0)<3 && (now.getTime()-lastRem)/86400000>=14){
-        const link=`${APP_URL}/#hoa-confirm=${confirmToken(org.id)}`;
+        const link=`${appUrl()}/#hoa-confirm=${confirmToken(org.id)}`;
         const n=await emailContacts(org,'Please confirm your HOA roster','hoa_confirm_roster',confirmEmailHtml(org,link));
         await pool.query('UPDATE hoa_orgs SET last_confirm_reminder_at=now(),confirm_reminders=confirm_reminders+1 WHERE id=$1',[org.id]);
         if(n) out.confirmReminders++;
@@ -532,7 +532,7 @@ async function joinProgram(u,b){
   }
   await pool.query("UPDATE hoa_homes SET user_id=$1,state=$2,joined_at=now(),ended_at=NULL,end_reason=NULL,removal_effective_at=NULL,removal_reason=NULL WHERE id=$3",[u.id,state,home.id]);
   await startSponsorship(mapUser(fresh),org,state==='review');
-  if(state==='review') emailContacts(org,'A home needs your review','hoa_review_needed',emailShell('A home needs your review',h2('A home asked to join')+para(`Someone joined with an address that is not on your roster yet: <b>${esc_(address)}</b>. Please confirm it or deny it in the portal. It is not billed until you confirm.`)+btn('Review in the portal',PORTAL_LINK))).catch(()=>{});
+  if(state==='review') emailContacts(org,'A home needs your review','hoa_review_needed',emailShell('A home needs your review',h2('A home asked to join')+para(`Someone joined with an address that is not on your roster yet: <b>${esc_(address)}</b>. Please confirm it or deny it in the portal. It is not billed until you confirm.`)+btn('Review in the portal',portalLink()))).catch(()=>{});
   return {ok:true,orgName:org.name,state};
 }
 async function leaveProgram(u){
@@ -736,7 +736,7 @@ async function handleAuthed(req,res,p,url,u){
         const c=await q1("SELECT * FROM users WHERE id=$1 AND role='hoa' AND hoa_org_id=$2 AND invite_token_hash IS NOT NULL",[mm[1],org.id]); if(!c) throw new HttpErr(404,'No pending invite for that contact.');
         const tok=crypto.randomBytes(32).toString('hex');
         const row=await q1('UPDATE users SET invite_token_hash=$1,invite_expires_at=$2 WHERE id=$3 RETURNING *',[hashInviteToken(tok),new Date(Date.now()+INVITE_TTL_MS),c.id]);
-        const link=`${APP_URL}/#invite=${tok}`;
+        const link=`${appUrl()}/#invite=${tok}`;
         const em=await sendEmail({to:row.email,type:'hoa_invite',subject:`You're invited to manage ${org.name} on Living Communities`,html:contactInviteHtml(row.name,org.name,u.name,link),userId:row.id});
         return send(res,200,{contact:contactView(row),inviteLink:link,emailSent:!!(em&&em.ok&&!em.dryRun)});
       }

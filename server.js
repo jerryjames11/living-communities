@@ -54,6 +54,9 @@ function mapUser(r){
   if(!r) return null;
   const carePlanItems=r.care_plan_items||[];
   const u={id:r.id,role:r.role,name:r.name,email:r.email,passwordHash:r.password_hash,salt:r.salt,phone:r.phone,createdAt:toISO(r.created_at),subscription:r.subscription,carePlanItems,carePlanServices:carePlanItems.filter(i=>i.status==='active').map(i=>i.key),avatarKind:r.avatar_kind||null,avatarValue:r.avatar_value||null,address:r.address,lat:r.lat!=null?Number(r.lat):null,lng:r.lng!=null?Number(r.lng):null,billingAddress:r.billing_address||null,suspended:!!r.suspended,deleted:!!r.deleted,deletedAt:toISO(r.deleted_at),lastAnnouncementsViewAt:toISO(r.last_announcements_view_at)};
+  u.sponsoredOrgId=r.sponsored_org_id||null;
+  if(r.role==='hoa'){ u.hoaOrgId=r.hoa_org_id||null; u.invitePending=!!r.invite_token_hash; }
+  if(r.role==='admin'){ u.adminPermissions=r.admin_permissions||null; u.isSuperAdmin=!r.admin_permissions; u.invitePending=!!r.invite_token_hash; }
   if(r.role==='homeowner'){ u.community=r.community; u.carePlanNextBilling=r.care_plan_next_billing?new Date(r.care_plan_next_billing).toISOString().slice(0,10):null; u.subscriptionNextBilling=r.subscription_next_billing?new Date(r.subscription_next_billing).toISOString().slice(0,10):null; u.homeProfile=r.home_profile||{}; u.homeDocuments=r.home_documents||[]; }
   else if(r.role==='provider'){
     u.serviceTypes=r.service_types||[]; u.rating=r.rating!=null?Number(r.rating):null; u.reviewCount=r.review_count||0; u.verified=!!r.verified; u.businessDescription=r.business_description; u.providerPlan=r.provider_plan||'free'; u.providerPlanNextBilling=r.provider_plan_next_billing?new Date(r.provider_plan_next_billing).toISOString().slice(0,10):null; u.quotesUsed=r.quotes_sent_this_period||0; u.convosUsed=r.new_conversations_this_period||0;
@@ -68,6 +71,7 @@ function mapUser(r){
     // Verification workflow
     u.entityType=r.provider_entity_type||null;
     u.verificationStatus=r.verification_status||'unverified';
+    u.approved=r.provider_approved!==false; // admin approval to respond to requests (separate from document verification)
     u.verificationNotes=r.verification_notes||null;
     u.verificationSubmittedAt=toISO(r.verification_submitted_at);
     u.verificationReviewedAt=toISO(r.verification_reviewed_at);
@@ -126,6 +130,53 @@ function mapSupportMessage(r){ return {id:r.id,userId:r.user_id,senderRole:r.sen
 function isPaidPlan(u){ return u.role==='provider' ? u.providerPlan!=='free' : ['plus','premium'].includes(u.subscription); }
 function mapJob(r){ return {id:r.id,requestId:r.request_id,quoteId:r.quote_id||null,homeownerId:r.homeowner_id,providerId:r.provider_id,serviceType:r.service_type,title:r.title,status:r.status,scheduledFor:r.scheduled_for,createdAt:toISO(r.created_at),receiptDataUrl:r.receipt_data_url||null,receiptNote:r.receipt_note||null,receiptUploadedAt:r.receipt_uploaded_at?toISO(r.receipt_uploaded_at):null}; }
 function mapReview(r){ return {id:r.id,jobId:r.job_id,homeownerId:r.homeowner_id,providerId:r.provider_id,rating:Number(r.rating),text:r.text,createdAt:toISO(r.created_at)}; }
+
+// ---- Scoped admin permissions ------------------------------------------------------------
+// Levels: 0 none, 1 view (read only), 2 edit (approve, reply, dispatch), 3 full (also delete, suspend, plan change, refund).
+// A NULL admin_permissions column means super admin (everything, plus managing the team).
+const ADMIN_SECTIONS=['overview','accounts','dispatch','payments','verification','reported','support','system','hoas'];
+function adminLevel(u,section){
+  if(!u||u.role!=='admin') return 0;
+  if(u.isSuperAdmin) return 3;
+  return Math.max(0,Math.min(3,Number((u.adminPermissions||{})[section])||0));
+}
+function cleanAdminPermissions(input){
+  const out={};
+  for(const k of ADMIN_SECTIONS){ out[k]=Math.max(0,Math.min(3,parseInt((input||{})[k],10)||0)); }
+  return out;
+}
+// Maps an /api/admin/* request to the section and level it needs. null = super admin only.
+function adminRequirement(p,method){
+  const w=method==='GET'?1:2;
+  if(p.startsWith('/api/admin/team')) return null;
+  if(p.startsWith('/api/admin/hoas')){
+    // Billing-affecting actions (create an HOA, settings, invoices, maintenance run) need Full; roster/queue work needs Edit.
+    if(method!=='GET' && (p==='/api/admin/hoas'||p.endsWith('/settings')||p.includes('/invoices/')||p.endsWith('/run-maintenance'))) return {section:'hoas',level:3};
+    return {section:'hoas',level:w};
+  }
+  if(p.startsWith('/api/admin/verifications')||p.startsWith('/api/admin/gallery')) return {section:'verification',level:w};
+  if(p==='/api/admin/stats') return {section:'overview',level:1};
+  if(p.startsWith('/api/admin/accounts/')&&(p.endsWith('/suspend')||p.endsWith('/subscription')||p.endsWith('/delete'))) return {section:'accounts',level:3};
+  if(p.startsWith('/api/admin/accounts')||p.startsWith('/api/admin/deleted-accounts')) return {section:'accounts',level:w};
+  if(p.startsWith('/api/admin/payments/')&&p.endsWith('/refund')) return {section:'payments',level:3};
+  if(p.startsWith('/api/admin/payments')) return {section:'payments',level:w};
+  if(p.startsWith('/api/admin/requests')||p.startsWith('/api/admin/care-plan')) return {section:'dispatch',level:w};
+  if(p.startsWith('/api/admin/reported-quotes')) return {section:'reported',level:w};
+  if(p.startsWith('/api/admin/support')||p.startsWith('/api/admin/announcements')) return {section:'support',level:w};
+  if(p.startsWith('/api/admin/email-log')) return {section:'system',level:1};
+  return null;
+}
+const ADMIN_LEVEL_NAMES=['no access','view only','edit','full'];
+const INVITE_TTL_MS=7*24*3600*1000;
+const hashInviteToken=t=>crypto.createHash('sha256').update(String(t)).digest('hex');
+function adminTeamView(r){
+  const super_=!r.admin_permissions;
+  return {id:r.id,name:r.name,email:r.email,isSuper:super_,permissions:super_?null:cleanAdminPermissions(r.admin_permissions),invitePending:!!r.invite_token_hash,inviteExpired:!!r.invite_token_hash&&!!r.invite_expires_at&&new Date(r.invite_expires_at)<new Date(),suspended:!!r.suspended,createdAt:toISO(r.created_at)};
+}
+function adminInviteEmailHtml(name,inviterName,link){
+  return emailShell('You have been invited as an admin',`<h2 style="margin:0 0 10px;color:#17352f">Hi ${esc_(name)}, you're invited to help run Living Communities</h2><p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">${esc_(inviterName)} added you as an admin. Set your password to get started. This link works for 7 days.</p>${btn('Set my password',link)}<p style="color:#6b7a75;font-size:12.5px;margin-top:16px">If you weren't expecting this, ignore this email.</p>`);
+}
+
 function safeUser(u){ if(!u) return null; const {passwordHash,salt,...x}=u; return x; }
 
 // --- geocoding (Nominatim/OpenStreetMap — free, no API key; usage-policy limit ~1 req/sec, demo-scale only) ---
@@ -143,6 +194,10 @@ async function geocodeAddress(address){
     return {lat,lng};
   }catch(e){ console.error('geocode error:',e.message); return null; }
 }
+// Full one-off request service-type catalog (kept in sync with index.html's copies:
+// the signup/request-form <select> options, the "view all services" grid, and the
+// client-side ALL_SERVICE_TYPES fallback used to render this same list).
+const ALL_SERVICE_TYPES=['Lawn & Landscaping','House Cleaning','Pool Service','Handyman','Plumbing','Electrical','HVAC','Pest Control','Mobile Mechanic','Power Washing','Bulk Trash Pickup','Moving Services','Pet Waste Cleanup'];
 function haversineMiles(lat1,lon1,lat2,lon2){
   const R=3958.8; // earth radius, miles
   const toRad=d=>d*Math.PI/180;
@@ -182,7 +237,19 @@ function isTexasBilling(billingAddress){
 // --- email (Resend REST API — https://resend.com; no SDK dependency, just fetch) ---
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 const EMAIL_FROM = process.env.EMAIL_FROM || 'Living Communities <onboarding@resend.dev>';
-const APP_URL = process.env.APP_URL || 'http://localhost:' + PORT;
+// Public site address used in email buttons and invite links. Set APP_URL in production (e.g. https://yoursite.com).
+// If it is unset, the address is learned from a signed-in admin or HOA request so invite links still work.
+const APP_URL_ENV = String(process.env.APP_URL || '').trim().replace(/\/+$/, '');
+let learnedOrigin = '';
+const appUrl = () => APP_URL_ENV || learnedOrigin || ('http://localhost:' + PORT);
+function learnOrigin(req){
+  if(APP_URL_ENV) return;
+  const host = String(req.headers['x-forwarded-host'] || req.headers.host || '').split(',')[0].trim();
+  if(!host || !/^[a-z0-9.-]+(:\d+)?$/i.test(host) || /^(localhost|127\.|0\.0\.0\.0)/i.test(host)) return;
+  const proto = String(req.headers['x-forwarded-proto'] || 'https').split(',')[0].trim();
+  learnedOrigin = (proto === 'http' ? 'http' : 'https') + '://' + host;
+}
+
 // Optional: where "a provider needs review" style admin alerts go. Falls back to ADMIN_EMAIL
 // (the bootstrap admin account's address) so this works with zero extra config; set
 // ADMIN_NOTIFY_EMAIL separately if admin alerts should go somewhere else (e.g. a shared inbox).
@@ -536,35 +603,43 @@ function computeHomeStatus(hp,carePlanItems){
 
 function welcomeEmailHtml(u){
   const isProvider=u.role==='provider';
+  if(isProvider){
+    return emailShell('Welcome to Living Communities',
+      `<h2 style="margin:0 0 10px;color:#17352f">Welcome, ${esc_(u.name.split(' ')[0])}!</h2>
+       <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px"><b>Next step: get verified.</b> Upload your verification documents from Business Profile right now. It only takes a few minutes, and verified providers get a trust badge homeowners see on your profile and every quote.</p>
+       <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Individual contractors only need a government-issued photo ID. Registered businesses upload a business license and certificate of insurance.</p>
+       <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Your account is also waiting on a quick admin approval, usually within a couple of business days. You can browse open requests now, and you'll be able to respond to them once you're approved. We'll email you.</p>
+       ${btn('Upload My Documents',appUrl())}`);
+  }
   return emailShell('Welcome to Living Communities',
     `<h2 style="margin:0 0 10px;color:#17352f">Welcome, ${esc_(u.name.split(' ')[0])}!</h2>
-     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">${isProvider?"Your provider account is ready. You can browse open requests now, but you'll need to submit verification documents from Business Profile before you can send quotes — our team usually reviews within a couple of business days.":"Your account is ready. Post a request and local providers will start sending you quotes."}</p>
-     ${btn(isProvider?'Submit Verification Docs':'Go to My Dashboard',APP_URL)}`);
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Your account is ready. Post a request and local providers will start sending you quotes.</p>
+     ${btn('Go to My Dashboard',appUrl())}`);
 }
 function newQuoteEmailHtml(homeowner,request,quote,provider){
   return emailShell('You received a new quote',
     `<h2 style="margin:0 0 10px;color:#17352f">New quote on "${esc_(request.title)}"</h2>
      <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px"><b>${esc_(provider.name)}</b> sent a quote: <b>$${quote.amount_min}–$${quote.amount_max}</b>, available ${esc_(quote.availability||'flexible')}.</p>
-     ${btn('View Quote',APP_URL)}`);
+     ${btn('View Quote',appUrl())}`);
 }
 function quoteAcceptedEmailHtml(provider,request){
   return emailShell('Your quote was accepted',
     `<h2 style="margin:0 0 10px;color:#17352f">You got the job! 🎉</h2>
      <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Your quote on "${esc_(request.title)}" was accepted. It's now on your Active Jobs list. Reach out to the homeowner directly to confirm the exact date/time and any details — Living Communities isn't involved in scheduling.</p>
-     ${btn('View Job',APP_URL)}`);
+     ${btn('View Job',appUrl())}`);
 }
 function newMessageEmailHtml(recipientName,senderName,body){
   return emailShell('New message',
     `<h2 style="margin:0 0 10px;color:#17352f">New message from ${esc_(senderName)}</h2>
      <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px;background:#eaf4ef;border-radius:10px;padding:12px 14px">${esc_(body).slice(0,200)}</p>
-     ${btn('Reply',APP_URL)}`);
+     ${btn('Reply',appUrl())}`);
 }
 function newMatchingRequestEmailHtml(provider,request,distanceMi){
   const distLine = distanceMi!=null ? `${distanceMi} mi from your service area. ` : '';
   return emailShell(`New ${request.serviceType} request near you`,
     `<h2 style="margin:0 0 10px;color:#17352f">New ${esc_(request.serviceType)} request</h2>
      <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px"><b>${esc_(request.title)}</b><br>${distLine}Posted just now. You're getting this because you turned on email notifications for ${esc_(request.serviceType)} in Business Profile.</p>
-     ${btn('View Request',APP_URL)}`);
+     ${btn('View Request',appUrl())}`);
 }
 // Emails every provider who opted in to hear about this service type, right after a homeowner
 // posts a new request. Best-effort and fire-and-forget from the caller (POST /api/requests) so a
@@ -575,9 +650,10 @@ async function notifyProvidersOfNewRequest(request,homeowner){
   );
   for(const row of rows.rows){
     const provider=mapUser(row);
-    const offered=provider.serviceTypes||[];
-    if(!offered.includes(request.serviceType)) continue;
-    const chosen=provider.notifyServiceTypes&&provider.notifyServiceTypes.length ? provider.notifyServiceTypes : offered;
+    // Notify list is opt-in and no longer limited to the provider's offered service types, so a
+    // provider can pick up lead types outside their usual work. Falls back to their offered
+    // services only if they've never saved a preference.
+    const chosen=provider.notifyServiceTypes&&provider.notifyServiceTypes.length ? provider.notifyServiceTypes : (provider.serviceTypes||[]);
     if(!chosen.includes(request.serviceType)) continue;
     let distanceMi=null;
     if(provider.lat!=null&&provider.lng!=null&&homeowner.lat!=null&&homeowner.lng!=null){
@@ -599,7 +675,7 @@ function carePlanReminderEmailHtml(u,details,amount,billingDate){
      <table style="width:100%;border-collapse:collapse;margin-top:10px;font-size:13.5px">${carePlanItemRowsHtml(details)}</table>
      <p style="color:#17352f;font-weight:800;margin-top:10px;font-size:14px;border-top:1px solid #e4e9e6;padding-top:10px">Total: $${Number(amount).toFixed(2)}</p>
      <p style="color:#6d7b77;line-height:1.6;font-size:12.5px;margin-top:12px">No action needed — manage or cancel anytime from your dashboard.</p>
-     ${btn('Manage My Plan',APP_URL)}`);
+     ${btn('Manage My Plan',appUrl())}`);
 }
 function carePlanBilledEmailHtml(u,details,amount,billingDate){
   return emailShell('Your card was charged',
@@ -607,7 +683,7 @@ function carePlanBilledEmailHtml(u,details,amount,billingDate){
      <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Your card on file was charged for your Home Care Plan, renewing ${fmtDate(billingDate)}. This is a demo charge — no real payment was processed.</p>
      <table style="width:100%;border-collapse:collapse;margin-top:10px;font-size:13.5px">${carePlanItemRowsHtml(details)}</table>
      <p style="color:#17352f;font-weight:800;margin-top:10px;font-size:14px;border-top:1px solid #e4e9e6;padding-top:10px">Total: $${Number(amount).toFixed(2)}</p>
-     ${btn('View Billing',APP_URL)}`);
+     ${btn('View Billing',appUrl())}`);
 }
 function adminPlanInvoiceEmailHtml(u,planLabel,priceCents,invoiceNo){
   const amount=(priceCents/100).toFixed(2);
@@ -624,7 +700,7 @@ function adminPlanInvoiceEmailHtml(u,planLabel,priceCents,invoiceNo){
        <tr><td style="padding:10px 0 0;color:#17352f;font-weight:800;border-top:1px solid #e4e9e6">Total</td><td style="padding:10px 0 0;text-align:right;color:#17352f;font-weight:800;border-top:1px solid #e4e9e6">$${amount}/mo</td></tr>
      </table>
      <p style="color:#6d7b77;line-height:1.6;font-size:12.5px;margin-top:16px">Charged to the card on file going forward. Questions about this change? Reply to this email or reach out from your dashboard.</p>
-     ${btn('View My Plan',APP_URL)}`);
+     ${btn('View My Plan',appUrl())}`);
 }
 function planChangedEmailHtml(u,planLabel,priceCents){
   const isFree=priceCents<=0;
@@ -633,43 +709,43 @@ function planChangedEmailHtml(u,planLabel,priceCents){
      <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">${isFree
         ? `Your account is now on the <b>${esc_(planLabel)}</b> plan. No further charges will be made.`
         : `Your account was switched to <b>${esc_(planLabel)}</b> at <b>$${(priceCents/100).toFixed(2)}/mo</b>, billed to the card on file.`}</p>
-     ${btn('View My Plan',APP_URL)}`);
+     ${btn('View My Plan',appUrl())}`);
 }
 function carePlanRequestedEmailHtml(u,serviceNames){
   return emailShell('We received your Home Care Plan request',
     `<h2 style="margin:0 0 10px;color:#17352f">Got it — pricing coming soon</h2>
      <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">You requested <b>${esc_(serviceNames.join(', '))}</b> on your Home Care Plan. Our team will follow up to schedule a quick visit or consultation, then send you exact pricing to review before anything is billed.</p>
-     ${btn('View My Plan',APP_URL)}`);
+     ${btn('View My Plan',appUrl())}`);
 }
 function adminCarePlanQuoteNeededEmailHtml(homeowner,serviceNames){
   return emailShell('Care Plan pricing needed',
     `<h2 style="margin:0 0 10px;color:#17352f">${esc_(homeowner.name)} needs a Care Plan quote</h2>
      <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px"><b>${esc_(homeowner.name)}</b> (${esc_(homeowner.email)}) requested <b>${esc_(serviceNames.join(', '))}</b>. Schedule a visit or consultation, then set pricing from the admin panel.</p>
-     ${btn('Set Pricing in Admin',APP_URL+'/#admin')}`);
+     ${btn('Set Pricing in Admin',appUrl()+'/#admin')}`);
 }
 function carePlanQuoteReadyEmailHtml(u,serviceName,priceCents){
   return emailShell('Your Care Plan quote is ready',
     `<h2 style="margin:0 0 10px;color:#17352f">Your ${esc_(serviceName)} quote is ready</h2>
      <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Based on your visit, <b>${esc_(serviceName)}</b> is <b>$${(priceCents/100).toFixed(2)}/mo</b>. Review it and accept from your dashboard to start service — nothing is billed until you accept.</p>
-     ${btn('Review & Accept',APP_URL)}`);
+     ${btn('Review & Accept',appUrl())}`);
 }
 function carePlanServiceActivatedEmailHtml(u,serviceName,priceCents,monthlyTotal){
   return emailShell(`${serviceName} is active`,
     `<h2 style="margin:0 0 10px;color:#17352f">${esc_(serviceName)} is now active</h2>
      <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">You accepted <b>${esc_(serviceName)}</b> at <b>$${(priceCents/100).toFixed(2)}/mo</b>. Your Home Care Plan now totals <b>$${Number(monthlyTotal).toFixed(2)}/mo</b>.</p>
-     ${btn('Manage My Plan',APP_URL)}`);
+     ${btn('Manage My Plan',appUrl())}`);
 }
 function carePlanServiceCanceledEmailHtml(u,serviceNames){
   return emailShell('A Home Care Plan service was removed',
     `<h2 style="margin:0 0 10px;color:#17352f">Removed from your plan</h2>
      <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px"><b>${esc_(serviceNames.join(', '))}</b> ${serviceNames.length>1?'were':'was'} removed from your Home Care Plan and billing for ${serviceNames.length>1?'them':'it'} has stopped.</p>
-     ${btn('View My Plan',APP_URL)}`);
+     ${btn('View My Plan',appUrl())}`);
 }
 function carePlanCanceledEmailHtml(u){
   return emailShell('Your Home Care Plan was canceled',
     `<h2 style="margin:0 0 10px;color:#17352f">Your Home Care Plan was canceled</h2>
      <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">All recurring services on your Home Care Plan were removed and billing for them has stopped.</p>
-     ${btn('View My Dashboard',APP_URL)}`);
+     ${btn('View My Dashboard',appUrl())}`);
 }
 function accountSuspendedEmailHtml(u){
   return emailShell('Your account was suspended',
@@ -680,7 +756,7 @@ function accountReactivatedEmailHtml(u){
   return emailShell('Your account is active again',
     `<h2 style="margin:0 0 10px;color:#17352f">Welcome back</h2>
      <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Your account has been reactivated. You can log back in whenever you're ready.</p>
-     ${btn('Log In',APP_URL)}`);
+     ${btn('Log In',appUrl())}`);
 }
 function accountDeletedEmailHtml(u){
   return emailShell('Your account was deleted',
@@ -691,13 +767,19 @@ function adminAccountDeletedEmailHtml(u){
   return emailShell('Account deleted',
     `<h2 style="margin:0 0 10px;color:#17352f">${esc_(u.name)} deleted their account</h2>
      <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">${esc_(u.role)} · ${esc_(u.email)}</p>
-     ${btn('View Deleted Accounts',APP_URL+'/#admin')}`);
+     ${btn('View Deleted Accounts',appUrl()+'/#admin')}`);
 }
 function verificationApprovedEmailHtml(u){
   return emailShell('You\'re verified',
     `<h2 style="margin:0 0 10px;color:#17352f">You're verified ✅</h2>
      <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Your provider account is now verified. A verified badge now shows on your profile, which homeowners trust more when comparing quotes.</p>
-     ${btn('View My Profile',APP_URL)}`);
+     ${btn('View My Profile',appUrl())}`);
+}
+function providerAccountApprovedEmailHtml(u){
+  return emailShell('Your account was approved',
+    `<h2 style="margin:0 0 10px;font-size:22px">You're approved, ${esc_(u.name)}</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">An admin approved your provider account. You can now respond to open requests and message homeowners.${u.verificationStatus==='verified'?'':' If you haven\'t yet, upload your verification documents from Business Profile to earn the Verified badge.'}</p>
+     ${btn('Browse Open Requests',appUrl())}`);
 }
 function verificationRejectedEmailHtml(u,notes){
   return emailShell('Update needed on your verification',
@@ -705,7 +787,7 @@ function verificationRejectedEmailHtml(u,notes){
      <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Here's what needs fixing:</p>
      <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px;background:#fbe4e1;border-radius:10px;padding:12px 14px">${esc_(notes)}</p>
      <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Once it's fixed, resubmit your documents from your dashboard.</p>
-     ${btn('Resubmit Verification',APP_URL)}`);
+     ${btn('Resubmit Verification',appUrl())}`);
 }
 function verificationSubmittedEmailHtml(u){
   return emailShell('Verification submitted',
@@ -716,25 +798,25 @@ function adminNewVerificationEmailHtml(provider){
   return emailShell('New verification pending',
     `<h2 style="margin:0 0 10px;color:#17352f">A provider needs review</h2>
      <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px"><b>${esc_(provider.name)}</b> (${esc_(provider.email)}) submitted verification documents and is waiting on a decision.</p>
-     ${btn('Review in Admin',APP_URL+'/#admin')}`);
+     ${btn('Review in Admin',appUrl()+'/#admin')}`);
 }
 function adminNewSignupEmailHtml(u){
   return emailShell('New signup',
     `<h2 style="margin:0 0 10px;color:#17352f">New ${esc_(u.role)}: ${esc_(u.name)}</h2>
      <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">${esc_(u.name)} (${esc_(u.email)}) just created a ${esc_(u.role)} account.</p>
-     ${btn('View in Admin',APP_URL+'/#admin')}`);
+     ${btn('View in Admin',appUrl()+'/#admin')}`);
 }
 function adminPlanCancelledEmailHtml(u,planLabel){
   return emailShell('Plan downgraded to Free',
     `<h2 style="margin:0 0 10px;color:#17352f">${esc_(u.name)} dropped to Free</h2>
      <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px"><b>${esc_(u.name)}</b> (${esc_(u.email)}) downgraded from ${esc_(planLabel)} to the Free plan.</p>
-     ${btn('View in Admin',APP_URL+'/#admin')}`);
+     ${btn('View in Admin',appUrl()+'/#admin')}`);
 }
 function adminPaymentFailedEmailHtml(u){
   return emailShell('A payment failed',
     `<h2 style="margin:0 0 10px;color:#17352f">Payment failed</h2>
      <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">A card charge failed for <b>${esc_(u.name)}</b> (${esc_(u.email)}). They've been emailed to update their payment method.</p>
-     ${btn('View in Admin',APP_URL+'/#admin')}`);
+     ${btn('View in Admin',appUrl()+'/#admin')}`);
 }
 function adminLowRatingReviewEmailHtml(provider,homeownerName,rating,text){
   const stars='★'.repeat(rating)+'☆'.repeat(5-rating);
@@ -742,13 +824,13 @@ function adminLowRatingReviewEmailHtml(provider,homeownerName,rating,text){
     `<h2 style="margin:0 0 10px;color:#17352f">${stars} for ${esc_(provider.name)}</h2>
      <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px"><b>${esc_(homeownerName)}</b> left <b>${esc_(provider.name)}</b> (${esc_(provider.email)}) a ${rating}-star review.</p>
      ${text?`<p style="color:#3f4f4a;line-height:1.6;font-size:14.5px;background:#fbe4e1;border-radius:10px;padding:12px 14px">"${esc_(text)}"</p>`:''}
-     ${btn('View in Admin',APP_URL+'/#admin')}`);
+     ${btn('View in Admin',appUrl()+'/#admin')}`);
 }
 function adminJobCancelledEmailHtml(job,homeownerName,providerName){
   return emailShell('Job cancelled',
     `<h2 style="margin:0 0 10px;color:#17352f">"${esc_(job.title)}" was cancelled</h2>
      <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Between <b>${esc_(homeownerName)}</b> and <b>${esc_(providerName)}</b>.</p>
-     ${btn('View in Admin',APP_URL+'/#admin')}`);
+     ${btn('View in Admin',appUrl()+'/#admin')}`);
 }
 function adminDigestEmailHtml(stats){
   const row=(label,val)=>`<tr><td style="padding:6px 0;color:#3f4f4a">${esc_(label)}</td><td style="padding:6px 0;text-align:right;color:#17352f;font-weight:700">${val}</td></tr>`;
@@ -762,32 +844,32 @@ function adminDigestEmailHtml(stats){
        ${row('Verification queue (pending)',stats.pendingVerifications)}
        ${row('Suspended accounts',stats.suspendedAccounts)}
      </table>
-     ${btn('Open Admin Dashboard',APP_URL+'/#admin')}`);
+     ${btn('Open Admin Dashboard',appUrl()+'/#admin')}`);
 }
 function jobCompletedEmailHtml(homeowner,job){
   return emailShell('Job completed',
     `<h2 style="margin:0 0 10px;color:#17352f">"${esc_(job.title)}" is complete</h2>
      <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Your provider marked this job as completed. Take a minute to leave a review — it helps other homeowners in your community.</p>
-     ${btn('Leave a Review',APP_URL)}`);
+     ${btn('Leave a Review',appUrl())}`);
 }
 function jobCancelledEmailHtml(recipientName,job){
   return emailShell('Job cancelled',
     `<h2 style="margin:0 0 10px;color:#17352f">"${esc_(job.title)}" was cancelled</h2>
      <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">This job has been marked as cancelled. No further action is needed.</p>
-     ${btn('View My Dashboard',APP_URL)}`);
+     ${btn('View My Dashboard',appUrl())}`);
 }
 function newReviewEmailHtml(provider,rating,text){
   const stars='★'.repeat(rating)+'☆'.repeat(5-rating);
   return emailShell('You got a new review',
     `<h2 style="margin:0 0 10px;color:#17352f">New review: ${stars}</h2>
      ${text?`<p style="color:#3f4f4a;line-height:1.6;font-size:14.5px;background:#eaf4ef;border-radius:10px;padding:12px 14px">"${esc_(text)}"</p>`:''}
-     ${btn('View My Profile',APP_URL)}`);
+     ${btn('View My Profile',appUrl())}`);
 }
 function carePlanVisitAssignedEmailHtml(provider,homeownerName,serviceName,note){
   return emailShell('New recurring service assigned',
     `<h2 style="margin:0 0 10px;color:#17352f">You were assigned a recurring service</h2>
      <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Our team connected you with <b>${esc_(homeownerName)}</b> for their <b>${esc_(serviceName)}</b> Home Care Plan service.${note?(' Note: '+esc_(note)):''}</p>
-     ${btn('View My Dashboard',APP_URL)}`);
+     ${btn('View My Dashboard',appUrl())}`);
 }
 
 // Simulated monthly billing for Home Care Plan: sends a reminder 7 days before the next_billing
@@ -835,7 +917,7 @@ async function runAdminDigest(){
     q1("SELECT count(*)::int AS n FROM users WHERE role='provider' AND created_at > now() - interval '24 hours'"),
     q1("SELECT count(*)::int AS n FROM requests WHERE status='open'"),
     q1("SELECT count(*)::int AS n FROM requests r WHERE r.status='open' AND r.created_at < now() - interval '24 hours' AND NOT EXISTS (SELECT 1 FROM quotes qq WHERE qq.request_id=r.id)"),
-    q1("SELECT count(*)::int AS n FROM users WHERE role='provider' AND verification_status='pending'"),
+    q1("SELECT count(*)::int AS n FROM users WHERE role='provider' AND deleted=false AND (provider_approved=false OR (verification_status='unverified' AND jsonb_array_length(COALESCE(verification_documents,'[]'::jsonb))>0))"),
     q1("SELECT count(*)::int AS n FROM users WHERE suspended=true"),
   ]);
   const stats={
@@ -986,6 +1068,19 @@ async function initSchema(){
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_submitted_at timestamptz`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_reviewed_at timestamptz`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_documents jsonb DEFAULT '[]'::jsonb`);
+  // Admin approval (needed to respond to requests) is separate from document verification.
+  // Default true so every existing provider stays approved; new signups insert false.
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS provider_approved boolean DEFAULT true`);
+  // Scoped admins. admin_permissions NULL on an admin row = full (super) admin, so every existing admin keeps full access.
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_permissions jsonb`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS invite_token_hash text`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS invite_expires_at timestamptz`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS invited_by text`);
+  // 'pending' is no longer a verification_status value. Older rows: docs submitted -> 'unverified' (docs awaiting review);
+  // no docs (accounts created under the short-lived "approve before upload" build) -> 'unverified' and not yet approved.
+  // Safe to rerun: once no 'pending' rows remain these match nothing.
+  await pool.query(`UPDATE users SET verification_status='unverified' WHERE role='provider' AND verification_status='pending' AND jsonb_array_length(COALESCE(verification_documents,'[]'::jsonb))>0`);
+  await pool.query(`UPDATE users SET verification_status='unverified', provider_approved=false WHERE role='provider' AND verification_status='pending'`);
   // Provider business-profile: skills/specializations tags + a work-photo gallery. Each gallery
   // photo is stored with its own moderation status so a photo never appears to homeowners until
   // an admin approves it (mirrors the verification-document review flow above).
@@ -1152,6 +1247,7 @@ async function requireAuth(req,res,roles){
   if(u.deleted){sessions.delete(token);send(res,403,{error:'This account has been deleted.',deleted:true});return null}
   if(u.suspended){sessions.delete(token);send(res,403,{error:'This account has been suspended. Contact support if you think this is a mistake.',suspended:true});return null}
   if(roles&&!roles.includes(u.role)){send(res,403,{error:'Not authorized'});return null}
+  if(u.role==='admin'||u.role==='hoa') learnOrigin(req);
   return u;
 }
 
@@ -1207,6 +1303,8 @@ async function quotesByRequestId(reqIds,viewerId){
   return out;
 }
 
+const hoa=require('./hoa')({pool,q,q1,id,sendEmail,emailShell,btn,esc_,appUrl,send,body,mapUser,safeUser,crypto,hash,newSalt,geocodeAddress,sessions,hashInviteToken,INVITE_TTL_MS,adminNotifyEmail:ADMIN_NOTIFY_EMAIL});
+
 const server=http.createServer(async (req,res)=>{
   try{
     if(req.method==='OPTIONS'){res.writeHead(204,{'Access-Control-Allow-Origin':ALLOWED_ORIGIN,'Access-Control-Allow-Headers':'Content-Type, Authorization','Access-Control-Allow-Methods':'GET,POST,PATCH,OPTIONS'});return res.end();}
@@ -1224,6 +1322,29 @@ const server=http.createServer(async (req,res)=>{
       if(u.deleted) return send(res,403,{error:'This account has been deleted.',deleted:true});
       if(u.suspended) return send(res,403,{error:'This account has been suspended. Contact support if you think this is a mistake.',suspended:true});
       const token=crypto.randomBytes(24).toString('hex'); sessions.set(token,u.id); return send(res,200,{token,user:safeUser(u)});
+    }
+    // Admin invite: look up + accept (sets the invited admin's own password; nobody else ever sees it).
+    if(p==='/api/auth/invite' && req.method==='GET'){
+      const ip=req.socket.remoteAddress||'unknown';
+      if(tooManyAttempts(ip+':invite')) return send(res,429,{error:'Too many attempts. Try again later.'});
+      const tok=String(url.searchParams.get('token')||'');
+      const row=tok?await q1("SELECT * FROM users WHERE role IN ('admin','hoa') AND invite_token_hash=$1",[hashInviteToken(tok)]):null;
+      if(!row||(row.invite_expires_at&&new Date(row.invite_expires_at)<new Date())) return send(res,404,{error:'This invite link is invalid or has expired. Ask for a new one.'});
+      return send(res,200,{name:row.name,email:row.email});
+    }
+    if(p==='/api/auth/invite/accept' && req.method==='POST'){
+      const ip=req.socket.remoteAddress||'unknown';
+      if(tooManyAttempts(ip+':invite')) return send(res,429,{error:'Too many attempts. Try again later.'});
+      const b=await body(req);
+      const tok=String(b.token||''); const pw=String(b.password||'');
+      if(pw.length<8) return send(res,400,{error:'Password must be at least 8 characters.'});
+      const row=tok?await q1("SELECT * FROM users WHERE role IN ('admin','hoa') AND invite_token_hash=$1",[hashInviteToken(tok)]):null;
+      if(!row||(row.invite_expires_at&&new Date(row.invite_expires_at)<new Date())) return send(res,404,{error:'This invite link is invalid or has expired. Ask for a new one.'});
+      const salt=newSalt();
+      const upd=await q1('UPDATE users SET password_hash=$1,salt=$2,invite_token_hash=NULL,invite_expires_at=NULL WHERE id=$3 RETURNING *',[hash(pw,salt),salt,row.id]);
+      const nu=mapUser(upd);
+      const token=crypto.randomBytes(24).toString('hex'); sessions.set(token,nu.id);
+      return send(res,200,{token,user:safeUser(nu)});
     }
     if(p==='/api/auth/register' && req.method==='POST'){
       const ip=req.socket.remoteAddress||'unknown';
@@ -1252,8 +1373,8 @@ const server=http.createServer(async (req,res)=>{
         }
       }else{
         const serviceTypes=Array.isArray(b.serviceTypes)?b.serviceTypes.map(s=>String(s).trim()).filter(Boolean).slice(0,10):[];
-        row=await q1('INSERT INTO users (id,role,name,email,password_hash,salt,phone,service_types,rating,review_count,verified,subscription,business_description) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *',
-          [uid,'provider',name,email,hash(password,salt),salt,phone,serviceTypes,null,0,false,'free',String(b.businessDescription||'').trim().slice(0,1000)]);
+        row=await q1('INSERT INTO users (id,role,name,email,password_hash,salt,phone,service_types,rating,review_count,verified,subscription,business_description,provider_approved) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *',
+          [uid,'provider',name,email,hash(password,salt),salt,phone,serviceTypes,null,0,false,'free',String(b.businessDescription||'').trim().slice(0,1000),false]);
       }
       const u=mapUser(row);
       const token=crypto.randomBytes(24).toString('hex'); sessions.set(token,u.id);
@@ -1276,6 +1397,15 @@ const server=http.createServer(async (req,res)=>{
     }
     // Same shared-secret pattern as run-billing-check above — point an external cron/pinger at this
     // once a day (or whatever cadence you like) to get the admin rollup email.
+    // Same pattern for the HOA program: roster removals that reached their date, floor baselines,
+    // invoice previews/invoices, and quarterly roster-confirm reminders. Safe to run as often as hourly.
+    if(p==='/api/internal/run-hoa-maintenance' && req.method==='POST'){
+      const key=req.headers['x-internal-key']||'';
+      if(!INTERNAL_JOB_KEY || key!==INTERNAL_JOB_KEY) return send(res,401,{error:'Unauthorized'});
+      const b=await body(req).catch(()=>({}));
+      const asOf=b&&/^\d{4}-\d{2}-\d{2}$/.test(String(b.asOf||''))?new Date(b.asOf+'T12:00:00Z'):undefined;
+      return send(res,200,{ok:true,...await hoa.runMaintenance(asOf)});
+    }
     if(p==='/api/internal/run-admin-digest' && req.method==='POST'){
       const key=req.headers['x-internal-key']||'';
       if(!INTERNAL_JOB_KEY || key!==INTERNAL_JOB_KEY) return send(res,401,{error:'Unauthorized'});
@@ -1359,6 +1489,8 @@ const server=http.createServer(async (req,res)=>{
       return send(res,200,{ok:true});
     }
 
+    if(await hoa.handlePublic(req,res,p,url)) return;
+
     const u=await requireAuth(req,res); if(!u)return;
 
     // Self-service billing history — the logged-in account's own payments only (never another
@@ -1380,6 +1512,7 @@ const server=http.createServer(async (req,res)=>{
 
     if(p==='/api/dashboard' && req.method==='GET'){
       if(u.role==='admin') return send(res,403,{error:'Admins use /api/admin/verifications instead of /api/dashboard'});
+      if(u.role==='hoa') return send(res,403,{error:'HOA logins use the HOA portal.'});
       if(u.role==='homeowner'){
         const reqRows=await q('SELECT * FROM requests WHERE homeowner_id=$1 ORDER BY created_at DESC',[u.id]);
         const qMap=await quotesByRequestId(reqRows.map(r=>r.id),u.id);
@@ -1392,7 +1525,7 @@ const server=http.createServer(async (req,res)=>{
         // dealing with, not just "scheduled" with no counterparty shown.
         const jobs=await q('SELECT j.*, up.name AS provider_name FROM jobs j JOIN users up ON up.id=j.provider_id WHERE j.homeowner_id=$1 ORDER BY j.created_at DESC',[u.id]);
         const reviews=await q('SELECT * FROM reviews WHERE homeowner_id=$1',[u.id]);
-        return send(res,200,{user:safeUser(u),requests,announcements:announcements.map(mapAnnouncement),jobs:jobs.map(r=>({...mapJob(r),providerName:r.provider_name})),reviews:reviews.map(mapReview),unreadChatCount,unreadMessagesCount:unreadAnnouncementsCount+unreadSupportCount});
+        return send(res,200,{user:safeUser(u),sponsor:await hoa.sponsorInfo(u),requests,announcements:announcements.map(mapAnnouncement),jobs:jobs.map(r=>({...mapJob(r),providerName:r.provider_name})),reviews:reviews.map(mapReview),unreadChatCount,unreadMessagesCount:unreadAnnouncementsCount+unreadSupportCount});
       }
       let providerUsage=null;
       if(u.role==='provider'){ providerUsage=await ensureUsagePeriod(u); u.quotesUsed=providerUsage.quotes; u.convosUsed=providerUsage.convos; }
@@ -1400,7 +1533,13 @@ const server=http.createServer(async (req,res)=>{
       // carry a distanceMi from this provider — used to filter/label the feed by service area.
       // Requests whose homeowner has no geocoded location get distanceMi:null and are never
       // filtered out, so incomplete address data never silently hides real leads.
-      const openRows=await q("SELECT r.*, uh.lat AS h_lat, uh.lng AS h_lng FROM requests r JOIN users uh ON uh.id=r.homeowner_id WHERE r.status='open' AND r.delisted=false ORDER BY r.created_at DESC");
+      // A request stays in the feed from posting all the way through an assigned provider's job,
+      // and only drops off once that job is completed or cancelled (or the homeowner delists it
+      // pre-award) — accepting a quote alone should never make it vanish for everyone else.
+      const openRows=await q(`SELECT r.*, uh.lat AS h_lat, uh.lng AS h_lng FROM requests r JOIN users uh ON uh.id=r.homeowner_id
+        WHERE r.delisted=false AND (r.status='open' OR (r.status='scheduled' AND EXISTS (
+          SELECT 1 FROM jobs j WHERE j.request_id=r.id AND j.status NOT IN ('completed','cancelled')
+        ))) ORDER BY r.created_at DESC`);
       const myQuotes=openRows.length?await q('SELECT * FROM quotes WHERE request_id = ANY($1::text[]) AND provider_id=$2',[openRows.map(r=>r.id),u.id]):[];
       const myActivity=await quoteActivity(myQuotes.map(qq=>qq.id),u.id);
       const quoteByReq=Object.fromEntries(myQuotes.map(qq=>[qq.request_id,{...mapQuote(qq),...myActivity[qq.id]}]));
@@ -1438,7 +1577,12 @@ const server=http.createServer(async (req,res)=>{
     }
 
     if(p==='/api/requests' && req.method==='GET'){
-      const rows=u.role==='homeowner'?await q('SELECT * FROM requests WHERE homeowner_id=$1 ORDER BY created_at DESC',[u.id]):await q("SELECT * FROM requests WHERE status='open' AND delisted=false ORDER BY created_at DESC");
+      // Same feed rule as the dashboard load: stays visible through an assigned provider's job,
+      // only drops off once that job is completed/cancelled or the homeowner delists it.
+      const rows=u.role==='homeowner'?await q('SELECT * FROM requests WHERE homeowner_id=$1 ORDER BY created_at DESC',[u.id]):await q(`SELECT * FROM requests r
+        WHERE r.delisted=false AND (r.status='open' OR (r.status='scheduled' AND EXISTS (
+          SELECT 1 FROM jobs j WHERE j.request_id=r.id AND j.status NOT IN ('completed','cancelled')
+        ))) ORDER BY r.created_at DESC`);
       return send(res,200,{requests:rows.map(mapRequest)});
     }
     if(p==='/api/requests' && req.method==='POST'){
@@ -1490,7 +1634,7 @@ const server=http.createServer(async (req,res)=>{
       // (quote, message, get scheduled) until an admin has reviewed and approved their
       // verification documents — see providerVerificationHTML/submitVerification client-side and
       // /api/profile/verification + /api/admin/verifications/:id/decision server-side.
-      if(u.verificationStatus!=='verified') return send(res,403,{error:'Your account needs to be verified before you can respond to requests. Submit your verification documents from Business Profile — our team usually reviews within a couple of business days.',verificationRequired:true});
+      if(!u.approved) return send(res,403,{error:'Your account is waiting on admin approval before you can respond to requests. You can upload your verification documents in the meantime from Business Profile.',verificationRequired:true,accountPending:true});
       const rid=p.split('/')[3], r=await q1('SELECT * FROM requests WHERE id=$1',[rid]); if(!r)return send(res,404,{error:'Request not found'});
       if(r.delisted) return send(res,410,{error:'This homeowner took the request down. It\'s no longer accepting quotes.'});
       if(r.status!=='open') return send(res,409,{error:'This request already has a provider scheduled.'});
@@ -1553,7 +1697,7 @@ const server=http.createServer(async (req,res)=>{
       const qid=p.split('/')[3], t=await loadQuoteThread(qid); if(!t)return send(res,404,{error:'Quote not found'});
       const isHomeowner=t.request.homeowner_id===u.id, isProvider=t.quote.provider_id===u.id;
       if(!isHomeowner && !isProvider) return send(res,403,{error:'Not authorized'});
-      if(isProvider && u.verificationStatus!=='verified') return send(res,403,{error:'Your account needs to be verified before you can message about a request. Submit your verification documents from Business Profile.',verificationRequired:true});
+      if(isProvider && !u.approved) return send(res,403,{error:'Your account is waiting on admin approval before you can message about a request.',verificationRequired:true,accountPending:true});
       const b=await body(req);
       const text=String(b.body||'').trim().slice(0,2000); if(!text)return send(res,400,{error:'Message cannot be empty'});
       const recipientId=isHomeowner?t.quote.provider_id:t.request.homeowner_id;
@@ -1581,7 +1725,7 @@ const server=http.createServer(async (req,res)=>{
       if(t.request.homeowner_id!==u.id && t.quote.provider_id!==u.id) return send(res,403,{error:'Not authorized'});
       const b=await body(req);
       const row=await q1("UPDATE quotes SET reported=true, reported_by=$1, reported_reason=$2, reported_at=now() WHERE id=$3 RETURNING *",[u.id,String(b.reason||'').slice(0,500),qid]);
-      if(ADMIN_NOTIFY_EMAIL) sendEmail({to:ADMIN_NOTIFY_EMAIL,type:'admin_quote_reported',subject:`A conversation was reported: "${t.request.title}"`,html:emailShell('Reported conversation',`<h2 style="margin:0 0 10px;color:#17352f">"${esc_(t.request.title)}" was reported</h2><p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Reported by ${esc_(u.name)}. ${b.reason?esc_(String(b.reason).slice(0,300)):''}</p>${btn('Review in Admin',APP_URL+'/#admin')}`)}).catch(()=>{});
+      if(ADMIN_NOTIFY_EMAIL) sendEmail({to:ADMIN_NOTIFY_EMAIL,type:'admin_quote_reported',subject:`A conversation was reported: "${t.request.title}"`,html:emailShell('Reported conversation',`<h2 style="margin:0 0 10px;color:#17352f">"${esc_(t.request.title)}" was reported</h2><p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Reported by ${esc_(u.name)}. ${b.reason?esc_(String(b.reason).slice(0,300)):''}</p>${btn('Review in Admin',appUrl()+'/#admin')}`)}).catch(()=>{});
       return send(res,200,{quote:mapQuote(row)});
     }
     if(p.startsWith('/api/jobs/') && req.method==='PATCH'){
@@ -1637,6 +1781,8 @@ const server=http.createServer(async (req,res)=>{
     }
     if(p==='/api/subscription' && req.method==='POST'){
       const b=await body(req); if(!['free','plus','pro'].includes(b.plan))return send(res,400,{error:'Invalid plan'});
+      if(b.plan==='free' && u.sponsoredOrgId && (u.subscription||'free')!=='free' && !(await q1('SELECT stripe_subscription_id FROM users WHERE id=$1',[u.id])).stripe_subscription_id) return send(res,400,{error:'Your HOA covers your Plus plan. Use "Leave HOA program" if you want to leave it.'});
+      if(b.plan!=='free') await pool.query('UPDATE users SET sponsor_ended_name=NULL,sponsor_ended_at=NULL WHERE id=$1',[u.id]);
       let row;
       if(b.plan==='free'){
         if(stripeConfigured()){
@@ -1962,7 +2108,7 @@ const server=http.createServer(async (req,res)=>{
         documents.push({type:docType,label,dataUrl,uploadedAt:new Date().toISOString()});
       }
       const row=await q1(
-        `UPDATE users SET provider_entity_type=$1, verification_documents=$2::jsonb, verification_status='pending',
+        `UPDATE users SET provider_entity_type=$1, verification_documents=$2::jsonb, verification_status='unverified',
          verification_notes=NULL, verification_submitted_at=now(), verification_reviewed_at=NULL
          WHERE id=$3 RETURNING *`,
         [entityType, JSON.stringify(documents), u.id]
@@ -1983,15 +2129,16 @@ const server=http.createServer(async (req,res)=>{
       return send(res,200,{user:safeUser(mapUser(row))});
     }
     // Provider's email notification preferences — whether to email them at all when a new request
-    // is posted, and which of their offered service types should trigger one. Chosen types are
-    // restricted to services the provider actually lists (no point emailing about work they don't
-    // do) — see the new-request dispatch in POST /api/requests for where this is read.
+    // is posted, and which service types should trigger one. Providers can opt into any type in the
+    // full catalog, not just the ones they currently list as offered (e.g. a handyman may still want
+    // a heads-up on moving jobs) — see the new-request dispatch in POST /api/requests for where this
+    // is read.
     if(p==='/api/profile/notifications' && req.method==='POST'){
       if(u.role!=='provider')return send(res,403,{error:'Only providers have notification preferences'});
       const b=await body(req);
       const enabled=b.enabled!==false;
-      const offered=new Set(u.serviceTypes||[]);
-      const serviceTypes=Array.from(new Set((Array.isArray(b.serviceTypes)?b.serviceTypes:[]).map(s=>String(s||'').trim()).filter(s=>offered.has(s))));
+      const allTypes=new Set(ALL_SERVICE_TYPES);
+      const serviceTypes=Array.from(new Set((Array.isArray(b.serviceTypes)?b.serviceTypes:[]).map(s=>String(s||'').trim()).filter(s=>allTypes.has(s))));
       const row=await q1('UPDATE users SET notify_email_enabled=$1, notify_service_types=$2::jsonb WHERE id=$3 RETURNING *',[enabled,JSON.stringify(serviceTypes),u.id]);
       return send(res,200,{user:safeUser(mapUser(row))});
     }
@@ -2030,7 +2177,8 @@ const server=http.createServer(async (req,res)=>{
       const geo=await geocodeAddress(address);
       if(!geo)return send(res,422,{error:"We couldn't locate that address. Try including street, city, and state."});
       const row=await q1('UPDATE users SET address=$1,lat=$2,lng=$3,geocoded_at=now() WHERE id=$4 RETURNING *',[address,geo.lat,geo.lng,u.id]);
-      return send(res,200,{user:safeUser(mapUser(row))});
+      await hoa.onAddressChange(u,address).catch(e=>console.error('hoa address hook:',e.message));
+      return send(res,200,{user:safeUser(mapUser(await q1('SELECT * FROM users WHERE id=$1',[u.id])||row))});
     }
     // Self-service account deletion (soft delete): the account is flagged and every session for
     // it is killed, but all its requests/quotes/jobs/chat history stay in place so admin can still
@@ -2040,6 +2188,7 @@ const server=http.createServer(async (req,res)=>{
       if(u.role==='admin')return send(res,403,{error:'Admin accounts can\'t be self-deleted here.'});
       const b=await body(req);
       if(u.passwordHash!==hash(String(b.password||''),u.salt)) return send(res,401,{error:'Incorrect password.'});
+      await hoa.onAccountDeleted(u.id).catch(e=>console.error('hoa delete hook:',e.message));
       const row=await q1('UPDATE users SET deleted=true,deleted_at=now() WHERE id=$1 RETURNING *',[u.id]);
       for(const [tok,uid] of sessions){ if(uid===u.id) sessions.delete(tok); }
       sendEmail({to:row.email,type:'account_deleted',subject:'Your account was deleted',html:accountDeletedEmailHtml(mapUser(row)),userId:row.id}).catch(()=>{});
@@ -2048,7 +2197,7 @@ const server=http.createServer(async (req,res)=>{
     }
     if(p==='/api/neighborhood' && req.method==='GET'){
       if(u.role!=='homeowner')return send(res,403,{error:'Neighborhood is for homeowners'});
-      if(!u.carePlanServices||!u.carePlanServices.length)return send(res,403,{error:'Neighborhood is a Home Care Plan perk',needsPlan:true});
+      if(!['plus','premium'].includes(u.subscription))return send(res,403,{error:'Neighborhood is a Plus perk',needsPlan:true});
       if(u.lat==null||u.lng==null)return send(res,200,{needsAddress:true,posts:[]});
       const rows=await q('SELECT np.*, us.name AS author_name, us.avatar_kind AS author_avatar_kind, us.avatar_value AS author_avatar_value FROM neighborhood_posts np JOIN users us ON us.id=np.user_id ORDER BY np.created_at DESC LIMIT 200');
       const posts=rows
@@ -2059,7 +2208,7 @@ const server=http.createServer(async (req,res)=>{
     }
     if(p==='/api/neighborhood' && req.method==='POST'){
       if(u.role!=='homeowner')return send(res,403,{error:'Neighborhood is for homeowners'});
-      if(!u.carePlanServices||!u.carePlanServices.length)return send(res,403,{error:'Neighborhood is a Home Care Plan perk'});
+      if(!['plus','premium'].includes(u.subscription))return send(res,403,{error:'Neighborhood is a Plus perk'});
       if(u.lat==null||u.lng==null)return send(res,400,{error:'Add your home address first.',needsAddress:true});
       const b=await body(req);
       const text=String(b.body||'').trim().slice(0,600);
@@ -2071,12 +2220,95 @@ const server=http.createServer(async (req,res)=>{
       const rows=await q("SELECT * FROM users WHERE role='provider' AND deleted=false ORDER BY rating DESC NULLS LAST");
       return send(res,200,{providers:rows.map(r=>publicProviderView(mapUser(r)))});
     }
+    if(p.startsWith('/api/admin/') && u.role!=='admin') return send(res,403,{error:'Not authorized'});
+    // Scoped admin gate: every /api/admin/* route needs a section + level. Unmapped routes and the team routes are super-admin only.
+    if(p.startsWith('/api/admin/') && u.role==='admin'){
+      const need=adminRequirement(p,req.method);
+      if(!need){ if(!u.isSuperAdmin) return send(res,403,{error:'Only the main admin can do this.'}); }
+      else if(adminLevel(u,need.section)<need.level){
+        return send(res,403,{error:need.level>=3?`Your admin access to ${need.section} doesn't include this action.`:(adminLevel(u,need.section)===0?`You don't have admin access to ${need.section}.`:`Your admin access to ${need.section} is view only.`),forbiddenSection:need.section});
+      }
+    }
+
+    // ---- Admin team (super admin only; enforced by the gate above) ----
+    if(p==='/api/admin/team' && req.method==='GET'){
+      const rows=await q("SELECT * FROM users WHERE role='admin' ORDER BY created_at ASC");
+      return send(res,200,{team:rows.map(adminTeamView),sections:ADMIN_SECTIONS,levels:ADMIN_LEVEL_NAMES});
+    }
+    if(p==='/api/admin/team/invite' && req.method==='POST'){
+      const b=await body(req);
+      const name=String(b.name||'').trim().slice(0,120);
+      const email=String(b.email||'').trim().toLowerCase().slice(0,200);
+      if(!name) return send(res,400,{error:'Enter a name.'});
+      if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return send(res,400,{error:'Enter a valid email.'});
+      if(await q1('SELECT id FROM users WHERE lower(email)=lower($1)',[email])) return send(res,409,{error:'That email already has an account. Use a different email for the admin login.'});
+      const perms=cleanAdminPermissions(b.permissions);
+      const tok=crypto.randomBytes(32).toString('hex');
+      const salt=newSalt();
+      const row=await q1("INSERT INTO users (id,role,name,email,password_hash,salt,admin_permissions,invite_token_hash,invite_expires_at,invited_by) VALUES ($1,'admin',$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *",
+        [id('usr'),name,email,hash(crypto.randomBytes(24).toString('hex'),salt),salt,JSON.stringify(perms),hashInviteToken(tok),new Date(Date.now()+INVITE_TTL_MS),u.id]);
+      const link=`${appUrl()}/#invite=${tok}`;
+      const em=await sendEmail({to:email,type:'admin_invite',subject:'You have been invited as an admin',html:adminInviteEmailHtml(name,u.name,link),userId:row.id});
+      return send(res,201,{member:adminTeamView(row),inviteLink:link,emailSent:!!(em&&em.ok&&!em.dryRun)});
+    }
+    if(p.startsWith('/api/admin/team/') && p.endsWith('/permissions') && req.method==='POST'){
+      const tid=p.split('/')[4];
+      const t=await q1("SELECT * FROM users WHERE id=$1 AND role='admin'",[tid]);
+      if(!t) return send(res,404,{error:'Admin not found'});
+      if(!t.admin_permissions) return send(res,400,{error:'The main admin always has full access.'});
+      const b=await body(req);
+      const row=await q1('UPDATE users SET admin_permissions=$1 WHERE id=$2 RETURNING *',[JSON.stringify(cleanAdminPermissions(b.permissions)),tid]);
+      return send(res,200,{member:adminTeamView(row)});
+    }
+    if(p.startsWith('/api/admin/team/') && p.endsWith('/resend-invite') && req.method==='POST'){
+      const tid=p.split('/')[4];
+      const t=await q1("SELECT * FROM users WHERE id=$1 AND role='admin' AND invite_token_hash IS NOT NULL",[tid]);
+      if(!t) return send(res,404,{error:'No pending invite for that admin.'});
+      const tok=crypto.randomBytes(32).toString('hex');
+      const row=await q1('UPDATE users SET invite_token_hash=$1,invite_expires_at=$2 WHERE id=$3 RETURNING *',[hashInviteToken(tok),new Date(Date.now()+INVITE_TTL_MS),tid]);
+      const link=`${appUrl()}/#invite=${tok}`;
+      const em=await sendEmail({to:row.email,type:'admin_invite',subject:'You have been invited as an admin',html:adminInviteEmailHtml(row.name,u.name,link),userId:row.id});
+      return send(res,200,{member:adminTeamView(row),inviteLink:link,emailSent:!!(em&&em.ok&&!em.dryRun)});
+    }
+    if(p.startsWith('/api/admin/team/') && p.endsWith('/access') && req.method==='POST'){
+      const tid=p.split('/')[4];
+      const t=await q1("SELECT * FROM users WHERE id=$1 AND role='admin'",[tid]);
+      if(!t) return send(res,404,{error:'Admin not found'});
+      if(!t.admin_permissions||t.id===u.id) return send(res,400,{error:'You can only turn off scoped admins, not the main admin or yourself.'});
+      const b=await body(req);
+      const susp=!!b.suspended;
+      const row=await q1('UPDATE users SET suspended=$1 WHERE id=$2 RETURNING *',[susp,tid]);
+      if(susp){ for(const [tok,uid] of sessions){ if(uid===tid) sessions.delete(tok); } }
+      return send(res,200,{member:adminTeamView(row)});
+    }
+
+    if(await hoa.handleAuthed(req,res,p,url,u)) return;
+
+    if(p==='/api/admin/verifications/counts' && req.method==='GET'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const c=await q1(`SELECT
+        count(*) FILTER (WHERE provider_approved=false AND verification_status<>'rejected')::int AS pending,
+        count(*) FILTER (WHERE provider_approved<>false AND verification_status='unverified' AND jsonb_array_length(COALESCE(verification_documents,'[]'::jsonb))>0)::int AS unverified
+        FROM users WHERE role='provider' AND deleted=false`);
+      return send(res,200,{pending:c.pending,unverified:c.unverified});
+    }
     if(p==='/api/admin/verifications' && req.method==='GET'){
       if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
       const status=String(url.searchParams.get('status')||'pending');
+      // pending = new accounts waiting on admin approval. unverified = approved accounts that have
+      // uploaded documents and are waiting on the document review. Approved accounts with no docs yet
+      // are still 'unverified' in the DB but stay out of the tabs until they upload something.
+      const HAS_DOCS="jsonb_array_length(COALESCE(verification_documents,'[]'::jsonb))>0";
+      // pending = new accounts waiting on admin approval (approval lets them respond to requests; they can
+      // upload documents any time). unverified = approved accounts that have uploaded documents awaiting review.
+      // Approved accounts with no docs are 'unverified' in the DB but stay out of the tabs until they upload.
       const rows = status==='all'
-        ? await q("SELECT * FROM users WHERE role='provider' AND deleted=false AND verification_status<>'unverified' ORDER BY verification_submitted_at DESC NULLS LAST")
-        : await q("SELECT * FROM users WHERE role='provider' AND deleted=false AND verification_status=$1 ORDER BY verification_submitted_at ASC NULLS LAST",[status]);
+        ? await q(`SELECT * FROM users WHERE role='provider' AND deleted=false AND (provider_approved=false OR verification_status<>'unverified' OR ${HAS_DOCS}) ORDER BY verification_submitted_at DESC NULLS LAST, created_at DESC`)
+        : status==='unverified'
+          ? await q(`SELECT * FROM users WHERE role='provider' AND deleted=false AND provider_approved<>false AND verification_status='unverified' AND ${HAS_DOCS} ORDER BY verification_submitted_at ASC NULLS LAST`)
+          : status==='pending'
+            ? await q("SELECT * FROM users WHERE role='provider' AND deleted=false AND provider_approved=false AND verification_status<>'rejected' ORDER BY created_at ASC")
+            : await q("SELECT * FROM users WHERE role='provider' AND deleted=false AND verification_status=$1 ORDER BY verification_submitted_at ASC NULLS LAST",[status]);
       // Admin sees the full record — including uploaded documents — since reviewing them is the point.
       return send(res,200,{providers:rows.map(r=>safeUser(mapUser(r)))});
     }
@@ -2090,12 +2322,20 @@ const server=http.createServer(async (req,res)=>{
       if(decision==='reject' && !notes) return send(res,400,{error:'Add a note explaining why, so the provider knows what to fix.'});
       const target=await q1("SELECT * FROM users WHERE id=$1 AND role='provider'",[pid]);
       if(!target) return send(res,404,{error:'Provider not found'});
-      const verified = decision==='approve';
+      const approving = decision==='approve';
+      // Two separate approvals. Account step (provider_approved=false): approving lets them respond to requests;
+      // rejecting sets status 'rejected' (they can fix and re-upload, which puts them back in Pending).
+      // Doc step (already approved): approving verifies them (badge), rejecting sends them back with notes.
+      const accountStep = target.provider_approved===false;
+      const verified = approving && !accountStep;
+      const nextStatus = approving ? (accountStep?target.verification_status:'verified') : 'rejected';
       const row=await q1(
-        `UPDATE users SET verified=$1, verification_status=$2, verification_notes=$3, verification_reviewed_at=now() WHERE id=$4 RETURNING *`,
-        [verified, verified?'verified':'rejected', notes||null, pid]
+        `UPDATE users SET verified=$1, verification_status=$2, provider_approved=$3, verification_notes=$4, verification_reviewed_at=CASE WHEN $6::boolean AND $7::boolean THEN verification_reviewed_at ELSE now() END WHERE id=$5 RETURNING *`,
+        [verified, nextStatus, approving?true:(accountStep?false:true), notes||null, pid, accountStep, approving]
       );
-      if(verified){
+      if(approving && accountStep){
+        sendEmail({to:row.email,type:'provider_account_approved',subject:'Your account was approved',html:providerAccountApprovedEmailHtml(mapUser(row)),userId:row.id}).catch(()=>{});
+      }else if(verified){
         sendEmail({to:row.email,type:'verification_approved',subject:"You're verified",html:verificationApprovedEmailHtml(mapUser(row)),userId:row.id}).catch(()=>{});
       }else{
         sendEmail({to:row.email,type:'verification_rejected',subject:'Update needed on your verification',html:verificationRejectedEmailHtml(mapUser(row),notes),userId:row.id}).catch(()=>{});
@@ -2145,7 +2385,7 @@ const server=http.createServer(async (req,res)=>{
       const [homeownerPlans,providerPlans,verif,openReqs,staleReqs,carePlanActive,suspendedCount]=await Promise.all([
         q("SELECT subscription, count(*)::int AS n FROM users WHERE role='homeowner' AND deleted=false GROUP BY subscription"),
         q("SELECT provider_plan, count(*)::int AS n FROM users WHERE role='provider' AND deleted=false GROUP BY provider_plan"),
-        q("SELECT verification_status, count(*)::int AS n FROM users WHERE role='provider' AND deleted=false GROUP BY verification_status"),
+        q("SELECT CASE WHEN provider_approved=false AND verification_status<>'rejected' THEN 'pending' WHEN verification_status='unverified' AND jsonb_array_length(COALESCE(verification_documents,'[]'::jsonb))=0 THEN 'approved_no_docs' ELSE verification_status END AS verification_status, count(*)::int AS n FROM users WHERE role='provider' AND deleted=false GROUP BY 1"),
         q("SELECT count(*)::int AS n FROM requests WHERE status='open'"),
         q("SELECT count(*)::int AS n FROM requests r WHERE r.status='open' AND r.created_at < now() - interval '24 hours' AND NOT EXISTS (SELECT 1 FROM quotes qq WHERE qq.request_id=r.id)"),
         q("SELECT count(*)::int AS n FROM users WHERE role='homeowner' AND deleted=false AND EXISTS (SELECT 1 FROM jsonb_array_elements(care_plan_items) x WHERE x->>'status'='active')"),
@@ -2238,6 +2478,7 @@ const server=http.createServer(async (req,res)=>{
       if(!target) return send(res,404,{error:'Account not found'});
       if(target.role==='admin') return send(res,403,{error:'Cannot delete an admin account'});
       if(target.deleted) return send(res,400,{error:'That account is already deleted'});
+      await hoa.onAccountDeleted(aid).catch(e=>console.error('hoa delete hook:',e.message));
       const row=await q1('UPDATE users SET deleted=true,deleted_at=now() WHERE id=$1 RETURNING *',[aid]);
       for(const [tok,uid] of sessions){ if(uid===aid) sessions.delete(tok); }
       sendEmail({to:row.email,type:'account_deleted',subject:'Your account was deleted',html:accountDeletedEmailHtml(mapUser(row)),userId:row.id}).catch(()=>{});
@@ -2540,7 +2781,7 @@ const server=http.createServer(async (req,res)=>{
       const b=await body(req), text=String(b.body||'').trim().slice(0,2000);
       if(!text) return send(res,400,{error:'Message cannot be empty'});
       const row=await q1('INSERT INTO support_messages (id,user_id,sender_role,body) VALUES ($1,$2,$3,$4) RETURNING *',[id('sup'),u.id,'user',text]);
-      if(ADMIN_NOTIFY_EMAIL) sendEmail({to:ADMIN_NOTIFY_EMAIL,type:'admin_support_message',subject:`Support message from ${u.name}`,html:emailShell('Support message',`<h2 style="margin:0 0 10px;color:#17352f">${esc_(u.name)} needs support</h2><p style="color:#3f4f4a;line-height:1.6;font-size:14.5px;background:#eaf4ef;border-radius:10px;padding:12px 14px">${esc_(text).slice(0,300)}</p>${btn('Reply in Admin',APP_URL+'/#admin')}`)}).catch(()=>{});
+      if(ADMIN_NOTIFY_EMAIL) sendEmail({to:ADMIN_NOTIFY_EMAIL,type:'admin_support_message',subject:`Support message from ${u.name}`,html:emailShell('Support message',`<h2 style="margin:0 0 10px;color:#17352f">${esc_(u.name)} needs support</h2><p style="color:#3f4f4a;line-height:1.6;font-size:14.5px;background:#eaf4ef;border-radius:10px;padding:12px 14px">${esc_(text).slice(0,300)}</p>${btn('Reply in Admin',appUrl()+'/#admin')}`)}).catch(()=>{});
       return send(res,201,{message:mapSupportMessage(row)});
     }
     if(p==='/api/admin/reported-quotes' && req.method==='GET'){
@@ -2577,7 +2818,7 @@ const server=http.createServer(async (req,res)=>{
       const b=await body(req), text=String(b.body||'').trim().slice(0,2000);
       if(!text) return send(res,400,{error:'Message cannot be empty'});
       const row=await q1('INSERT INTO support_messages (id,user_id,sender_role,body) VALUES ($1,$2,$3,$4) RETURNING *',[id('sup'),userId,'admin',text]);
-      if(target.email) sendEmail({to:target.email,type:'admin_support_reply',subject:'Reply from Living Communities support',html:emailShell('Support reply',`<h2 style="margin:0 0 10px;color:#17352f">Support replied</h2><p style="color:#3f4f4a;line-height:1.6;font-size:14.5px;background:#eaf4ef;border-radius:10px;padding:12px 14px">${esc_(text).slice(0,300)}</p>${btn('View Reply',APP_URL)}`)}).catch(()=>{});
+      if(target.email) sendEmail({to:target.email,type:'admin_support_reply',subject:'Reply from Living Communities support',html:emailShell('Support reply',`<h2 style="margin:0 0 10px;color:#17352f">Support replied</h2><p style="color:#3f4f4a;line-height:1.6;font-size:14.5px;background:#eaf4ef;border-radius:10px;padding:12px 14px">${esc_(text).slice(0,300)}</p>${btn('View Reply',appUrl())}`)}).catch(()=>{});
       return send(res,201,{message:mapSupportMessage(row)});
     }
     if(p==='/api/admin/announcements' && req.method==='POST'){
@@ -2659,6 +2900,7 @@ async function ensureAdminBootstrap(){
 }
 
 initSchema()
+  .then(()=>hoa.initSchema())
   .then(seedIfEmpty)
   .then(ensureAdminBootstrap)
   .then(()=>{
@@ -2672,5 +2914,8 @@ initSchema()
     }else{
       console.log('Stripe is configured — real subscriptions bill themselves; renewals/reminders come from Stripe webhooks instead of the simulated billing check.');
     }
+    // HOA program upkeep (removals, floors, invoices, reminders). Hourly in-process; also callable via /api/internal/run-hoa-maintenance.
+    hoa.runMaintenance().catch(e=>console.error('hoa maintenance failed:',e.message));
+    setInterval(()=>{ hoa.runMaintenance().catch(e=>console.error('hoa maintenance failed:',e.message)); }, 60*60*1000);
   })
   .catch(e=>{ console.error('Failed to start (check DATABASE_URL):', e); process.exit(1); });
