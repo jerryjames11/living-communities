@@ -129,14 +129,6 @@ button{font:inherit;cursor:pointer}
 .profile-menu-item:hover{background:#f0f4f2}
 .profile-menu-item.danger{color:#b3432e}
 .profile-menu-divider{height:1px;background:var(--line);margin:6px 4px}
-.notify-select{position:relative;width:100%}
-.notify-select.disabled{opacity:.45;pointer-events:none}
-.notify-select-trigger{display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13.5px;color:var(--ink);cursor:pointer;background:#fff}
-.notify-select-trigger:hover{border-color:#9bbbae}
-.notify-select-panel{position:absolute;top:calc(100% + 6px);left:0;right:0;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 14px 34px #17352f26;padding:8px;z-index:20;max-height:260px;overflow-y:auto}
-.notify-select-item{display:flex;align-items:center;gap:9px;font-size:13.5px;padding:8px;border-radius:8px;cursor:pointer}
-.notify-select-item:hover{background:#f0f4f2}
-.notify-select-item input{width:16px;height:16px;accent-color:var(--green);flex:0 0 auto}
 
 .app{padding:22px 5% 40px}
 .dash-titlebar{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:16px;flex-wrap:wrap;gap:12px}
@@ -220,18 +212,6 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .tag.status-completed{background:#e8effc;color:#2c4f8c}
 .provider{display:flex;justify-content:space-between;gap:15px;align-items:center}
 .stub-notice{background:#fff;border:1px solid var(--line);border-radius:17px;padding:20px;text-align:center;color:var(--muted);line-height:1.6}
-.ringbtn{all:unset;cursor:pointer;width:80px;height:80px;border-radius:50%;flex:0 0 auto;position:relative}
-.ringbtn:hover .ring-hint{opacity:1}
-.ringbtn:focus-visible{outline:2px solid var(--green);outline-offset:3px;border-radius:50%}
-.ring-hint{position:absolute;inset:-5px;border-radius:50%;border:2px solid var(--green);opacity:0;transition:opacity .15s}
-.score-sub{font-size:11px;color:var(--green);font-weight:700;display:flex;align-items:center;gap:4px;margin-top:4px;cursor:pointer}
-.bd-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);font-size:13.5px}
-.bd-row:last-of-type{border-bottom:none}
-.bd-label{display:flex;align-items:center;gap:8px}
-.bd-points{font-weight:700;font-size:12.5px;flex:0 0 auto;text-align:right}
-.bd-points.neg{color:#b7791f}
-.bd-points.zero{color:var(--muted);font-weight:600}
-.bd-total{display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:14px;border-top:1.5px solid var(--ink);font-weight:800;font-size:15px}
 .plans-header{background:#fff;border-bottom:1px solid var(--line);padding:14px 6%;display:flex;align-items:center;gap:14px}
 .back-link{border:0;background:none;color:#3f4f4a;font-weight:700;font-size:14px;display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 8px;border-radius:8px}
 .back-link:hover{background:#f3f6f4}
@@ -298,24 +278,6 @@ button:disabled{opacity:.45;cursor:not-allowed}
 /* ---------- modals (unchanged behavior, refreshed look) ---------- */
 .modal{position:fixed;inset:0;background:#17352f88;display:none;align-items:center;justify-content:center;padding:20px;z-index:50}
 .modal.show{display:flex}
-.panel[data-ro="1"] .admin-row-actions,.panel[data-ro="1"] .admin-write,.panel[data-ro="1"] #admin-queue-list button,.panel[data-ro="1"] #admin-queue-list .field,.panel[data-ro="1"] #admin-gallery-list button,.panel[data-ro="1"] #admin-gallery-list .field{display:none!important}
-.hoa-tab{border:1px solid var(--line);background:#fff;border-radius:999px;padding:8px 14px;font:inherit;font-size:13px;font-weight:700;color:#3f5a51;cursor:pointer}
-.hoa-tab.active{background:var(--mint);color:var(--green);border-color:transparent}
-.hoa-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px}
-.hoa-card h3{margin:0 0 6px;font-size:15px}
-.hoa-row{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-top:8px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
-.hoa-row .addr{font-weight:700;font-size:14px}
-.hoa-row .meta{color:var(--muted);font-size:12.5px}
-.hoa-mini{padding:6px 11px!important;font-size:12.5px!important}
-.hoa-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px 14px;align-items:end}
-.hoa-form .field{margin:0}
-.hoa-form .field.wide{grid-column:1/-1}
-.hoa-linkbox{display:flex;gap:8px;flex-wrap:wrap}.hoa-linkbox input{flex:1;min-width:220px}
-.ro-banner{background:#fff6e0;border:1px solid #f0d99a;color:#6b5314;border-radius:10px;padding:9px 12px;font-size:13px;margin-bottom:12px}
-.perm-grid{display:grid;grid-template-columns:1fr 190px;gap:8px 12px;align-items:center;margin:10px 0}
-.perm-grid select{border:1px solid #cbd9d3;border-radius:8px;padding:8px 10px;font:inherit;font-size:13px;background:#fff}
-.perm-grid .pl b{font-size:13.5px}.perm-grid .pl small{display:block;color:#6b7a75;font-size:12px}
-.team-chip{display:inline-block;background:#eef4f1;border-radius:999px;padding:2px 9px;font-size:12px;margin:2px 4px 0 0;color:#2c4a42}
 .modalbox{background:#fff;border-radius:22px;width:min(680px,100%);max-height:90vh;overflow:auto;padding:22px}
 .modalhead{display:flex;justify-content:space-between;align-items:center}
 .close{border:0;background:#eef4f1;border-radius:50%;width:36px;height:36px;font-size:20px}
@@ -490,7 +452,6 @@ button:disabled{opacity:.45;cursor:not-allowed}
 </aside>
 <section class="content">
 <div class="panel" data-panel="dashboard">
-<div id="ho-sponsor-banner"></div>
 <div class="welcome"><div class="welcome-text"><h2>Welcome back!</h2><p>How can we help with your home today?</p></div><div class="photo-slot welcome-photo" data-label="images/dashboard-welcome.jpg"><img src="images/dashboard-welcome.jpg" alt="" onerror="this.closest('.photo-slot').classList.add('missing')"></div></div>
 <div class="section-row"><h3 style="margin:0">Popular Services</h3><a onclick="toggleAllServices('homeowner')" id="ho-viewall-link">View all services</a></div>
 <div class="servicetiles" style="margin-bottom:8px">
@@ -503,7 +464,6 @@ button:disabled{opacity:.45;cursor:not-allowed}
 <div class="service" onclick="openRequest(this.querySelector('b').textContent)"><span class="service-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3c-7 0-13 5-13 12 0 1 .2 2 .2 2s7.8-1 10.8-5c2-2.5 2.5-6 2-9z"/><path d="M5 16C8.5 11.5 12.5 8 17 3"/></svg></span><b>Lawn & Landscaping</b><small>Yards, trees, cleanup</small></div><div class="service" onclick="openRequest(this.querySelector('b').textContent)"><span class="service-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7.5c1.4-1.2 2.8-1.2 4.2 0s2.8 1.2 4.2 0 2.8-1.2 4.2 0 2.8 1.2 4.2 0"/><path d="M2 12.5c1.4-1.2 2.8-1.2 4.2 0s2.8 1.2 4.2 0 2.8-1.2 4.2 0 2.8 1.2 4.2 0"/></svg></span><b>Pool Service</b><small>Cleaning & maintenance</small></div><div class="service" onclick="openRequest(this.querySelector('b').textContent)"><span class="service-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3.3a3.8 3.8 0 00-5 4.8L3.3 13.8l2.9 2.9 5.7-5.7a3.8 3.8 0 004.8-5L14 8.3 11.7 6 14 3.3z"/></svg></span><b>Handyman</b><small>Repairs & projects</small></div><div class="service" onclick="openRequest(this.querySelector('b').textContent)"><span class="service-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="5" r="1.5"/><ellipse cx="10" cy="9.5" rx="2.3" ry="2.8"/><ellipse cx="10" cy="14.5" rx="2.8" ry="3.2"/><path d="M7.5 8l-3-1.5M7.8 10h-3.3M8 12l-2.7 2M12.5 8l3-1.5M12.2 10h3.3M12 12l2.7 2"/></svg></span><b>Pest Control</b><small>Interior & exterior</small></div>
 <div class="service" onclick="openRequest(this.querySelector('b').textContent)"><span class="service-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="8" width="11" height="6" rx="1.2"/><circle cx="5.5" cy="16" r="1.6"/><circle cx="11.5" cy="16" r="1.6"/><path d="M13.5 10h2.3l1.7 2.6V14h-2"/></svg></span><b>Mobile Mechanic</b><small>Comes to you for repairs</small></div>
 <div class="service" onclick="openRequest(this.querySelector('b').textContent)"><span class="service-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17l7-11 2 2-7 11z"/><path d="M12 8l2-2 2.5 2.5-2 2z"/><path d="M3 17h6"/></svg></span><b>Power Washing</b><small>Driveways, siding, decks</small></div>
-<div class="service" onclick="openRequest(this.querySelector('b').textContent)"><span class="service-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h12"/><path d="M8 6V4a1 1 0 011-1h2a1 1 0 011 1v2"/><path d="M6 6l.7 10a1 1 0 001 .9h4.6a1 1 0 001-.9L14 6"/><path d="M8.3 9v4.5M11.7 9v4.5"/></svg></span><b>Bulk Trash Pickup</b><small>Furniture, junk & debris haul-away</small></div><div class="service" onclick="openRequest(this.querySelector('b').textContent)"><span class="service-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l7-3 7 3-7 3-7-3z"/><path d="M3 7v7l7 3 7-3V7"/><path d="M10 10v7"/></svg></span><b>Moving Services</b><small>Local moves & heavy lifting</small></div><div class="service" onclick="openRequest(this.querySelector('b').textContent)"><span class="service-icon"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="7" cy="7" rx="1.5" ry="2"/><ellipse cx="13" cy="7" rx="1.5" ry="2"/><ellipse cx="5" cy="11" rx="1.2" ry="1.5"/><ellipse cx="15" cy="11" rx="1.2" ry="1.5"/><path d="M10 11c-2.5 0-4.3 1.7-4.3 3.6 0 1.2 1 2.1 2.4 2.1.9 0 1.3-.5 1.9-.5s1 .5 1.9.5c1.4 0 2.4-.9 2.4-2.1 0-1.9-1.8-3.6-4.3-3.6z"/></svg></span><b>Pet Waste Cleanup</b><small>Yard scooping, weekly or one-time</small></div>
 </div>
 <div class="section-row" style="margin-top:22px"><h3 style="margin:0">Recent Requests</h3></div>
 <div id="ho-recent-request"></div>
@@ -595,24 +555,6 @@ button:disabled{opacity:.45;cursor:not-allowed}
 </section></div></div>
 </main>
 
-<main id="hoa" class="page">
-<div class="dash-header">
-  <div class="logo"><span class="logo-badge"><img src="/assets/logo.png" alt="Living Communities"></span>Living <span>Communities</span></div>
-  <div class="dash-header-right">
-    <div class="profile-menu-wrap" id="hoa-profile-menu-wrap">
-      <button class="dash-user" type="button" onclick="toggleProfileMenu(event,'hoa')"><div class="avatar-slot" data-label=""><span class="avatar-fallback">HO</span></div><div><b id="hoa-header-name">HOA</b><small>HOA portal</small></div><svg class="chev" width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7.5l5 5 5-5"/></svg></button>
-      <div class="profile-menu hidden" id="hoa-profile-menu">
-        <div class="profile-menu-item danger" onclick="logout()">Log Out</div>
-      </div>
-    </div>
-  </div>
-</div>
-<div class="app">
-  <div class="dash-titlebar"><div><h1 id="hoa-title">HOA portal</h1><p class="subtle">Keep your roster current, share your join link, and review invoices. You only ever see addresses and status.</p></div></div>
-  <div id="hoa-workspace"><div class="notice">Loading…</div></div>
-</div>
-</main>
-
 <main id="admin" class="page">
 <div class="dash-header">
   <div class="logo"><span class="logo-badge"><img src="/assets/logo.png" alt="Living Communities"></span>Living <span>Communities</span></div>
@@ -632,14 +574,12 @@ button:disabled{opacity:.45;cursor:not-allowed}
 <div class="sideitem" data-panel="accounts" onclick="switchAdminPanel('accounts')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="7" r="3.2"/><path d="M3.5 17c1-3.4 3.8-5.2 6.5-5.2s5.5 1.8 6.5 5.2"/></svg>Accounts</div>
 <div class="sideitem" data-panel="dispatch" onclick="switchAdminPanel('dispatch')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10h11M14 10l-3.5-3.5M14 10l-3.5 3.5"/><path d="M14 4h3v12h-3"/></svg>Dispatch</div>
 <div class="sideitem" data-panel="payments" onclick="switchAdminPanel('payments')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="15" height="10.5" rx="1.6"/><path d="M2.5 8.5h15"/><path d="M5.5 12.2h4"/></svg>Payments</div>
-<div class="sideitem" data-panel="verification" onclick="switchAdminPanel('verification')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3l6 2.5v4.3c0 4-2.6 6.7-6 7.7-3.4-1-6-3.7-6-7.7V5.5L10 3z"/><path d="M7.3 10l2 2 3.4-4"/></svg>Verification<span class="navbadge hidden" id="vq-badge-nav"></span></div>
+<div class="sideitem" data-panel="verification" onclick="switchAdminPanel('verification')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3l6 2.5v4.3c0 4-2.6 6.7-6 7.7-3.4-1-6-3.7-6-7.7V5.5L10 3z"/><path d="M7.3 10l2 2 3.4-4"/></svg>Verification</div>
 <div class="sideitem" data-panel="gallery" onclick="switchAdminPanel('gallery')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="15" height="12" rx="1.5"/><circle cx="7" cy="8.5" r="1.4"/><path d="M2.5 14l4.5-4 3 3 3.5-4.5 3.5 4"/></svg>Gallery</div>
 <div class="sideitem" data-panel="reported" onclick="switchAdminPanel('reported')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2l7 3.5v5c0 4.5-3 7-7 7.5-4-.5-7-3-7-7.5v-5L10 2z"/><path d="M10 7v4M10 13.5h.01"/></svg>Reported</div>
 <div class="sideitem" data-panel="support" onclick="switchAdminPanel('support')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h14v10H8l-4 3v-3H3z"/></svg>Support</div>
 <div class="sideitem" data-panel="deleted" onclick="switchAdminPanel('deleted')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h12M8 6V4.5A1.5 1.5 0 019.5 3h1A1.5 1.5 0 0112 4.5V6m-6.5 0l.6 9.4A1.6 1.6 0 007.7 17h4.6a1.6 1.6 0 001.6-1.6L14.5 6"/></svg>Deleted Accounts</div>
 <div class="sideitem" data-panel="emaillog" onclick="switchAdminPanel('emaillog')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h14v10H3z"/><path d="M3.5 5.5l6.5 5 6.5-5"/></svg>Email Log</div>
-<div class="sideitem" data-panel="hoas" onclick="switchAdminPanel('hoas')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5L10 3l7 6.5"/><path d="M5 8.5V16h10V8.5"/><path d="M8.5 16v-4h3v4"/></svg>HOAs<span class="navbadge hidden" id="hoas-badge"></span></div>
-<div class="sideitem hidden" id="admin-team-nav" data-panel="team" onclick="switchAdminPanel('team')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="7" r="2.8"/><path d="M2.5 16.5c.8-3 2.8-4.5 5-4.5s4.2 1.5 5 4.5"/><circle cx="14" cy="7.8" r="2.2"/><path d="M14 12.2c1.6.2 2.9 1.4 3.5 3.6"/></svg>Team</div>
 </aside>
 <section class="content">
 
@@ -675,7 +615,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
       <input id="admin-requests-search" placeholder="Search homeowner, community or title…" oninput="loadAdminDispatch()" style="flex:1;min-width:180px;border:1px solid #cbd9d3;border-radius:8px;padding:8px 10px;font:inherit;font-size:13px">
       <select id="admin-requests-service" onchange="loadAdminDispatch()" style="border:1px solid #cbd9d3;border-radius:8px;padding:8px 10px;font:inherit;font-size:13px">
         <option value="all">All services</option>
-        <option>Lawn & Landscaping</option><option>House Cleaning</option><option>Pool Service</option><option>Handyman</option><option>Plumbing</option><option>Electrical</option><option>HVAC</option><option>Pest Control</option><option>Mobile Mechanic</option><option>Power Washing</option><option>Bulk Trash Pickup</option><option>Moving Services</option><option>Pet Waste Cleanup</option>
+        <option>Lawn & Landscaping</option><option>House Cleaning</option><option>Pool Service</option><option>Handyman</option><option>Plumbing</option><option>Electrical</option><option>HVAC</option><option>Pest Control</option><option>Mobile Mechanic</option><option>Power Washing</option>
       </select>
       <select id="admin-requests-quotestatus" onchange="loadAdminDispatch()" style="border:1px solid #cbd9d3;border-radius:8px;padding:8px 10px;font:inherit;font-size:13px">
         <option value="all">Any quote status</option>
@@ -728,8 +668,8 @@ button:disabled{opacity:.45;cursor:not-allowed}
 
 <div class="panel hidden" data-panel="verification">
   <div class="mini-actions" style="margin:0 0 16px">
-    <button class="secondary admin-status-tab active" data-status="pending" onclick="loadAdminQueue('pending')">Pending<span class="navbadge hidden" id="vq-badge-pending" style="margin-left:7px"></span></button>
-    <button class="secondary admin-status-tab" data-status="unverified" onclick="loadAdminQueue('unverified')">Unverified<span class="navbadge hidden" id="vq-badge-unverified" style="margin-left:7px"></span></button>
+    <button class="secondary admin-status-tab" data-status="unverified" onclick="loadAdminQueue('unverified')">Unverified</button>
+    <button class="secondary admin-status-tab active" data-status="pending" onclick="loadAdminQueue('pending')">Pending</button>
     <button class="secondary admin-status-tab" data-status="verified" onclick="loadAdminQueue('verified')">Verified</button>
     <button class="secondary admin-status-tab" data-status="rejected" onclick="loadAdminQueue('rejected')">Rejected</button>
     <button class="secondary admin-status-tab" data-status="all" onclick="loadAdminQueue('all')">All</button>
@@ -754,7 +694,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 </div>
 
 <div class="panel hidden" data-panel="support">
-  <div class="request admin-write" style="margin-bottom:16px">
+  <div class="request" style="margin-bottom:16px">
     <b style="font-size:13.5px">Post an announcement</b>
     <p class="subtle" style="font-size:12px;margin:4px 0 10px">One-way notice. Leave the account field blank to broadcast to everyone.</p>
     <div class="field"><input id="admin-announce-userid" placeholder="Account ID (optional — blank = everyone)"></div>
@@ -767,8 +707,8 @@ button:disabled{opacity:.45;cursor:not-allowed}
     <div style="flex:1;min-width:260px">
       <b id="admin-support-active-name" style="font-size:13px">Select a thread</b>
       <div id="admin-support-messages" style="max-height:280px;overflow:auto;display:flex;flex-direction:column;gap:8px;margin:10px 0"></div>
-      <div class="admin-write"><div class="field"><textarea id="admin-support-reply" placeholder="Reply..."></textarea></div>
-      <button class="primary" style="margin-top:6px" onclick="sendAdminSupportReply()">Send</button></div>
+      <div class="field"><textarea id="admin-support-reply" placeholder="Reply..."></textarea></div>
+      <button class="primary" style="margin-top:6px" onclick="sendAdminSupportReply()">Send</button>
     </div>
   </div>
 </div>
@@ -789,16 +729,6 @@ button:disabled{opacity:.45;cursor:not-allowed}
   <div id="admin-emaillog-list"></div>
 </div>
 
-<div class="panel hidden" data-panel="hoas"><div id="admin-hoas-root"><div class="notice">Loading…</div></div></div>
-
-<div class="panel hidden" data-panel="team">
-  <div class="mini-actions" style="margin-bottom:12px;justify-content:space-between;flex-wrap:wrap;gap:10px">
-    <p class="subtle" style="font-size:13px;margin:0;flex:1;min-width:220px">Add admins and choose what each one can see and do. You can change access any time and it applies on their next click. Only you (the main admin) see this tab.</p>
-    <button class="primary" onclick="openAdminInviteModal()">Add admin</button>
-  </div>
-  <div id="admin-team-list"><div class="notice">Loading…</div></div>
-</div>
-
 </section></div>
 </div>
 </main>
@@ -815,71 +745,6 @@ button:disabled{opacity:.45;cursor:not-allowed}
  <div id="adminDeletedDetailBody" style="max-height:520px;overflow:auto"></div>
 </div></div>
 
-<div id="adminTeamModal" class="modal"><div class="modalbox">
- <div class="modalhead"><div><div class="eyebrow" id="adminTeamEyebrow">Admin access</div><h2 id="adminTeamTitle">Add admin</h2></div><button class="close" onclick="closeAdminTeamModal()">×</button></div>
- <div id="adminTeamIdentity" class="formgrid" style="margin-top:12px"><div class="field"><label>NAME</label><input id="adminTeamName" placeholder="Full name"></div><div class="field"><label>EMAIL</label><input id="adminTeamEmail" type="email" placeholder="them@example.com"></div></div>
- <p class="subtle" style="font-size:12.5px;margin:12px 0 0">Pick access per area. View only = can look, cannot change anything. Edit = approve, reply, dispatch. Full = also delete, suspend, change plans, refund.</p>
- <div id="adminTeamPerms" class="perm-grid"></div>
- <div id="adminTeamError" class="notice hidden" style="margin-top:8px"></div>
- <div class="mini-actions" style="margin-top:14px"><button class="primary" id="adminTeamSave" onclick="submitAdminTeamModal()">Send invite</button><button class="secondary" onclick="closeAdminTeamModal()">Cancel</button></div>
-</div></div>
-<div id="adminInviteLinkModal" class="modal"><div class="modalbox">
- <div class="modalhead"><div><div class="eyebrow">Invite ready</div><h2>Share this invite link</h2></div><button class="close" onclick="document.getElementById('adminInviteLinkModal').classList.remove('show')">×</button></div>
- <p class="subtle" id="adminInviteLinkNote" style="font-size:13px"></p>
- <div class="field"><input id="adminInviteLinkInput" readonly onclick="this.select()"></div>
- <div class="mini-actions" style="margin-top:10px"><button class="primary" onclick="copyAdminInviteLink()">Copy link</button></div>
-</div></div>
-<div id="inviteAcceptModal" class="modal"><div class="modalbox loginbox">
- <div class="modalhead"><div><div class="eyebrow">Admin invite</div><h2 id="inviteAcceptTitle">Set your password</h2></div></div>
- <p class="subtle" id="inviteAcceptEmail" style="font-size:13px"></p>
- <div class="field"><label>NEW PASSWORD</label><input id="invitePw1" type="password" placeholder="At least 8 characters"></div>
- <div class="field"><label>CONFIRM PASSWORD</label><input id="invitePw2" type="password" placeholder="Repeat password"></div>
- <div id="inviteAcceptError" class="notice hidden"></div>
- <div class="mini-actions" style="margin-top:12px"><button class="primary" onclick="submitInviteAccept()">Set password and sign in</button></div>
-</div></div>
-<div id="hoaActionModal" class="modal"><div class="modalbox loginbox">
- <div class="modalhead"><div><div class="eyebrow" id="hoaActionEyebrow">Roster change</div><h2 id="hoaActionTitle">Change</h2></div><button class="close" onclick="closeHoaAction()">×</button></div>
- <p class="subtle" id="hoaActionAddr" style="font-size:13px;margin:6px 0 0"></p>
- <p class="subtle" id="hoaActionHelp" style="font-size:12.5px"></p>
- <div class="field" id="hoaActionReasonWrap"><label>REASON</label><select id="hoaActionReason"><option value="sold">Home sold</option><option value="rented">Owner moved out / rented</option><option value="other">Other (note required)</option></select></div>
- <div class="field" id="hoaActionAddrWrap"><label>CORRECT ADDRESS</label><input id="hoaActionNewAddr" placeholder="123 Oak St, Richardson, TX 75080"></div>
- <div class="field" id="hoaActionNoteWrap"><label>NOTE (OPTIONAL)</label><textarea id="hoaActionNote" placeholder="Anything we should know"></textarea></div>
- <div id="hoaActionError" class="notice hidden"></div>
- <div class="mini-actions" style="margin-top:12px"><button class="primary" id="hoaActionGo" onclick="submitHoaAction()">Save</button><button class="secondary" onclick="closeHoaAction()">Cancel</button></div>
-</div></div>
-<div id="hoaCreateModal" class="modal"><div class="modalbox">
- <div class="modalhead"><div><div class="eyebrow">New HOA</div><h2>Add an HOA</h2></div><button class="close" onclick="document.getElementById('hoaCreateModal').classList.remove('show')">×</button></div>
- <div class="hoa-form" style="margin-top:12px">
-  <div class="field wide"><label>HOA NAME</label><input id="hcName" placeholder="Oak Hollow HOA"></div>
-  <div class="field"><label>MAIN CONTACT NAME</label><input id="hcContactName" placeholder="Board president"></div>
-  <div class="field"><label>MAIN CONTACT EMAIL</label><input id="hcContactEmail" type="email" placeholder="board@example.com"></div>
-  <div class="field"><label>PILOT LENGTH (DAYS)</label><input id="hcPilotDays" type="number" value="90" min="0"></div>
-  <div class="field"><label>SEAT CAP (OPTIONAL)</label><input id="hcCap" type="number" min="1" placeholder="Not to exceed"></div>
-  <div class="field"><label>BOUNDARY: A STREET ADDRESS INSIDE</label><input id="hcBoundary" placeholder="123 Oak St, Richardson, TX"></div>
-  <div class="field"><label>BOUNDARY RADIUS (MILES)</label><input id="hcRadius" type="number" step="0.1" min="0.1" placeholder="0.5"></div>
-  <div class="field wide"><label>LIST OF HOME ADDRESSES IN THE HOA (REQUIRED)</label><textarea id="hcAddresses" rows="6" oninput="hoaRosterCount()" placeholder="101 Oak St, Richardson, TX 75080&#10;103 Oak St, Richardson, TX 75080"></textarea>
-   <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:6px"><input type="file" accept=".csv,.txt,text/plain,text/csv" onchange="hoaLoadCreateFile(this)" style="font-size:12.5px"><span class="subtle" id="hcCount" style="font-size:12.5px">0 valid addresses</span></div></div>
- </div>
- <p class="subtle" style="font-size:12.5px;margin:8px 0 0">The HOA provides this list when it signs up. It is the roster the site checks every homeowner against, and billing counts only homes on it. Paste one address per line, or load a CSV (a header row with Address, City, State, and Zip columns also works).</p>
- <p class="subtle" style="font-size:12.5px">Boundary is optional. It lets a homeowner who is not on the list yet ask to join, for the HOA to confirm. Leave blank to allow roster matches only.</p>
- <div id="hoaCreateError" class="notice hidden"></div>
- <div class="mini-actions" style="margin-top:12px"><button class="primary" onclick="submitHoaCreate()">Create HOA</button><button class="secondary" onclick="document.getElementById('hoaCreateModal').classList.remove('show')">Cancel</button></div>
-</div></div>
-<div id="hoaViewModal" class="modal"><div class="modalbox" style="width:min(980px,100%)">
- <div class="modalhead"><div><div class="eyebrow">Read only</div><h2>What the HOA sees</h2></div><button class="close" onclick="document.getElementById('hoaViewModal').classList.remove('show')">×</button></div>
- <div id="hoa-view-workspace" style="margin-top:12px"></div>
-</div></div>
-<div id="hoaJoinModal" class="modal"><div class="modalbox loginbox">
- <div class="modalhead"><div><div class="eyebrow">Your HOA</div><h2 id="hoaJoinTitle">Join your HOA program</h2></div><button class="close" onclick="closeHoaJoin()">×</button></div>
- <p class="subtle" id="hoaJoinText" style="font-size:14px"></p>
- <div class="field" id="hoaJoinAddrWrap"><label>HOME ADDRESS</label><input id="hoaJoinAddr" placeholder="123 Oak St, Richardson, TX 75080"></div>
- <div id="hoaJoinError" class="notice hidden"></div>
- <div class="mini-actions" style="margin-top:12px">
-  <button class="primary" id="hoaJoinGo" onclick="submitHoaJoin()">Join and get Plus</button>
-  <button class="primary hidden" id="hoaJoinSignup" onclick="hoaJoinAuth('signup')">Create account</button>
-  <button class="secondary hidden" id="hoaJoinLogin" onclick="hoaJoinAuth('login')">Sign in</button>
- </div>
-</div></div>
 <div id="adminPlanModal" class="modal"><div class="modalbox">
  <div class="modalhead"><div><div class="eyebrow">Account plan</div><h2 id="adminPlanTitle">Change plan</h2></div><button class="close" onclick="closeAdminPlanModal()">×</button></div>
  <p class="subtle" style="font-size:13px;margin:0 0 10px">Upgrading a plan emails the account holder an invoice.</p>
@@ -1023,7 +888,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
  <div class="field"><label>EMAIL</label><input id="signupEmail" type="email" placeholder="you@example.com"></div>
  <div class="field"><label>PASSWORD</label><div class="pwfield"><input id="signupPassword" type="password" placeholder="At least 8 characters"><button type="button" class="pwtoggle" onclick="togglePasswordVisibility('signupPassword',this)">SHOW</button></div></div>
  <div class="field"><label>PHONE</label><input id="signupPhone" placeholder="(214) 555-0100"></div>
- <div id="signupHomeownerFields"><div class="field"><label>COMMUNITY / CITY</label><input id="signupCommunity" placeholder="Richardson Community"></div><div class="field"><label>HOME ADDRESS <span class="subtle" style="font-weight:600;text-transform:none">(optional: unlocks Neighborhood on Plus)</span></label><input id="signupAddress" placeholder="123 Main St, Richardson, TX"></div></div>
+ <div id="signupHomeownerFields"><div class="field"><label>COMMUNITY / CITY</label><input id="signupCommunity" placeholder="Richardson Community"></div><div class="field"><label>HOME ADDRESS <span class="subtle" style="font-weight:600;text-transform:none">(optional: unlocks Neighborhood on a Home Care Plan)</span></label><input id="signupAddress" placeholder="123 Main St, Richardson, TX"></div></div>
  <div id="signupProviderFields" class="hidden">
    <div class="field"><label>SERVICES OFFERED</label><input id="signupServiceTypes" placeholder="Plumbing, Handyman"></div>
    <div class="field"><label>BUSINESS DESCRIPTION</label><textarea id="signupBusinessDescription" placeholder="Tell homeowners what you do..."></textarea></div>
@@ -1047,7 +912,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
  <div class="steps"><div class="step on"></div><div class="step on"></div><div class="step"></div></div>
  <div class="notice"><svg class="icn" width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="9" width="11" height="7.5" rx="1.5"/><path d="M6.5 9V6.3a3.5 3.5 0 017 0V9"/></svg> Your name and exact address stay private. We use your ZIP/city only to match you with nearby providers.</div>
  <div class="formgrid">
-  <div class="field"><label>SERVICE</label><select id="serviceType" onchange="populateCommonRequests()"><option>Lawn & Landscaping</option><option>House Cleaning</option><option>Pool Service</option><option>Handyman</option><option>Plumbing</option><option>Electrical</option><option>HVAC</option><option>Pest Control</option><option>Mobile Mechanic</option><option>Power Washing</option><option>Bulk Trash Pickup</option><option>Moving Services</option><option>Pet Waste Cleanup</option></select></div>
+  <div class="field"><label>SERVICE</label><select id="serviceType" onchange="populateCommonRequests()"><option>Lawn & Landscaping</option><option>House Cleaning</option><option>Pool Service</option><option>Handyman</option><option>Plumbing</option><option>Electrical</option><option>HVAC</option><option>Pest Control</option><option>Mobile Mechanic</option><option>Power Washing</option></select></div>
   <div class="field"><label>URGENCY</label><select id="requestUrgency"><option>Flexible</option><option>This week</option><option>ASAP</option><option>Emergency</option></select></div>
   <div class="field full"><label>COMMON REQUESTS <span class="subtle" style="font-weight:400;text-transform:none">(optional — pick any that apply)</span></label><select id="commonRequestPicker" onchange="insertCommonRequest()"></select></div>
   <div class="field full"><label>YOUR ZIP CODE OR CITY</label><input id="requestZip" placeholder="e.g. 75080 or Richardson, TX" required></div>
@@ -1144,8 +1009,6 @@ button:disabled{opacity:.45;cursor:not-allowed}
  <div class="field"><label>CATEGORY</label><select id="homeDocCategory"><option value="warranty">Warranty</option><option value="receipt">Receipt</option><option value="manual">Manual</option><option value="other">Other</option></select></div>
  <div class="mini-actions"><button class="secondary" onclick="closeModal()">Cancel</button><button class="primary" onclick="submitHomeDocument()">Save Document</button></div>
 </div></div>
-
-<div id="homeHealthBreakdownModal" class="modal"><div class="modalbox" style="max-width:420px"><div class="modalhead" style="margin-bottom:0"><div></div><button class="close" onclick="closeModal()">×</button></div><div id="homeHealthBreakdownBody"></div></div></div>
 
 <div id="quotesModal" class="modal"><div class="modalbox">
  <div class="modalhead"><div><div class="eyebrow">Compare providers</div><h2 id="quotesModalCount">0 responses</h2></div><button class="close" onclick="closeModal()">×</button></div>
@@ -1350,7 +1213,7 @@ function togglePasswordVisibility(inputId,btn){
 }
 async function login(){
   const err=document.getElementById('loginError');err.classList.add('hidden');
-  try{const d=await api('/auth/login',{method:'POST',body:JSON.stringify({email:document.getElementById('loginEmail').value,password:document.getElementById('loginPassword').value})});authToken=d.token;localStorage.setItem('lc_token',authToken);currentUser=d.user;closeLogin();updateNavAuthUI();show(pageForRole(currentUser.role));if(currentUser.role==='homeowner'||currentUser.role==='provider')await loadDashboard();toast('Signed in as '+currentUser.name)}catch(e){err.textContent=e.message;err.classList.remove('hidden')}
+  try{const d=await api('/auth/login',{method:'POST',body:JSON.stringify({email:document.getElementById('loginEmail').value,password:document.getElementById('loginPassword').value})});authToken=d.token;localStorage.setItem('lc_token',authToken);currentUser=d.user;closeLogin();updateNavAuthUI();show(currentUser.role==='homeowner'?'homeowner':(currentUser.role==='admin'?'admin':'provider'));if(currentUser.role!=='admin')await loadDashboard();toast('Signed in as '+currentUser.name)}catch(e){err.textContent=e.message;err.classList.remove('hidden')}
 }
 let signupRole='homeowner';
 let pendingPlan=null;
@@ -1697,14 +1560,14 @@ function switchHomeTab(tab){
 }
 async function loadNeighborhood(){
   const el=document.getElementById('hometab-neighborhood'); if(!el)return;
-  if(!currentUser||!['plus','premium'].includes(currentUser.subscription)){
+  if(!currentUser||!currentUser.carePlanServices||!currentUser.carePlanServices.length){
     el.innerHTML=`<div class="nb-upsell">
       <div style="width:48px;height:48px;border-radius:50%;background:var(--mint);display:grid;place-items:center;margin:0 auto 16px">
         <svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="var(--green)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7.2" stroke-dasharray="2 2.4"/><path d="M10 6.3a2.5 2.5 0 0 1 2.5 2.5c0 1.9-2.5 4.7-2.5 4.7S7.5 10.7 7.5 8.8A2.5 2.5 0 0 1 10 6.3Z"/><circle cx="10" cy="8.8" r="0.75" fill="var(--green)" stroke="none"/></svg>
       </div>
       <h3 style="margin:0 0 8px;font-size:17px">See what's happening near you</h3>
-      <p class="subtle" style="margin:0 0 22px;font-size:13.5px;line-height:1.6">Neighborhood connects you with homes within 0.25 mi to swap recommendations, share alerts, and get to know your street. It's included with Plus.</p>
-      <button class="primary" onclick="openPlansPage('homeowner')">Upgrade to Plus →</button>
+      <p class="subtle" style="margin:0 0 22px;font-size:13.5px;line-height:1.6">Neighborhood connects you with homes within 0.25 mi to swap recommendations, share alerts, and get to know your street. It's included with every Home Care Plan.</p>
+      <button class="primary" onclick="openCarePlanPage('homeowner')">View Home Care Plan →</button>
     </div>`;
     return;
   }
@@ -1784,7 +1647,7 @@ function updateNavAuthUI(){
 }
 function toggleProfileMenu(evt,role){
   evt.stopPropagation();
-  const prefix=role==='homeowner'?'ho':(role==='admin'?'admin':(role==='hoa'?'hoa':'pr'));
+  const prefix=role==='homeowner'?'ho':(role==='admin'?'admin':'pr');
   const wrap=document.getElementById(prefix+'-profile-menu-wrap');
   const menu=document.getElementById(prefix+'-profile-menu');
   const isOpen=wrap.classList.contains('open');
@@ -1812,10 +1675,7 @@ const COMMON_REQUESTS={
   'House Cleaning':['Deep clean','Move-in or move-out clean','Post-construction clean','Window cleaning','Carpet or upholstery clean','Fridge or oven deep clean','One-time tidy'],
   'Pest Control':['Ants','Roaches','Rodents','Termites','Mosquitoes','Spiders','Bed bugs','General inspection'],
   'Mobile Mechanic':['Battery replacement or jump start',"Won't start",'Brake repair','Oil change','Flat tire or tire change','Check engine light diagnostic','Alternator or starter issue'],
-  'Power Washing':['Driveway or walkway','House siding','Deck or patio','Roof','Fence','Gutters exterior'],
-  'Bulk Trash Pickup':['Furniture haul-away','Appliance removal','Yard debris & branches','Garage or basement cleanout','Construction debris','Mattress removal'],
-  'Moving Services':['Full home move','Single item or furniture move','Loading or unloading only','In-home rearranging','Packing help','Storage unit move'],
-  'Pet Waste Cleanup':['One-time yard cleanup','Weekly cleanup service','Bi-weekly cleanup service','Move-out cleanup']
+  'Power Washing':['Driveway or walkway','House siding','Deck or patio','Roof','Fence','Gutters exterior']
 };
 function populateCommonRequests(){
   const svc=document.getElementById('serviceType').value;
@@ -1945,8 +1805,6 @@ async function loadDashboard(){
       const sub=document.getElementById('ho-welcome-sub'); if(sub)sub.textContent=`What does your home need, ${currentUser.name.split(' ')[0]}?`;
       const pill=document.getElementById('ho-location-pill'); if(pill)pill.innerHTML='<svg class="icn" width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 18s6-5.6 6-10.2A6 6 0 104 7.8C4 12.4 10 18 10 18z"/><circle cx="10" cy="7.6" r="2"/></svg> '+esc(currentUser.community||'My Community');
       updatePlanButtonLabel();
-      renderSponsorBanner(d.sponsor);
-      maybeResumeJoin();
       updateCarePlanSideitem();
       const req=d.requests[0]; const rbox=document.getElementById('ho-recent-request');
       if(rbox) rbox.innerHTML = req ? requestCardHTML(req) : '<div class="stub-notice">You haven\'t submitted any requests yet.</div>';
@@ -2233,81 +2091,48 @@ function renderHomeMaintenance(d){
   }
   const hh=d.status.homeHealth;
   const hhColor = hh>=80?'#286b58':hh>=50?'#d9a84e':'#b23b2e';
-  lastHomeStatus=d.status;
   el.innerHTML=`
+  <div class="request" style="margin-bottom:14px">
+    <div class="requestrow" style="align-items:center;gap:20px;width:100%">
+      <div style="width:80px;height:80px;border-radius:50%;background:conic-gradient(${hhColor} 0% ${hh}%, #eef1ef ${hh}% 100%);display:flex;align-items:center;justify-content:center;flex:0 0 auto">
+        <div style="width:62px;height:62px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center">
+          <div style="font-size:18px;font-weight:800;color:var(--ink);line-height:1">${hh}</div>
+          <div style="font-size:9px;color:var(--muted)">/ 100</div>
+        </div>
+      </div>
+      <div><b style="font-size:14.5px">Home Health: ${hh}</b><div class="statusline" style="margin-top:4px">${hh>=80?'Nice shape overall.':'A couple of things need attention — check Status below.'}</div></div>
+    </div>
+  </div>
   <div class="boxgrid">
-    <div class="request" style="align-items:center">
-      <button class="ringbtn" onclick="openHomeHealthBreakdown()" aria-label="See Home Health score breakdown">
-        <div class="ring-hint"></div>
-        <div style="width:80px;height:80px;border-radius:50%;background:conic-gradient(${hhColor} 0% ${hh}%, #eef1ef ${hh}% 100%);display:flex;align-items:center;justify-content:center">
-          <div style="width:62px;height:62px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center">
-            <div style="font-size:18px;font-weight:800;color:var(--ink);line-height:1">${hh}</div>
-            <div style="font-size:9px;color:var(--muted)">/ 100</div>
-          </div>
-        </div>
-      </button>
-      <div>
-        <b style="font-size:14.5px">Home Health: ${hh}</b>
-        <div class="statusline" style="margin-top:4px">${hh>=80?'Nice shape overall.':'A couple of things need attention — check Status below.'}</div>
-        <div class="score-sub" onclick="openHomeHealthBreakdown()">See breakdown
-          <svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4l6 6-6 6"/></svg>
-        </div>
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="request" style="display:flex;flex-direction:column;align-items:stretch">
+        <b style="font-size:13px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)">Status</b>
+        <div style="margin-top:8px">${homeStatusRowsHTML(d.status.items)}</div>
+      </div>
+      <div class="request" style="display:flex;flex-direction:column;align-items:stretch">
+        <b style="font-size:13px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)">Upcoming Maintenance</b>
+        <div style="margin-top:8px">${homeUpcomingRowsHTML(d.status.upcoming)}</div>
       </div>
     </div>
-    <div class="request" style="display:flex;flex-direction:column;align-items:stretch">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <b style="font-size:13px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)">Home Profile</b>
-        <span class="tag">Plus perk</span>
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="request" style="display:flex;flex-direction:column;align-items:stretch">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <b style="font-size:13px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)">Home Profile</b>
+          <span class="tag">Plus perk</span>
+        </div>
+        ${homeProfileSummaryHTML(d.homeProfile)}
+        <button class="secondary" style="width:100%;margin-top:12px" onclick="openHomeProfileEditor()">Edit Profile</button>
       </div>
-      ${homeProfileSummaryHTML(d.homeProfile)}
-      <button class="secondary" style="width:100%;margin-top:12px" onclick="openHomeProfileEditor()">Edit Profile</button>
-    </div>
-  </div>
-  <div class="request" style="display:flex;flex-direction:column;align-items:stretch;margin-top:14px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <b style="font-size:13px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)">Documents</b>
-      <span class="tag">Plus perk</span>
-    </div>
-    <div>${homeDocRowsHTML(d.homeDocuments||[])}</div>
-    <button class="secondary" style="width:100%;margin-top:12px" onclick="openHomeDocUpload()">Upload Document</button>
-  </div>
-  <div class="boxgrid" style="margin-top:14px">
-    <div class="request" style="display:flex;flex-direction:column;align-items:stretch">
-      <b style="font-size:13px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)">Status</b>
-      <div style="margin-top:8px">${homeStatusRowsHTML(d.status.items)}</div>
-    </div>
-    <div class="request" style="display:flex;flex-direction:column;align-items:stretch">
-      <b style="font-size:13px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)">Upcoming Maintenance</b>
-      <div style="margin-top:8px">${homeUpcomingRowsHTML(d.status.upcoming)}</div>
+      <div class="request" style="display:flex;flex-direction:column;align-items:stretch">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <b style="font-size:13px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)">Documents</b>
+          <span class="tag">Plus perk</span>
+        </div>
+        <div>${homeDocRowsHTML(d.homeDocuments||[])}</div>
+        <button class="secondary" style="width:100%;margin-top:12px" onclick="openHomeDocUpload()">Upload Document</button>
+      </div>
     </div>
   </div>`;
-}
-let lastHomeStatus=null;
-function homeHealthBreakdownRowsHTML(items){
-  const toneLabel={bad:'Overdue',warn:'Due soon',ok:'Current',neutral:'Not scored'};
-  const toneColor={bad:'#b23b2e',warn:'var(--gold)',ok:'var(--green)',neutral:'#c7d0cb'};
-  const tonePoints={bad:-15,warn:-7,ok:0,neutral:0};
-  if(!items||!items.length) return '<div class="bd-row"><div class="bd-label">No tracked items yet</div></div>';
-  return items.map(it=>{
-    const pts=tonePoints[it.tone]||0;
-    const ptsHTML = pts<0 ? `<span class="bd-points neg">${pts}</span>` : `<span class="bd-points zero">${it.tone==='neutral'?esc(toneLabel[it.tone]):'No change'}</span>`;
-    return `<div class="bd-row">
-      <div class="bd-label"><span class="dot" style="background:${toneColor[it.tone]||'#c7d0cb'}"></span>${esc(it.label)}, ${esc(it.detail)}</div>
-      ${ptsHTML}
-    </div>`;
-  }).join('');
-}
-function openHomeHealthBreakdown(){
-  if(!lastHomeStatus) return;
-  const hh=lastHomeStatus.homeHealth;
-  document.getElementById('homeHealthBreakdownBody').innerHTML=`
-    <div style="font-size:11px;font-weight:700;letter-spacing:.4px;color:var(--green);text-transform:uppercase">Home Health breakdown</div>
-    <div style="font-size:21px;font-weight:800;margin-top:4px">${hh} / 100</div>
-    <div class="muted" style="font-size:12.5px;margin-top:4px;color:var(--muted)">Starts at 100. Each item due soon takes off 7, each overdue item takes off 15.</div>
-    <div style="margin-top:14px">${homeHealthBreakdownRowsHTML(lastHomeStatus.items)}</div>
-    <div class="bd-total"><span>Home Health</span><span>${hh} / 100</span></div>
-  `;
-  document.getElementById('homeHealthBreakdownModal').classList.add('show');
 }
 
 // --- Home Profile editor ---
@@ -2405,7 +2230,7 @@ function renderHoProfile(d){
     <div class="request">
       <div class="requestrow" style="flex-direction:column;align-items:flex-start;gap:8px;width:100%">
         <b style="font-size:14.5px">Home Address</b>
-        <div class="subtle" style="font-size:12.5px;margin-top:-4px">Used only to find neighbors within 0.25 mi for the Plus Neighborhood feed. ${geoStatus}</div>
+        <div class="subtle" style="font-size:12.5px;margin-top:-4px">Used only to find neighbors within 0.25 mi for the Home Care Plan Neighborhood feed. ${geoStatus}</div>
         <div class="field" style="width:100%;margin:6px 0 0"><input id="profileAddressInput" value="${esc(u.address||'')}" placeholder="123 Main St, Richardson, TX"></div>
         <div id="profileAddressError" class="notice hidden"></div>
         <button class="secondary" onclick="saveProfileAddress()">Save Address</button>
@@ -2463,13 +2288,7 @@ function renderPrFeed(d){
   if(!open.length){ el.innerHTML='<div class="notice">No open requests match this filter. <a onclick="document.getElementById(\'pr-feed-service-filter\').value=\'\';document.getElementById(\'pr-feed-distance-filter\').value=\'\';renderPrFeed(lastDashboard.provider)" style="color:var(--green);font-weight:700;cursor:pointer">Clear filters →</a></div>'; return; }
   el.innerHTML=open.map(r=>{
     const preferred = r.preferredDate ? `Prefers ${new Date(r.preferredDate+'T00:00').toLocaleDateString(undefined,{month:'short',day:'numeric'})}${r.preferredTime&&r.preferredTime!=='Any time'?' · '+esc(r.preferredTime):''}` : '';
-    // Requests stay listed while a provider is working the job (see server feed query), so a
-    // non-open one here always belongs to someone else — show that instead of a quote button.
-    const taken=r.status!=='open';
-    const action=taken
-      ? `<span class="tag" style="background:#f0f4f2;color:var(--muted)">Provider Assigned</span>`
-      : `<button class="primary" onclick="openQuoteSubmit('${esc(r.id)}')">I Can Help</button>`;
-    return `<div class="request">${photoSlotHTML(serviceImage(r.serviceType),null,'req-thumb')}<div class="provider" style="flex:1"><div><span class="tag">${esc(r.serviceType.toUpperCase())}</span><h3 style="margin:8px 0 4px">${esc(r.title)}</h3><p style="color:var(--muted);font-size:14px;margin:0 0 6px">${esc(r.description||'')}</p><small style="color:var(--muted)"><svg class="icn" width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 18s6-5.6 6-10.2A6 6 0 104 7.8C4 12.4 10 18 10 18z"/><circle cx="10" cy="7.6" r="2"/></svg> ${esc(d.user.community||'Local area')}${r.distanceMi!=null?' · '+r.distanceMi+' mi away':''} · ${esc(r.urgency||'Flexible')}</small><div class="card-activity-ts" style="margin-top:3px">Posted ${timeAgo(r.createdAt)}${preferred?' · '+preferred:''}</div></div><div class="mini-actions">${action}</div></div></div>`;
+    return `<div class="request">${photoSlotHTML(serviceImage(r.serviceType),null,'req-thumb')}<div class="provider" style="flex:1"><div><span class="tag">${esc(r.serviceType.toUpperCase())}</span><h3 style="margin:8px 0 4px">${esc(r.title)}</h3><p style="color:var(--muted);font-size:14px;margin:0 0 6px">${esc(r.description||'')}</p><small style="color:var(--muted)"><svg class="icn" width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 18s6-5.6 6-10.2A6 6 0 104 7.8C4 12.4 10 18 10 18z"/><circle cx="10" cy="7.6" r="2"/></svg> ${esc(d.user.community||'Local area')}${r.distanceMi!=null?' · '+r.distanceMi+' mi away':''} · ${esc(r.urgency||'Flexible')}</small><div class="card-activity-ts" style="margin-top:3px">Posted ${timeAgo(r.createdAt)}${preferred?' · '+preferred:''}</div></div><div class="mini-actions"><button class="primary" onclick="openQuoteSubmit('${esc(r.id)}')">I Can Help</button></div></div></div>`;
   }).join('');
 }
 function openQuoteSubmit(rid){
@@ -2571,35 +2390,20 @@ async function clearProviderServiceArea(){
     currentUser=d.user; toast('Showing every open request again.'); await loadDashboard(); renderPanel('provider','profile');
   }catch(e){ handleUpgradeError(e); }
 }
-function providerBioHTML(u){
-  return `<div class="request">
-    <div class="requestrow" style="flex-direction:column;align-items:flex-start;gap:6px;width:100%">
-      <b style="font-size:16px">${esc(u.name)}</b>
-      <div class="statusline">★ ${esc(u.rating||'New')} · ${esc(u.reviewCount||0)} jobs${u.verified?' · Verified':''} · Plan: ${esc(u.subscription)}</div>
-      <p style="margin:6px 0 0">${esc(u.businessDescription||'')}</p>
-      <p style="margin:4px 0 0">Services: ${esc((u.serviceTypes||[]).join(', '))}<br>Phone: ${esc(u.phone||'N/A')}</p>
-    </div>
-  </div>`;
-}
 function renderPrProfile(d){
   const el=document.getElementById('pr-profile-view'); if(!el)return; const u=d.user;
-  el.innerHTML=`<div class="boxgrid">${providerBioHTML(u)}${avatarEditorHTML('provider',u)}${providerServiceAreaHTML(u)}${providerNotificationsHTML(u)}${providerVerificationHTML(u)}${dangerZoneHTML()}${providerGalleryHTML(u)}${providerSkillsHTML(u)}</div>`;
+  el.innerHTML=`<div class="request"><div class="avatar-slot" style="width:56px;height:56px;overflow:hidden">${avatarInnerHTML(u,56)}</div><div class="requestrow" style="flex-direction:column;align-items:flex-start;gap:6px"><div><b style="font-size:16px">${esc(u.name)}</b><div class="statusline">★ ${esc(u.rating||'New')} · ${esc(u.reviewCount||0)} jobs${u.verified?' · Verified':''} · Plan: ${esc(u.subscription)}</div></div><p style="margin:6px 0 0">${esc(u.businessDescription||'')}</p><p style="margin:4px 0 0">Services: ${esc((u.serviceTypes||[]).join(', '))}<br>Phone: ${esc(u.phone||'N/A')}</p></div></div>
+  <div class="boxgrid">${providerVerificationHTML(u)}${providerServiceAreaHTML(u)}${providerNotificationsHTML(u)}${providerSkillsHTML(u)}${providerGalleryHTML(u)}${avatarEditorHTML('provider',u)}${dangerZoneHTML()}</div>`;
 }
 
 // --- provider business profile: email notification preferences ---
-const ALL_SERVICE_TYPES=['Lawn & Landscaping','House Cleaning','Pool Service','Handyman','Plumbing','Electrical','HVAC','Pest Control','Mobile Mechanic','Power Washing','Bulk Trash Pickup','Moving Services','Pet Waste Cleanup'];
-function notifySelectedSummaryText(selected){
-  if(!selected.length)return 'Select services…';
-  if(selected.length===1)return selected[0];
-  return `${selected.length} services selected`;
-}
+const ALL_SERVICE_TYPES=['Lawn & Landscaping','House Cleaning','Pool Service','Handyman','Plumbing','Electrical','HVAC','Pest Control','Mobile Mechanic','Power Washing'];
 function providerNotificationsHTML(u){
+  const offered=(u.serviceTypes&&u.serviceTypes.length)?u.serviceTypes:ALL_SERVICE_TYPES;
   const notifyOn=u.notifyEmailEnabled!==false;
-  const fallback=(u.serviceTypes&&u.serviceTypes.length)?u.serviceTypes:[];
-  const selected=(u.notifyServiceTypes&&u.notifyServiceTypes.length)?u.notifyServiceTypes:fallback;
-  const selectedSet=new Set(selected);
-  const rows=ALL_SERVICE_TYPES.map(s=>`<label class="notify-select-item">
-      <input type="checkbox" class="notify-service-cb" value="${esc(s)}" ${selectedSet.has(s)?'checked':''} ${notifyOn?'':'disabled'} onchange="updateNotifySelectedSummary()">
+  const selected=new Set(u.notifyServiceTypes&&u.notifyServiceTypes.length?u.notifyServiceTypes:offered);
+  const rows=offered.map(s=>`<label style="display:flex;align-items:center;gap:9px;font-size:13.5px;padding:7px 0;cursor:pointer">
+      <input type="checkbox" class="notify-service-cb" value="${esc(s)}" ${selected.has(s)?'checked':''} ${notifyOn?'':'disabled'} style="width:16px;height:16px;accent-color:var(--green)">
       ${esc(s)}
     </label>`).join('');
   return `<div class="request">
@@ -2610,14 +2414,8 @@ function providerNotificationsHTML(u){
           <input type="checkbox" id="notifyEmailToggle" ${notifyOn?'checked':''} onchange="toggleNotifyServiceRows(this.checked)" style="width:16px;height:16px;accent-color:var(--green)">
         </label>
       </div>
-      <div class="subtle" style="font-size:12.5px;margin-top:-4px">Get an email the moment a new request comes in for any services you pick below, not just the ones you offer.</div>
-      <div class="notify-select${notifyOn?'':' disabled'}" id="notifyServiceSelect">
-        <div class="notify-select-trigger" onclick="toggleNotifyDropdown(event)">
-          <span id="notifySelectedSummary">${esc(notifySelectedSummaryText(selected))}</span>
-          <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8l5 5 5-5"/></svg>
-        </div>
-        <div class="notify-select-panel hidden" id="notifyServicePanel" onclick="event.stopPropagation()">${rows}</div>
-      </div>
+      <div class="subtle" style="font-size:12.5px;margin-top:-4px">Get an email the moment a new request comes in for the services you pick below.</div>
+      <div id="notifyServiceRows" style="width:100%;display:flex;flex-direction:column;opacity:${notifyOn?'1':'.45'}">${rows}</div>
       <div id="notifyError" class="notice hidden"></div>
       <div class="mini-actions" style="margin-top:2px">
         <button class="primary" onclick="saveNotificationPreferences()">Save Preferences</button>
@@ -2625,30 +2423,9 @@ function providerNotificationsHTML(u){
     </div>
   </div>`;
 }
-function toggleNotifyDropdown(evt){
-  evt.stopPropagation();
-  const panel=document.getElementById('notifyServicePanel');
-  const wrap=document.getElementById('notifyServiceSelect');
-  if(!panel||!wrap||wrap.classList.contains('disabled'))return;
-  const isOpen=!panel.classList.contains('hidden');
-  closeNotifyDropdown();
-  if(!isOpen)panel.classList.remove('hidden');
-}
-function closeNotifyDropdown(){
-  const panel=document.getElementById('notifyServicePanel');
-  if(panel)panel.classList.add('hidden');
-}
-document.addEventListener('click',closeNotifyDropdown);
-function updateNotifySelectedSummary(){
-  const summary=document.getElementById('notifySelectedSummary'); if(!summary)return;
-  const checked=Array.from(document.querySelectorAll('.notify-service-cb:checked')).map(cb=>cb.value);
-  summary.textContent=notifySelectedSummaryText(checked);
-}
 function toggleNotifyServiceRows(on){
-  const wrap=document.getElementById('notifyServiceSelect');
-  if(wrap)wrap.classList.toggle('disabled',!on);
+  document.getElementById('notifyServiceRows').style.opacity=on?'1':'.45';
   document.querySelectorAll('.notify-service-cb').forEach(cb=>cb.disabled=!on);
-  if(!on)closeNotifyDropdown();
 }
 async function saveNotificationPreferences(){
   const err=document.getElementById('notifyError'); if(err)err.classList.add('hidden');
@@ -2779,8 +2556,8 @@ let verificationDraftEntityType=null, verificationDraftDocs={};
 function verificationStatusPill(u){
   const s=u.verificationStatus||'unverified';
   const map={
-    unverified:{txt:(u.verificationDocuments&&u.verificationDocuments.length)||u.verificationSubmittedAt?'Docs under review':'Not verified yet',bg:'#eef2ee',fg:'#4a5c53'},
-    pending:{txt:'Awaiting approval',bg:'#fdf1e0',fg:'#8a5a1f'},
+    unverified:{txt:'Not verified yet',bg:'#eef2ee',fg:'#4a5c53'},
+    pending:{txt:'Pending review',bg:'#fdf1e0',fg:'#8a5a1f'},
     verified:{txt:'✓ Verified',bg:'#e3f1e9',fg:'#1e6b45'},
     rejected:{txt:'Needs attention',bg:'#fbe8e6',fg:'#a33a2e'}
   };
@@ -2819,13 +2596,12 @@ function providerVerificationHTML(u){
   const status=u.verificationStatus||'unverified';
   const entityType=verificationDraftEntityType||u.entityType;
   let body='';
-  const approvalBanner = u.approved===false && status!=='rejected' ? `<div class="notice" style="background:#fdf1e0;color:#8a5a1f;margin:0">Your account is waiting on admin approval, usually within a couple of business days. You can upload your documents now. Approval lets you respond to requests and message homeowners. We'll email you.</div>` : '';
   if(!entityType){
     body=`<div class="mini-actions" style="margin-top:2px">
       <button class="secondary" onclick="setVerificationEntityType('individual')">I'm an individual contractor</button>
       <button class="secondary" onclick="setVerificationEntityType('business')">I'm a registered business (LLC/Corp)</button>
     </div>`;
-  }else if(status==='unverified' && u.verificationSubmittedAt && (!u.verificationReviewedAt || new Date(u.verificationReviewedAt)<new Date(u.verificationSubmittedAt))){
+  }else if(status==='pending'){
     body=`<div class="subtle" style="font-size:12.5px">Your documents are with our team for review. We'll email you once it's done, usually within a couple of business days.</div>`;
   }else if(status==='verified'){
     body=`<div class="subtle" style="font-size:12.5px">You're verified as ${entityType==='business'?'a registered business':'an individual contractor'}. Homeowners see a "Verified" badge on your profile and quotes.</div>`;
@@ -2859,7 +2635,6 @@ function providerVerificationHTML(u){
     <div class="requestrow" style="flex-direction:column;align-items:flex-start;gap:8px;width:100%">
       <div style="display:flex;align-items:center;gap:10px"><b style="font-size:14.5px">Verification</b>${verificationStatusPill(u)}</div>
       <div class="subtle" style="font-size:12.5px;margin-top:-4px">Verified providers get a trust badge homeowners can see before they reach out.</div>
-      ${approvalBanner}
       ${body}
     </div>
   </div>`;
@@ -2905,58 +2680,38 @@ async function loadAdminQueue(status){
 }
 function renderAdminQueue(providers){
   const el=document.getElementById('admin-queue-list'); if(!el)return;
-  if(!providers.length){ const emptyMsg={pending:'No new provider accounts waiting for approval.',unverified:'No providers have uploaded documents for review.'}[adminQueueStatus]||`No ${esc(adminQueueStatus)} providers right now.`; el.innerHTML=`<div class="notice">${emptyMsg}</div>`; return; }
+  if(!providers.length){ el.innerHTML=`<div class="notice">No ${esc(adminQueueStatus)} submissions right now.</div>`; return; }
   el.innerHTML=providers.map(p=>{
     const docs=(p.verificationDocuments||[]).map(docPreviewHTML).join('');
     const submitted = p.verificationSubmittedAt ? new Date(p.verificationSubmittedAt).toLocaleDateString() : 'N/A';
-    const isAccountStep = p.approved===false && p.verificationStatus!=='rejected';
-    const isDocReview = p.approved!==false && p.verificationStatus==='unverified' && (p.verificationDocuments||[]).length>0;
-    const actions = isAccountStep || isDocReview ? `
-      <div class="field full"><label>${isAccountStep?'NOTE TO PROVIDER':'REVIEW NOTES'} (required to reject)</label><textarea id="admin-notes-${p.id}" placeholder="${isAccountStep?'Optional note, required if you reject this account...':'Optional note to the provider...'}"></textarea></div>
+    const actions = adminQueueStatus==='pending' || adminQueueStatus==='unverified' || p.verificationStatus==='pending' ? `
+      <div class="field full"><label>REVIEW NOTES ${p.verificationStatus==='pending'?'(required to reject)':''}</label><textarea id="admin-notes-${p.id}" placeholder="Optional note to the provider..."></textarea></div>
       <div class="mini-actions">
-        <button class="primary" onclick="submitAdminDecision('${esc(p.id)}','approve',${isAccountStep?'true':'false'})">${isAccountStep?'Approve account':'Verify provider'}</button>
-        <button class="secondary" onclick="submitAdminDecision('${esc(p.id)}','reject',${isAccountStep?'true':'false'})">${isAccountStep?'Reject account':'Reject documents'}</button>
+        <button class="primary" onclick="submitAdminDecision('${esc(p.id)}','approve')">Approve</button>
+        <button class="secondary" onclick="submitAdminDecision('${esc(p.id)}','reject')">Reject</button>
       </div>` : (p.verificationNotes ? `<p style="margin:6px 0 0;font-size:12.5px;color:var(--muted)">Note: ${esc(p.verificationNotes)}</p>` : '');
     return `<div class="request" style="margin-bottom:14px">
       <div class="requestrow" style="flex-direction:column;align-items:flex-start;gap:8px;width:100%">
         <div style="display:flex;justify-content:space-between;width:100%;align-items:flex-start">
-          <div><b style="font-size:15px">${esc(p.name)}</b><div class="statusline">${esc(p.entityType||'No type chosen')} · ${esc(p.email)} · Signed up ${p.createdAt?new Date(p.createdAt).toLocaleDateString():'N/A'}${(p.verificationDocuments||[]).length?' · Docs submitted '+submitted:''}</div></div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">${isAccountStep?'<span class="tag" style="background:#fdf1e0;color:#8a5a1f;border-color:transparent">Awaiting approval</span>':''}${verificationStatusPill(p)}</div>
+          <div><b style="font-size:15px">${esc(p.name)}</b><div class="statusline">${esc(p.entityType||'N/A')} · ${esc(p.email)} · Submitted ${submitted}</div></div>
+          ${verificationStatusPill(p)}
         </div>
         <p style="margin:0;font-size:13px">${esc(p.businessDescription||'')}</p>
         <p style="margin:0;font-size:12.5px;color:var(--muted)">Services: ${esc((p.serviceTypes||[]).join(', ')||'None listed')}</p>
-        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:4px">${docs||'<span class="subtle" style="font-size:12px">No documents uploaded yet.</span>'}</div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:4px">${docs||'<span class="subtle" style="font-size:12px">No documents uploaded.</span>'}</div>
         ${actions}
       </div>
     </div>`;
   }).join('');
 }
-async function refreshAdminVerificationBadges(){
-  if(!currentUser||currentUser.role!=='admin')return;
-  const set=(id,n)=>{ const el=document.getElementById(id); if(!el)return; el.textContent=n; el.classList.toggle('hidden',!(n>0)); };
-  if(adminLevel('verification')>0){
-    try{
-      const c=await api('/admin/verifications/counts');
-      set('vq-badge-nav',c.pending||0); set('vq-badge-pending',c.pending||0); set('vq-badge-unverified',c.unverified||0);
-    }catch(e){}
-  }
-  if(adminLevel('hoas')>0){
-    try{ const h=await api('/admin/hoas/counts'); set('hoas-badge',h.changes||0); }catch(e){}
-  }
-}
-setInterval(async()=>{
-  if(!currentUser||currentUser.role!=='admin'||document.hidden)return;
-  try{ const d=await api('/auth/me'); const before=JSON.stringify(currentUser.adminPermissions||null); currentUser=d.user; if(JSON.stringify(currentUser.adminPermissions||null)!==before) applyAdminAccess(); }catch(e){}
-  refreshAdminVerificationBadges();
-},60000);
-async function submitAdminDecision(providerId,decision,accountStep){
+async function submitAdminDecision(providerId,decision){
   const notesEl=document.getElementById('admin-notes-'+providerId);
   const notes=notesEl?notesEl.value.trim():'';
   if(decision==='reject' && !notes){ toast('Add a note explaining why, so the provider knows what to fix.'); return; }
   try{
     await api('/admin/verifications/'+providerId+'/decision',{method:'POST',body:JSON.stringify({decision,notes})});
-    toast(decision==='approve'?(accountStep?'Account approved. They can now respond to requests.':'Provider verified.'):(accountStep?'Account rejected.':'Documents rejected.'));
-    await loadAdminQueue(adminQueueStatus); refreshAdminVerificationBadges();
+    toast(decision==='approve'?'Provider approved.':'Provider rejected.');
+    await loadAdminQueue(adminQueueStatus);
   }catch(e){ toast(e.message); }
 }
 
@@ -3010,29 +2765,7 @@ async function submitAdminGalleryDecision(providerId,photoId,decision){
 }
 
 // --- admin: overview, accounts, dispatch ---
-const ADMIN_PANEL_SECTION={hoas:'hoas',overview:'overview',accounts:'accounts',dispatch:'dispatch',payments:'payments',verification:'verification',gallery:'verification',reported:'reported',support:'support',deleted:'accounts',emaillog:'system'};
-const ADMIN_PANEL_WRITE_LEVEL={accounts:3,deleted:3,payments:3};
-function adminLevel(section){
-  const u=currentUser; if(!u||u.role!=='admin')return 0;
-  if(u.isSuperAdmin)return 3;
-  return Math.max(0,Math.min(3,Number((u.adminPermissions||{})[section])||0));
-}
-function adminPanelLevel(panel){ return panel==='team' ? (currentUser&&currentUser.isSuperAdmin?3:0) : adminLevel(ADMIN_PANEL_SECTION[panel]); }
-function adminFirstAllowedPanel(){ const order=['overview','accounts','dispatch','payments','verification','gallery','reported','support','deleted','emaillog','hoas','team']; return order.find(p=>adminPanelLevel(p)>0)||null; }
-function applyAdminAccess(){
-  document.querySelectorAll('#admin .sidebar .sideitem[data-panel]').forEach(el=>{ el.classList.toggle('hidden',adminPanelLevel(el.dataset.panel)<1); });
-  document.querySelectorAll('#admin .content .panel[data-panel]').forEach(el=>{
-    const pn=el.dataset.panel; const lvl=adminPanelLevel(pn); const need=ADMIN_PANEL_WRITE_LEVEL[pn]||2;
-    const ro=pn!=='team'&&pn!=='overview'&&pn!=='emaillog'&&lvl>0&&lvl<need;
-    if(ro) el.dataset.ro='1'; else delete el.dataset.ro;
-    let b=el.querySelector(':scope > .ro-banner');
-    if(ro&&!b){ b=document.createElement('div'); b.className='ro-banner'; b.textContent=lvl<2?'View only. Your access here lets you look but not change anything.':'You can view and edit here. Delete, suspend, plan changes and refunds need full access.'; el.prepend(b); }
-    if(!ro&&b) b.remove();
-  });
-}
 function switchAdminPanel(panelName){
-  if(adminPanelLevel(panelName)<1){ const f=adminFirstAllowedPanel(); if(!f){ toast('Your admin account has no areas turned on yet. Ask the main admin.'); return; } panelName=f; }
-  refreshAdminVerificationBadges();
   document.querySelectorAll('#admin .sidebar .sideitem[data-panel]').forEach(el=>el.classList.toggle('active',el.dataset.panel===panelName));
   document.querySelectorAll('#admin .content .panel').forEach(el=>el.classList.toggle('hidden',el.dataset.panel!==panelName));
   if(panelName==='overview') loadAdminOverview();
@@ -3045,8 +2778,6 @@ function switchAdminPanel(panelName){
   else if(panelName==='support') loadAdminSupportThreads();
   else if(panelName==='deleted') loadAdminDeleted();
   else if(panelName==='emaillog') loadAdminEmailLog('all');
-  else if(panelName==='team') loadAdminTeam();
-  else if(panelName==='hoas') adminHoasLoadList();
 }
 async function loadAdminReported(){
   const el=document.getElementById('admin-reported-list'); if(!el)return;
@@ -3176,7 +2907,7 @@ async function loadAdminOverview(){
       </div>
       <div class="section-row"><h3 style="margin:0">Provider verification</h3></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <span class="tag">Pending approval: ${vs.pending||0}</span><span class="tag">Unverified (docs in): ${vs.unverified||0}</span><span class="tag">Verified: ${vs.verified||0}</span><span class="tag">Rejected: ${vs.rejected||0}</span>
+        <span class="tag">Unverified: ${vs.unverified||0}</span><span class="tag">Pending: ${vs.pending||0}</span><span class="tag">Verified: ${vs.verified||0}</span><span class="tag">Rejected: ${vs.rejected||0}</span>
       </div>
     `;
   }catch(e){ el.innerHTML=`<div class="notice">${esc(e.message)}</div>`; }
@@ -3593,509 +3324,18 @@ async function markJobStatus(jobId,status){
 function show(id){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById(id).classList.add('active');window.scrollTo({top:0,behavior:'smooth'});
   if(id==='homeowner'||id==='provider') loadDashboard();
-  if(id==='hoa') loadHoaPortal();
-  if(id==='admin'){ const nm=document.getElementById('admin-header-name'); if(nm&&currentUser)nm.textContent=currentUser.name; applyAdminAccess(); switchAdminPanel('overview'); }
+  if(id==='admin'){ const nm=document.getElementById('admin-header-name'); if(nm&&currentUser)nm.textContent=currentUser.name; switchAdminPanel('overview'); }
 }
 async function bootAuth(){
   if(authToken){
     const ok=await ensureAuth();
-    if(ok&&currentUser){ show(pageForRole(currentUser.role)); }
+    if(ok&&currentUser){ show(currentUser.role==='homeowner'?'homeowner':(currentUser.role==='admin'?'admin':'provider')); }
     else{ authToken=null; }
   }
   updateNavAuthUI();
 }
-
-// ---- Admin team (main admin only) ----
-const ADMIN_SECTION_INFO=[
-  {k:'overview',label:'Overview',desc:'Dashboard numbers'},
-  {k:'accounts',label:'Accounts',desc:'Users and providers, plans, suspend, delete',full:true},
-  {k:'dispatch',label:'Dispatch',desc:'Open requests and Care Plan accounts'},
-  {k:'payments',label:'Payments',desc:'Payment history, upcoming, refunds',full:true},
-  {k:'verification',label:'Verification and Gallery',desc:'Approve providers, review documents and photos'},
-  {k:'reported',label:'Reported',desc:'Reported conversations'},
-  {k:'support',label:'Support',desc:'Support threads and announcements'},
-  {k:'hoas',label:'HOAs',desc:'HOA roster, change queue, billing',full:true},
-  {k:'system',label:'Email Log',desc:'Sent email history'}
-];
-let adminTeamData=[]; let adminTeamEditId=null;
-function adminPermSummary(m){
-  if(m.isSuper) return '<span class="team-chip">Full access (main admin)</span>';
-  const names=['','View','Edit','Full'];
-  const chips=ADMIN_SECTION_INFO.filter(x=>(m.permissions||{})[x.k]>0).map(x=>`<span class="team-chip">${esc(x.label)}: ${names[m.permissions[x.k]]}</span>`);
-  return chips.length?chips.join(''):'<span class="subtle" style="font-size:12.5px">No areas turned on</span>';
-}
-async function loadAdminTeam(){
-  const el=document.getElementById('admin-team-list'); if(!el)return;
-  try{
-    const d=await api('/admin/team'); adminTeamData=d.team||[];
-    el.innerHTML=adminTeamData.map(m=>{
-      const me=currentUser&&m.id===currentUser.id;
-      const state=m.suspended?statusPillHTML('Access off','bad'):(m.invitePending?statusPillHTML(m.inviteExpired?'Invite expired':'Invite sent','neutral'):statusPillHTML('Active','ok'));
-      const acts=m.isSuper?'':`<div class="admin-row-actions" style="display:flex!important">
-        <button class="secondary" onclick="openAdminEditPermsModal('${m.id}')">Edit access</button>
-        ${m.invitePending?`<button class="secondary" onclick="resendAdminInvite('${m.id}')">${m.inviteExpired?'New invite link':'Resend invite'}</button>`:''}
-        ${me?'':`<button class="secondary" ${m.suspended?'':'style="color:#a33a2e"'} onclick="toggleAdminAccess('${m.id}',${!m.suspended})">${m.suspended?'Turn access back on':'Turn access off'}</button>`}
-      </div>`;
-      return `<div class="admin-row"><div class="admin-row-main"><div class="name">${esc(m.name)}${me?' (you)':''} ${state}</div><div class="meta">${esc(m.email)}</div><div style="margin-top:4px">${adminPermSummary(m)}</div></div>${acts}</div>`;
-    }).join('')||'<div class="notice">No admins yet.</div>';
-  }catch(e){ el.innerHTML=`<div class="notice">${esc(e.message)}</div>`; }
-}
-function renderAdminPermGrid(perms){
-  const opts=(full)=>[[0,'No access'],[1,'View only'],[2,'Edit'],...(full?[[3,'Full (incl. delete, refund)']]:[])];
-  document.getElementById('adminTeamPerms').innerHTML=ADMIN_SECTION_INFO.map(x=>{
-    const cur=Math.min((perms||{})[x.k]||0, x.full?3:2);
-    const o=opts(x.full).filter(([v])=>x.k==='overview'||x.k==='system'?v<=1:true);
-    return `<div class="pl"><b>${esc(x.label)}</b><small>${esc(x.desc)}</small></div><select data-sec="${x.k}">${o.map(([v,l])=>`<option value="${v}" ${v===cur?'selected':''}>${l}</option>`).join('')}</select>`;
-  }).join('');
-}
-function readAdminPermGrid(){ const out={}; document.querySelectorAll('#adminTeamPerms select').forEach(sel=>{ out[sel.dataset.sec]=parseInt(sel.value,10)||0; }); return out; }
-function openAdminInviteModal(){
-  adminTeamEditId=null;
-  document.getElementById('adminTeamTitle').textContent='Add admin'; document.getElementById('adminTeamEyebrow').textContent='New admin';
-  document.getElementById('adminTeamIdentity').style.display='';
-  document.getElementById('adminTeamName').value=''; document.getElementById('adminTeamEmail').value='';
-  document.getElementById('adminTeamSave').textContent='Send invite';
-  document.getElementById('adminTeamError').classList.add('hidden');
-  renderAdminPermGrid({});
-  document.getElementById('adminTeamModal').classList.add('show');
-}
-function openAdminEditPermsModal(id){
-  const m=adminTeamData.find(x=>x.id===id); if(!m)return;
-  adminTeamEditId=id;
-  document.getElementById('adminTeamTitle').textContent='Access for '+m.name; document.getElementById('adminTeamEyebrow').textContent='Edit access';
-  document.getElementById('adminTeamIdentity').style.display='none';
-  document.getElementById('adminTeamSave').textContent='Save access';
-  document.getElementById('adminTeamError').classList.add('hidden');
-  renderAdminPermGrid(m.permissions||{});
-  document.getElementById('adminTeamModal').classList.add('show');
-}
-function closeAdminTeamModal(){ document.getElementById('adminTeamModal').classList.remove('show'); }
-function showAdminInviteLink(link,emailSent,email){
-  document.getElementById('adminInviteLinkNote').textContent=emailSent?`Invite emailed to ${email}. If it does not arrive, send them this link yourself. It works for 7 days and sets their own password.`:`Email is not configured, so nothing was sent. Send ${email} this link yourself. It works for 7 days and sets their own password.`;
-  document.getElementById('adminInviteLinkInput').value=link;
-  document.getElementById('adminInviteLinkModal').classList.add('show');
-}
-function copyAdminInviteLink(){ const i=document.getElementById('adminInviteLinkInput'); i.select(); try{ navigator.clipboard.writeText(i.value); toast('Link copied'); }catch(e){ document.execCommand('copy'); toast('Link copied'); } }
-async function submitAdminTeamModal(){
-  const err=document.getElementById('adminTeamError'); err.classList.add('hidden');
-  try{
-    const permissions=readAdminPermGrid();
-    if(adminTeamEditId){
-      await api('/admin/team/'+adminTeamEditId+'/permissions',{method:'POST',body:JSON.stringify({permissions})});
-      closeAdminTeamModal(); toast('Access updated'); loadAdminTeam();
-    }else{
-      const name=document.getElementById('adminTeamName').value.trim(), email=document.getElementById('adminTeamEmail').value.trim();
-      const d=await api('/admin/team/invite',{method:'POST',body:JSON.stringify({name,email,permissions})});
-      closeAdminTeamModal(); loadAdminTeam(); showAdminInviteLink(d.inviteLink,d.emailSent,email);
-    }
-  }catch(e){ err.textContent=e.message; err.classList.remove('hidden'); }
-}
-async function resendAdminInvite(id){
-  try{ const d=await api('/admin/team/'+id+'/resend-invite',{method:'POST'}); loadAdminTeam(); showAdminInviteLink(d.inviteLink,d.emailSent,d.member.email); }catch(e){ toast(e.message); }
-}
-async function toggleAdminAccess(id,suspended){
-  if(suspended&&!confirm('Turn off this admin\'s access? They will be signed out. You can turn it back on later.'))return;
-  try{ await api('/admin/team/'+id+'/access',{method:'POST',body:JSON.stringify({suspended})}); toast(suspended?'Access turned off':'Access turned on'); loadAdminTeam(); }catch(e){ toast(e.message); }
-}
-// Invite link landing: #invite=TOKEN
-let pendingInviteToken=null;
-async function handleInviteHash(){
-  const m=/^#invite=([a-f0-9]{32,})$/i.exec(location.hash||''); if(!m)return false;
-  pendingInviteToken=m[1];
-  try{
-    const d=await (await fetch(API+'/auth/invite?token='+encodeURIComponent(pendingInviteToken))).json();
-    if(!d.email) throw new Error(d.error||'Invalid invite');
-    document.getElementById('inviteAcceptTitle').textContent='Welcome, '+d.name;
-    document.getElementById('inviteAcceptEmail').textContent='Set a password for '+d.email+'.';
-  }catch(e){
-    document.getElementById('inviteAcceptTitle').textContent='Invite problem';
-    document.getElementById('inviteAcceptEmail').textContent=e.message||'This invite link is invalid or has expired. Ask for a new one.';
-    pendingInviteToken=null;
-  }
-  document.getElementById('inviteAcceptModal').classList.add('show');
-  return true;
-}
-async function submitInviteAccept(){
-  const err=document.getElementById('inviteAcceptError'); err.classList.add('hidden');
-  const p1=document.getElementById('invitePw1').value, p2=document.getElementById('invitePw2').value;
-  if(!pendingInviteToken){ err.textContent='This invite link is not valid. Ask for a new one.'; err.classList.remove('hidden'); return; }
-  if(p1.length<8){ err.textContent='Password must be at least 8 characters.'; err.classList.remove('hidden'); return; }
-  if(p1!==p2){ err.textContent='Passwords do not match.'; err.classList.remove('hidden'); return; }
-  try{
-    const d=await api('/auth/invite/accept',{method:'POST',body:JSON.stringify({token:pendingInviteToken,password:p1})});
-    authToken=d.token; localStorage.setItem('lc_token',authToken); currentUser=d.user; pendingInviteToken=null;
-    history.replaceState(null,'',location.pathname+location.search);
-    document.getElementById('inviteAcceptModal').classList.remove('show');
-    updateNavAuthUI(); show(pageForRole(currentUser.role)); toast('Signed in as '+currentUser.name);
-  }catch(e){ err.textContent=e.message; err.classList.remove('hidden'); }
-}
-
-// ================= HOA program =================
-function pageForRole(r){ return r==='homeowner'?'homeowner':(r==='admin'?'admin':(r==='hoa'?'hoa':'provider')); }
-const HOA_KIND_LABEL={remove:'Removal',new_owner:'New owner',wrong_address:'Address fixed',restore:'Restored',roster_upload:'Roster upload',roster_confirmed:'Roster confirmed',review_confirm:'Home confirmed',review_deny:'Home denied'};
-const HOA_REASON_LABEL={sold:'Sold',rented:'Owner moved out / rented',other:'Other'};
-const hoaMoney=c=>'$'+((c||0)/100).toFixed(2);
-const hoaDay=s=>s?new Date((String(s).length>10?String(s).slice(0,10):s)+'T00:00:00Z').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric',timeZone:'UTC'}):'';
-const hoaCtxs={};
-function hoaPath(ctx,sub){ return ctx.base==='/hoa' ? '/hoa/'+sub : (sub==='portal' ? ctx.base : ctx.base+'/'+sub); }
-async function hoaLoad(ctx){
-  const el=document.getElementById(ctx.elId);
-  try{ ctx.data=await api(hoaPath(ctx,'portal')); hoaRender(ctx); }
-  catch(e){ if(el) el.innerHTML=`<div class="notice">${esc(e.message)}</div>`; }
-}
-function hoaStatusPill(st){
-  const m={pilot:['Free pilot','warn'],active:['Active','ok'],paused:['Paused','bad']}[st]||[st,'warn'];
-  return statusPillHTML(m[0],m[1]);
-}
-function hoaCan(ctx){ return !ctx.readonly && (ctx.mode==='hoa' || ctx.level>=2); }
-function hoaCanBill(ctx){ return !ctx.readonly && ctx.mode==='admin' && ctx.level>=3; }
-function hoaTab(key,tab){ const c=hoaCtxs[key]; if(!c)return; c.tab=tab; hoaRender(c); }
-function hoaRender(ctx){
-  const el=document.getElementById(ctx.elId); if(!el||!ctx.data)return;
-  const d=ctx.data, s=d.stats;
-  const tabs=[['overview','Overview'],['roster','Roster'+(s.review?` (${s.review} to review)`:'')],['billing','Billing'],['changes','Changes'],['team','Contacts']];
-  if(ctx.mode==='admin'&&!ctx.readonly&&ctx.level>=1) tabs.push(['settings','Settings']);
-  ctx.tab=ctx.tab||'overview';
-  if(!tabs.find(t=>t[0]===ctx.tab)) ctx.tab='overview';
-  const body={overview:hoaTabOverview,roster:hoaTabRoster,billing:hoaTabBilling,changes:hoaTabChanges,team:hoaTabTeam,settings:hoaTabSettings}[ctx.tab](ctx);
-  el.innerHTML=`<div class="mini-actions" style="margin:0 0 14px;flex-wrap:wrap;gap:8px">${tabs.map(t=>`<button class="hoa-tab ${t[0]===ctx.tab?'active':''}" onclick="hoaTab('${ctx.key}','${t[0]}')">${esc(t[1])}</button>`).join('')}</div>${body}`;
-  if(ctx.tab==='roster') hoaFilterRoster(ctx.key);
-}
-function hoaNextInvoiceText(d){
-  const n=d.nextInvoice, o=d.org;
-  if(n.mode==='paused') return 'Billing is paused for this HOA.';
-  if(n.mode==='pilot'){
-    const a=n.afterPilot;
-    return `Free pilot until <b>${esc(hoaDay(o.pilotEnd))}</b>. After the pilot, based on today's numbers: ${a.billable} home${a.billable===1?'':'s'} x ${hoaMoney(n.priceCents)} = <b>${hoaMoney(a.amountCents)}</b> per month.`;
-  }
-  const extra=[`${n.active} active`]; if(n.floor>n.active) extra.push(`minimum ${n.floor}`); if(n.mode==='capped') extra.push(`capped at ${o.seatCap}`);
-  return `Next invoice on <b>${esc(hoaDay(n.period))}</b>: ${n.billable} home${n.billable===1?'':'s'} x ${hoaMoney(n.priceCents)} = <b>${hoaMoney(n.amountCents)}</b> (${extra.join(', ')}).`;
-}
-function hoaTabOverview(ctx){
-  const d=ctx.data, o=d.org, s=d.stats, can=hoaCan(ctx);
-  const tile=(n,l)=>`<div class="stat-tile"><div class="num">${n}</div><div class="lbl">${l}</div></div>`;
-  const stale=o.confirmStale;
-  const emptyRoster=s.roster===0&&s.ended===0;
-  return `${emptyRoster?`<div class="hoa-card" style="border-color:#f0d99a;background:#fff9e8"><b>Add your list of homes to get started.</b> Homeowners are matched against this list and only homes on it are billed. <button class="primary hoa-mini" onclick="hoaTab('${ctx.key}','roster')">Add homes</button></div>`:''}<div class="stat-tiles">${tile(s.roster,'Homes on roster')}${tile(s.active,'Active homes')}${tile(s.notJoined,'Not joined yet')}${tile(s.review,'Need your review')}${tile(s.ending,'Ending soon')}</div>
-  ${s.review?`<div class="hoa-card" style="border-color:#f0d99a;background:#fff9e8"><b>${s.review} home${s.review===1?'':'s'} asked to join with an address that is not on your roster.</b> <span class="subtle">They are not billed until you confirm them.</span> <button class="primary hoa-mini" onclick="hoaTab('${ctx.key}','roster');hoaSetFilter('${ctx.key}','review')">Review now</button></div>`:''}
-  <div class="hoa-card"><h3>Billing</h3><div style="font-size:14px;line-height:1.55">${hoaNextInvoiceText(d)}</div></div>
-  <div class="hoa-card"><h3>Join link</h3><p class="subtle" style="font-size:13px;margin:0 0 8px">Homeowners use this link to join with their home address. Put it in your newsletter, portal, and new-resident packet.</p>
-    <div class="hoa-linkbox"><input readonly value="${esc(o.joinLink)}" onclick="this.select()"><button class="primary" onclick="hoaCopy('${jsAttr(o.joinLink)}')">Copy link</button></div>
-    ${can?`<details style="margin-top:10px"><summary style="cursor:pointer;font-weight:700;font-size:13px">Email the link to residents</summary>
-      <p class="subtle" style="font-size:12.5px;margin:8px 0">Paste email addresses (commas, spaces, or one per line). We send the invite and do not keep the list.</p>
-      <textarea id="hoaInviteEmails-${ctx.key}" rows="3" style="width:100%" placeholder="resident1@example.com, resident2@example.com"></textarea>
-      <button class="secondary" style="margin-top:8px" onclick="hoaSendInvites('${ctx.key}')">Send invites</button></details>`:''}</div>
-  <div class="hoa-card"><h3>Roster check-in</h3><div style="font-size:14px">${o.lastConfirmedAt?`Last confirmed <b>${o.confirmDaysSince} day${o.confirmDaysSince===1?'':'s'} ago</b>.`:`Never confirmed.`} ${stale?statusPillHTML('Due','bad'):statusPillHTML('Current','ok')}</div>
-    <p class="subtle" style="font-size:12.5px;margin:6px 0 10px">Homes that sold or changed hands are the usual reason a roster drifts. We ask you to confirm it every quarter.</p>
-    ${can?`<button class="primary" onclick="hoaConfirmRoster('${ctx.key}')">My roster is up to date</button>`:''}</div>`;
-}
-function hoaRowActions(ctx,h){
-  if(!hoaCan(ctx)) return '';
-  const b=(label,act,cls='secondary')=>`<button class="${cls} hoa-mini" onclick="openHoaAction('${ctx.key}','${h.id}','${act}')">${label}</button>`;
-  const out=[];
-  if(h.state==='active'&&h.endsOn) out.push(b('Undo removal','restore'));
-  else if(h.state==='active') out.push(b('Remove','remove'),b('New owner','new_owner'));
-  else if(h.state==='listed') out.push(b('Remove','remove'));
-  else if(h.state==='review') out.push(b('Confirm','review_confirm','primary'),b('Deny','review_deny'));
-  else if(h.state==='ended') out.push(b('Restore','restore'),b('New owner','new_owner'));
-  if(h.state!=='ended') out.push(b('Fix address','fix_address'));
-  return out.join(' ');
-}
-function hoaRowHTML(ctx,h){
-  const tone={active:'ok',listed:'neutral',review:'warn',ended:'bad'}[h.state]||'neutral';
-  let note='';
-  if(h.state==='active'&&h.endsOn) note=`Ends ${hoaDay(h.endsOn)} (${esc(HOA_REASON_LABEL[h.pendingReason]||h.pendingReason||'')})`;
-  if(h.state==='ended'&&h.endReason) note=esc(h.endReason);
-  if(h.source==='homeowner'&&h.state==='review') note='Added by a homeowner';
-  return `<div class="hoa-row"><div><div class="addr">${esc(h.address)}</div>${note?`<div class="meta">${note}</div>`:''}</div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${statusPillHTML(h.state==='active'&&h.endsOn?'Ending':h.label,h.state==='active'&&h.endsOn?'warn':tone)}${hoaRowActions(ctx,h)}</div></div>`;
-}
-function hoaTabRoster(ctx){
-  const can=hoaCan(ctx);
-  return `${can?`<div class="hoa-card"><h3>Add homes</h3><p class="subtle" style="font-size:12.5px;margin:0 0 8px">One address per line (street number and name, city optional). You can also load a .csv or .txt file with one address per line.</p>
-    <textarea id="hoaAddText-${ctx.key}" rows="4" style="width:100%" placeholder="123 Oak St, Richardson, TX 75080&#10;125 Oak St"></textarea>
-    <div class="mini-actions" style="margin-top:8px;align-items:center;gap:10px"><button class="primary" onclick="hoaAddHomes('${ctx.key}')">Add to roster</button><input type="file" accept=".csv,.txt,text/plain,text/csv" onchange="hoaLoadFile('${ctx.key}',this)" style="font-size:12.5px"></div></div>`:''}
-  <div class="mini-actions" style="margin:0 0 4px;flex-wrap:wrap;gap:10px"><input id="hoaSearch-${ctx.key}" oninput="hoaFilterRoster('${ctx.key}')" placeholder="Search address…" style="flex:1;min-width:180px;border:1px solid #cbd9d3;border-radius:10px;padding:10px 12px;font:inherit;font-size:13.5px">
-    <select id="hoaFilter-${ctx.key}" onchange="hoaFilterRoster('${ctx.key}')" style="border:1px solid #cbd9d3;border-radius:10px;padding:10px 12px;font:inherit;font-size:13.5px"><option value="all">All homes</option><option value="active">Active</option><option value="listed">Not joined</option><option value="review">Needs review</option><option value="ending">Ending soon</option><option value="ended">Ended</option></select></div>
-  <p class="subtle" id="hoaCount-${ctx.key}" style="font-size:12.5px;margin:6px 0"></p><div id="hoaRows-${ctx.key}"></div>`;
-}
-function hoaSetFilter(key,f){ setTimeout(()=>{ const sel=document.getElementById('hoaFilter-'+key); if(sel){ sel.value=f; hoaFilterRoster(key); } },0); }
-function hoaFilterRoster(key){
-  const ctx=hoaCtxs[key]; if(!ctx||!ctx.data)return;
-  const qv=(document.getElementById('hoaSearch-'+key)||{}).value||'', f=(document.getElementById('hoaFilter-'+key)||{}).value||'all';
-  const needle=qv.trim().toLowerCase();
-  let list=ctx.data.homes.filter(h=>(!needle||h.address.toLowerCase().includes(needle)) && (f==='all'||(f==='ending'?(h.state==='active'&&h.endsOn):h.state===f)));
-  const box=document.getElementById('hoaRows-'+key), cnt=document.getElementById('hoaCount-'+key); if(!box)return;
-  if(cnt) cnt.textContent=`${list.length} of ${ctx.data.homes.length} homes`;
-  box.innerHTML=list.slice(0,400).map(h=>hoaRowHTML(ctx,h)).join('')||'<div class="notice">No homes match.</div>';
-  if(list.length>400) box.insertAdjacentHTML('beforeend',`<p class="subtle" style="font-size:12.5px">Showing the first 400. Search to narrow.</p>`);
-}
-async function hoaAddHomes(key){
-  const ctx=hoaCtxs[key]; const ta=document.getElementById('hoaAddText-'+key); const text=ta.value.trim();
-  if(!text){ toast('Enter at least one address'); return; }
-  try{
-    const r=await api(hoaPath(ctx,'homes'),{method:'POST',body:JSON.stringify({addresses:text})});
-    toast(`${r.added} added${r.skipped?`, ${r.skipped} already on roster`:''}${r.invalid&&r.invalid.length?`, ${r.invalid.length} skipped (no street number)`:''}`);
-    await hoaLoad(ctx);
-  }catch(e){ toast(e.message); }
-}
-// Turns pasted text or a CSV into one address per line. A header row containing "address" is read as columns (address, city, state, zip).
-function hoaParseRoster(text){
-  const lines=String(text||'').replace(/\r/g,'').split('\n').map(l=>l.trim()).filter(Boolean);
-  if(!lines.length) return [];
-  const splitRow=l=>{ const out=[]; let cur='',q=false; for(const ch of l){ if(ch==='"'){ q=!q; } else if((ch===','||ch==='\t')&&!q){ out.push(cur.trim()); cur=''; } else cur+=ch; } out.push(cur.trim()); return out; };
-  const head=splitRow(lines[0]).map(x=>x.toLowerCase());
-  const ai=head.findIndex(x=>/^(street )?address( 1| line 1)?$|^street$|^property address$/.test(x));
-  if(ai>=0 && head.length>1){
-    const ci=head.findIndex(x=>x==='city'), si=head.findIndex(x=>x==='state'), zi=head.findIndex(x=>/^zip( code)?$|^postal code$/.test(x));
-    return lines.slice(1).map(l=>{ const r=splitRow(l); return [r[ai],ci>=0?r[ci]:'',si>=0?r[si]:'',zi>=0?r[zi]:''].filter(Boolean).join(', '); }).filter(Boolean);
-  }
-  return lines;
-}
-const hoaValidAddr=a=>/^\s*\d+[a-z]?\s+[a-z]/i.test(a);
-function hoaRosterCount(){ const n=hoaParseRoster(document.getElementById('hcAddresses').value).filter(hoaValidAddr).length; const el=document.getElementById('hcCount'); if(el) el.textContent=n+' valid address'+(n===1?'':'es'); }
-function hoaLoadCreateFile(input){
-  const f=input.files&&input.files[0]; if(!f)return;
-  if(f.size>1500000){ toast('File too large'); return; }
-  const rd=new FileReader(); rd.onload=()=>{ document.getElementById('hcAddresses').value=hoaParseRoster(rd.result).join('\n'); hoaRosterCount(); }; rd.readAsText(f);
-}
-function hoaLoadFile(key,input){
-  const f=input.files&&input.files[0]; if(!f)return;
-  if(f.size>1500000){ toast('File too large'); return; }
-  const rd=new FileReader(); rd.onload=()=>{ document.getElementById('hoaAddText-'+key).value=hoaParseRoster(rd.result).join('\n'); }; rd.readAsText(f);
-}
-async function hoaCopy(text){ try{ await navigator.clipboard.writeText(text); toast('Link copied'); }catch(e){ toast('Select the link and copy it'); } }
-async function hoaSendInvites(key){
-  const ctx=hoaCtxs[key]; const v=document.getElementById('hoaInviteEmails-'+key).value;
-  try{ const r=await api(hoaPath(ctx,'invite-emails'),{method:'POST',body:JSON.stringify({emails:v})}); toast(`Sent ${r.sent} of ${r.requested} invites`); document.getElementById('hoaInviteEmails-'+key).value=''; }catch(e){ toast(e.message); }
-}
-async function hoaConfirmRoster(key){
-  const ctx=hoaCtxs[key]; try{ await api(hoaPath(ctx,'confirm-roster'),{method:'POST'}); toast('Roster confirmed'); await hoaLoad(ctx); }catch(e){ toast(e.message); }
-}
-// ---- roster actions ----
-let hoaActionTarget=null;
-const HOA_ACTION_COPY={
-  remove:{title:'Remove this home',help:'The seat stays billable until the next billing date, then Plus ends for the homeowner. They keep their saved info. A reason is required.',reason:true,note:true,go:'Remove home'},
-  new_owner:{title:'Report a new owner',help:'Use when the home changed hands. The new owner can join right away with your join link. The previous owner\'s Plus ends on the next billing date.',note:true,go:'Report new owner'},
-  restore:{title:'Restore this home',help:'Cancels a scheduled removal, or brings a removed home back. If the same homeowner is still on file, their Plus returns.',note:true,go:'Restore'},
-  fix_address:{title:'Fix this address',help:'Correct how the address is written on your roster.',addr:true,go:'Save address'},
-  review_confirm:{title:'Confirm this home',help:'This home is inside your neighborhood but was not on your roster. Confirming adds it to your billable homes.',go:'Confirm'},
-  review_deny:{title:'Deny this home',help:'The homeowner loses the covered Plus plan and keeps their saved info.',go:'Deny'}
-};
-function openHoaAction(key,homeId,act){
-  const ctx=hoaCtxs[key]; const h=ctx.data.homes.find(x=>x.id===homeId); if(!h)return;
-  const c=HOA_ACTION_COPY[act];
-  hoaActionTarget={key,homeId,act};
-  document.getElementById('hoaActionTitle').textContent=c.title; document.getElementById('hoaActionAddr').textContent=h.address; document.getElementById('hoaActionHelp').textContent=c.help;
-  document.getElementById('hoaActionReasonWrap').style.display=c.reason?'':'none'; document.getElementById('hoaActionAddrWrap').style.display=c.addr?'':'none'; document.getElementById('hoaActionNoteWrap').style.display=c.note?'':'none';
-  document.getElementById('hoaActionNewAddr').value=h.address; document.getElementById('hoaActionNote').value=''; document.getElementById('hoaActionReason').value='sold';
-  document.getElementById('hoaActionGo').textContent=c.go; document.getElementById('hoaActionError').classList.add('hidden');
-  document.getElementById('hoaActionModal').classList.add('show');
-}
-function closeHoaAction(){ document.getElementById('hoaActionModal').classList.remove('show'); hoaActionTarget=null; }
-async function submitHoaAction(){
-  if(!hoaActionTarget)return; const {key,homeId,act}=hoaActionTarget; const ctx=hoaCtxs[key];
-  const err=document.getElementById('hoaActionError'); err.classList.add('hidden');
-  const payload={action:act,note:document.getElementById('hoaActionNote').value.trim(),reason:document.getElementById('hoaActionReason').value,newAddress:document.getElementById('hoaActionNewAddr').value.trim()};
-  try{
-    const r=await api(hoaPath(ctx,'homes/'+homeId+'/action'),{method:'POST',body:JSON.stringify(payload)});
-    closeHoaAction();
-    toast(r.flagged?'Saved. This removal was flagged for review.':(r.effectiveOn?`Saved. Takes effect ${hoaDay(r.effectiveOn)}.`:'Saved'));
-    await hoaLoad(ctx); if(ctx.mode==='admin') refreshAdminVerificationBadges();
-  }catch(e){ err.textContent=e.message; err.classList.remove('hidden'); }
-}
-// ---- billing / changes / contacts / settings tabs ----
-function hoaTabBilling(ctx){
-  const d=ctx.data, o=d.org;
-  const terms=[
-    `Price: ${hoaMoney(o.priceCents)} per active home per month`,
-    o.pilotEnd?`Free pilot: ${hoaDay(o.pilotStart)} to ${hoaDay(o.pilotEnd)}`:'No pilot set',
-    o.floorSet?`Minimum after the pilot: ${o.floorSeats} home${o.floorSeats===1?'':'s'} (${o.floorPct}% of active homes when the pilot ended)`:`Minimum after the pilot: ${o.floorPct}% of active homes when the pilot ends`,
-    o.seatCap!=null?`Not-to-exceed cap: ${o.seatCap} homes`:'No seat cap',
-    'Homes are counted on the 1st of each month. Removals take effect on the next billing date.'
-  ];
-  const canBill=hoaCanBill(ctx);
-  const rows=d.invoices.map(i=>`<div class="hoa-row"><div><div class="addr">${esc(hoaDay(i.period))}</div><div class="meta">${i.billable} home${i.billable===1?'':'s'} x ${hoaMoney(i.priceCents)}${i.floor>i.active?` (minimum ${i.floor}, ${i.active} active)`:''}</div></div>
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b>${hoaMoney(i.amountCents)}</b>${statusPillHTML(i.status,i.status==='paid'?'ok':(i.status==='void'?'neutral':'warn'))}
-    ${canBill&&i.status==='issued'?`<button class="primary hoa-mini" onclick="hoaInvoiceStatus('${ctx.key}','${i.id}','paid')">Mark paid</button><button class="secondary hoa-mini" onclick="hoaInvoiceStatus('${ctx.key}','${i.id}','void')">Void</button>`:''}
-    ${canBill&&(i.status==='paid'||i.status==='void')?`<button class="secondary hoa-mini" onclick="hoaInvoiceStatus('${ctx.key}','${i.id}','issued')">Reopen</button>`:''}</div></div>`).join('');
-  return `<div class="hoa-card"><h3>Next invoice</h3><div style="font-size:14px;line-height:1.55">${hoaNextInvoiceText(d)}</div><p class="subtle" style="font-size:12.5px;margin:8px 0 0">We email a preview 5 days before each billing date so you can fix your roster first.</p></div>
-  <div class="hoa-card"><h3>Terms</h3><ul style="margin:6px 0 0 18px;padding:0;font-size:13.5px;line-height:1.7">${terms.map(t=>`<li>${esc(t)}</li>`).join('')}</ul></div>
-  <h3 style="margin:16px 0 4px;font-size:15px">Invoices</h3>${rows||'<div class="notice">No invoices yet. Billing starts after the free pilot.</div>'}`;
-}
-async function hoaInvoiceStatus(key,invId,status){
-  const ctx=hoaCtxs[key]; try{ await api(hoaPath(ctx,'invoices/'+invId+'/status'),{method:'POST',body:JSON.stringify({status})}); toast('Invoice updated'); await hoaLoad(ctx); }catch(e){ toast(e.message); }
-}
-function hoaChangeLine(c){
-  const k=HOA_KIND_LABEL[c.kind]||c.kind; const r=c.reason?` (${esc(HOA_REASON_LABEL[c.reason]||c.reason)})`:'';
-  return `${esc(k)}${r}${c.address?`: ${esc(c.address)}`:''}`;
-}
-function hoaTabChanges(ctx){
-  const d=ctx.data; const admin=ctx.mode==='admin'&&!ctx.readonly&&ctx.level>=2;
-  const rows=d.changes.map(c=>`<div class="hoa-row"><div><div class="addr">${hoaChangeLine(c)}</div><div class="meta">${esc(new Date(c.at).toLocaleString())}${c.by?' by '+esc(c.by):''}${c.note?' · '+esc(c.note):''}</div></div>
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${c.flagged?statusPillHTML('Flagged','bad'):''}${ctx.mode==='admin'?statusPillHTML(c.status==='new'?'New':(c.status==='ack'?'Acknowledged':'Reversed'),c.status==='new'?'warn':'neutral'):''}
-    ${admin&&c.status==='new'?`<button class="secondary hoa-mini" onclick="hoaChangeDecision('${ctx.key}','${c.id}','ack')">Acknowledge</button>${['remove','new_owner'].includes(c.kind)?`<button class="secondary hoa-mini" style="color:#a33a2e" onclick="hoaChangeDecision('${ctx.key}','${c.id}','reverse')">Reverse</button>`:''}`:''}</div></div>`).join('');
-  return `<p class="subtle" style="font-size:13px;margin:0 0 6px">${ctx.mode==='admin'?'Every change the HOA reports lands here for review. Flagged items are removals without a verified reason that pass 10% of seats this quarter.':'A record of changes made to your roster.'}</p>${rows||'<div class="notice">No changes yet.</div>'}`;
-}
-async function hoaChangeDecision(key,cid,decision){
-  const ctx=hoaCtxs[key]; if(decision==='reverse'&&!confirm('Reverse this change? The home goes back to its previous state.'))return;
-  try{ await api(hoaPath(ctx,'changes/'+cid+'/decision'),{method:'POST',body:JSON.stringify({decision})}); toast(decision==='ack'?'Acknowledged':'Reversed'); await hoaLoad(ctx); refreshAdminVerificationBadges(); }catch(e){ toast(e.message); }
-}
-function hoaTabTeam(ctx){
-  const d=ctx.data, can=hoaCan(ctx);
-  const rows=d.contacts.map(c=>`<div class="hoa-row"><div><div class="addr">${esc(c.name)}</div><div class="meta">${esc(c.email)}</div></div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${c.suspended?statusPillHTML('Access off','bad'):(c.invitePending?statusPillHTML('Invite sent','neutral'):statusPillHTML('Active','ok'))}
-    ${ctx.mode==='admin'&&can&&c.invitePending?`<button class="secondary hoa-mini" onclick="hoaResendInvite('${ctx.key}','${c.id}')">Resend invite</button>`:''}
-    ${ctx.mode==='admin'&&can?`<button class="secondary hoa-mini" ${c.suspended?'':'style="color:#a33a2e"'} onclick="hoaContactAccess('${ctx.key}','${c.id}',${!c.suspended})">${c.suspended?'Turn on':'Turn off'}</button>`:''}</div></div>`).join('');
-  return `<p class="subtle" style="font-size:13px;margin:0 0 6px">People who can sign in to this portal. Add a backup board member or your property manager (up to 3 logins).</p>${rows||'<div class="notice">No contacts yet.</div>'}
-  ${can?`<div class="hoa-card" style="margin-top:14px"><h3>Add a contact</h3><div class="hoa-form"><div class="field"><label>NAME</label><input id="hoaCName-${ctx.key}" placeholder="Full name"></div><div class="field"><label>EMAIL</label><input id="hoaCEmail-${ctx.key}" type="email" placeholder="name@example.com"></div></div>
-    <div class="mini-actions" style="margin-top:10px"><button class="primary" onclick="hoaAddContact('${ctx.key}')">Send invite</button></div></div>`:''}`;
-}
-async function hoaAddContact(key){
-  const ctx=hoaCtxs[key]; const name=document.getElementById('hoaCName-'+key).value.trim(), email=document.getElementById('hoaCEmail-'+key).value.trim();
-  try{ const r=await api(hoaPath(ctx,'contacts'),{method:'POST',body:JSON.stringify({name,email})}); await hoaLoad(ctx); showAdminInviteLink(r.inviteLink,r.emailSent,email); }catch(e){ toast(e.message); }
-}
-async function hoaResendInvite(key,uid){ const ctx=hoaCtxs[key]; try{ const r=await api(hoaPath(ctx,'contacts/'+uid+'/resend-invite'),{method:'POST'}); await hoaLoad(ctx); showAdminInviteLink(r.inviteLink,r.emailSent,r.contact.email); }catch(e){ toast(e.message); } }
-async function hoaContactAccess(key,uid,suspended){ const ctx=hoaCtxs[key]; try{ await api(hoaPath(ctx,'contacts/'+uid+'/access'),{method:'POST',body:JSON.stringify({suspended})}); toast(suspended?'Access turned off':'Access turned on'); await hoaLoad(ctx); }catch(e){ toast(e.message); } }
-function hoaTabSettings(ctx){
-  const o=ctx.data.org, can=hoaCanBill(ctx);
-  const dis=can?'':'disabled';
-  const f=(id,label,val,type='text',extra='')=>`<div class="field"><label>${label}</label><input id="hs-${ctx.key}-${id}" type="${type}" value="${esc(val==null?'':val)}" ${extra} ${dis}></div>`;
-  return `${can?'':'<div class="ro-banner">Changing billing settings needs Full access to HOAs.</div>'}
-  <div class="hoa-card"><div class="hoa-form">
-    ${f('name','HOA NAME',o.name)}
-    <div class="field"><label>STATUS</label><select id="hs-${ctx.key}-status" ${dis}><option value="pilot" ${o.status==='pilot'?'selected':''}>Free pilot</option><option value="active" ${o.status==='active'?'selected':''}>Active</option><option value="paused" ${o.status==='paused'?'selected':''}>Paused (no billing)</option></select></div>
-    ${f('pilotStart','PILOT START',o.pilotStart,'date')}${f('pilotEnd','PILOT END',o.pilotEnd,'date')}
-    ${f('price','PRICE PER HOME (CENTS)',o.priceCents,'number','min="0"')}${f('cap','SEAT CAP (BLANK = NONE)',o.seatCap,'number','min="1"')}
-    ${f('floorPct','FLOOR % OF ACTIVE AT PILOT END',o.floorPct,'number','min="0" max="100"')}${f('floorSeats',o.floorSet?'FLOOR (HOMES, SET)':'FLOOR (HOMES, SET AT PILOT END)',o.floorSet?o.floorSeats:'','number','min="0" placeholder="auto"')}
-    ${f('boundary','BOUNDARY: A STREET ADDRESS INSIDE',o.boundaryAddress)}${f('radius','BOUNDARY RADIUS (MILES)',o.radiusMi,'number','step="0.1" min="0.1"')}
-    <div class="field wide"><label>INTERNAL NOTES (CALLS, PROMISES, FOLLOW-UPS)</label><textarea id="hs-${ctx.key}-notes" rows="5" ${dis}>${esc(o.notes||'')}</textarea></div>
-  </div>
-  <div class="mini-actions" style="margin-top:12px;gap:10px;flex-wrap:wrap">${can?`<button class="primary" onclick="hoaSaveSettings('${ctx.key}')">Save settings</button><button class="secondary" onclick="hoaSaveSettings('${ctx.key}',true)">New join link</button>`:''}</div>
-  <p class="subtle" style="font-size:12.5px;margin:10px 0 0">Join code: <b>${esc(o.joinCode)}</b>. Making a new join link stops the old one from working.</p></div>`;
-}
-async function hoaSaveSettings(key,regen){
-  const ctx=hoaCtxs[key]; if(regen&&!confirm('Make a new join link? The old link will stop working.'))return;
-  const g=id=>document.getElementById('hs-'+key+'-'+id).value;
-  const payload={name:g('name'),status:g('status'),pilotStart:g('pilotStart'),pilotEnd:g('pilotEnd'),priceCents:g('price'),seatCap:g('cap'),floorPct:g('floorPct'),notes:g('notes'),boundaryAddress:g('boundary'),radiusMi:g('radius')};
-  if(g('floorSeats')!=='') payload.floorSeats=g('floorSeats');
-  if(regen) payload.regenerateCode=true;
-  try{ ctx.data=await api(hoaPath(ctx,'settings'),{method:'POST',body:JSON.stringify(payload)}); toast('Settings saved'); hoaRender(ctx); }catch(e){ toast(e.message); }
-}
-// ---- HOA portal page (HOA contact login) ----
-async function loadHoaPortal(){
-  const nm=document.getElementById('hoa-header-name'); if(nm&&currentUser) nm.textContent=currentUser.name;
-  const prev=hoaCtxs.main;
-  hoaCtxs.main={key:'main',mode:'hoa',base:'/hoa',elId:'hoa-workspace',tab:prev?prev.tab:'overview',level:3};
-  await hoaLoad(hoaCtxs.main);
-  const t=document.getElementById('hoa-title'); if(t&&hoaCtxs.main.data) t.textContent=hoaCtxs.main.data.org.name;
-}
-// ---- admin HOAs tab ----
-let adminHoaOpenId=null;
-async function adminHoasLoadList(){
-  const root=document.getElementById('admin-hoas-root'); if(!root)return;
-  adminHoaOpenId=null;
-  root.innerHTML='<div class="notice">Loading…</div>';
-  try{
-    const d=await api('/admin/hoas'); const lvl=adminLevel('hoas');
-    const tile=(n,l)=>`<div class="stat-tile"><div class="num">${n}</div><div class="lbl">${l}</div></div>`;
-    const pend=d.hoas.reduce((t,h)=>t+h.pendingChanges,0);
-    root.innerHTML=`<div class="mini-actions" style="margin-bottom:14px;justify-content:space-between;flex-wrap:wrap;gap:10px"><p class="subtle" style="font-size:13px;margin:0;flex:1;min-width:220px">Every HOA in one place. Billing is per active home. Open one to manage its roster, review changes, and see its invoices.</p>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">${lvl>=3?`<button class="secondary" onclick="adminHoasRunUpkeep()">Run upkeep now</button><button class="primary" onclick="openHoaCreate()">Add HOA</button>`:''}</div></div>
-      <div class="stat-tiles">${tile(d.totals.hoas,'HOAs')}${tile(d.totals.active,'Active homes')}${tile(hoaMoney(d.totals.monthlyCents),'Next invoices')}${tile(pend,'Changes to review')}</div>
-      ${d.hoas.map(h=>`<div class="admin-row" style="cursor:pointer" onclick="adminHoasOpen('${h.id}')"><div class="admin-row-main"><div class="name">${esc(h.name)} ${hoaStatusPill(h.status)} ${h.pendingChanges?statusPillHTML(h.pendingChanges+' to review','warn'):''} ${h.flagged?statusPillHTML('Flagged','bad'):''} ${h.review?statusPillHTML(h.review+' awaiting HOA','neutral'):''} ${h.roster===0?statusPillHTML('Needs roster','bad'):''}</div>
-        <div class="meta">${h.active} active of ${h.roster} on roster · ${h.contacts} contact${h.contacts===1?'':'s'} · ${h.mode==='pilot'?`Pilot until ${esc(hoaDay(h.pilotEnd))}, then about ${hoaMoney(h.estimateAfterPilotCents)}/mo`:`Next invoice ${hoaMoney(h.nextInvoiceCents)}`}</div>
-        <div class="meta">Roster confirmed ${h.lastConfirmedAt?h.confirmDaysSince+' days ago':'never'} ${h.stale?statusPillHTML('Stale','bad'):''}</div></div><div class="admin-row-actions" style="display:flex!important"><button class="secondary">Open</button></div></div>`).join('')||'<div class="notice">No HOAs yet. Add the first one when you close a pilot.</div>'}`;
-  }catch(e){ root.innerHTML=`<div class="notice">${esc(e.message)}</div>`; }
-}
-async function adminHoasOpen(id){
-  const root=document.getElementById('admin-hoas-root'); adminHoaOpenId=id;
-  const prev=hoaCtxs.admin;
-  root.innerHTML=`<div class="mini-actions" style="margin-bottom:12px;gap:8px;flex-wrap:wrap"><button class="secondary" onclick="adminHoasLoadList()">All HOAs</button><button class="secondary" onclick="adminHoasViewAs('${id}')">View as HOA</button><h2 id="admin-hoa-title" style="margin:0 0 0 6px;font-size:20px"></h2></div><div id="admin-hoa-workspace"><div class="notice">Loading…</div></div>`;
-  hoaCtxs.admin={key:'admin',mode:'admin',base:'/admin/hoas/'+id,elId:'admin-hoa-workspace',tab:(prev&&prev.base==='/admin/hoas/'+id)?prev.tab:'overview',level:adminLevel('hoas')};
-  await hoaLoad(hoaCtxs.admin);
-  const t=document.getElementById('admin-hoa-title'); if(t&&hoaCtxs.admin.data) t.innerHTML=esc(hoaCtxs.admin.data.org.name)+' '+hoaStatusPill(hoaCtxs.admin.data.org.status);
-}
-async function adminHoasViewAs(id){
-  hoaCtxs.view={key:'view',mode:'hoa',base:'/admin/hoas/'+id,elId:'hoa-view-workspace',tab:'overview',level:3,readonly:true};
-  document.getElementById('hoaViewModal').classList.add('show');
-  await hoaLoad(hoaCtxs.view);
-}
-async function adminHoasRunUpkeep(){
-  try{ const r=await api('/admin/hoas/run-maintenance',{method:'POST'}); toast(`Upkeep done: ${r.removalsApplied||0} removals applied, ${r.previews||0} previews, ${r.invoices||0} invoices, ${r.confirmReminders||0} reminders`); adminHoasLoadList(); }catch(e){ toast(e.message); }
-}
-function openHoaCreate(){ document.getElementById('hcCount').textContent='0 valid addresses'; ['hcName','hcContactName','hcContactEmail','hcCap','hcBoundary','hcRadius','hcAddresses'].forEach(i=>document.getElementById(i).value=''); document.getElementById('hcPilotDays').value='90'; document.getElementById('hoaCreateError').classList.add('hidden'); document.getElementById('hoaCreateModal').classList.add('show'); }
-async function submitHoaCreate(){
-  const err=document.getElementById('hoaCreateError'); err.classList.add('hidden'); const g=i=>document.getElementById(i).value.trim();
-  if(!hoaParseRoster(document.getElementById('hcAddresses').value).some(hoaValidAddr)){ err.textContent="Add the HOA's list of home addresses first. The site matches homeowners against it."; err.classList.remove('hidden'); return; }
-  try{
-    const r=await api('/admin/hoas',{method:'POST',body:JSON.stringify({name:g('hcName'),contactName:g('hcContactName'),contactEmail:g('hcContactEmail'),pilotDays:g('hcPilotDays'),seatCap:g('hcCap'),boundaryAddress:g('hcBoundary'),radiusMi:g('hcRadius'),addresses:hoaParseRoster(document.getElementById('hcAddresses').value)})});
-    document.getElementById('hoaCreateModal').classList.remove('show');
-    toast(`HOA created with ${r.roster.added} home${r.roster.added===1?'':'s'}${r.roster.invalid&&r.roster.invalid.length?` (${r.roster.invalid.length} skipped, no street number)`:''}`); await adminHoasOpen(r.org.org.id);
-    if(r.contact) showAdminInviteLink(r.contact.inviteLink,r.contact.emailSent,g('hcContactEmail'));
-  }catch(e){ err.textContent=e.message; err.classList.remove('hidden'); }
-}
-// ---- homeowner: join link, sponsor banner ----
-let hoaJoinCode=null;
-function hoaSession(k,v){ try{ if(v===undefined) return sessionStorage.getItem(k); if(v===null) sessionStorage.removeItem(k); else sessionStorage.setItem(k,v); }catch(e){ return null; } }
-async function handleJoinHash(){
-  const m=/^#join=([A-Za-z0-9]{4,16})$/.exec(location.hash||''); if(!m)return false;
-  hoaSession('lc_join',m[1].toUpperCase()); history.replaceState(null,'',location.pathname+location.search);
-  await openHoaJoin(); return true;
-}
-function maybeResumeJoin(){ if(hoaSession('lc_join') && currentUser && currentUser.role==='homeowner' && !document.getElementById('hoaJoinModal').classList.contains('show')) openHoaJoin(); }
-async function openHoaJoin(){
-  hoaJoinCode=hoaSession('lc_join'); if(!hoaJoinCode)return;
-  const title=document.getElementById('hoaJoinTitle'), text=document.getElementById('hoaJoinText'), err=document.getElementById('hoaJoinError');
-  err.classList.add('hidden'); const go=document.getElementById('hoaJoinGo'), su=document.getElementById('hoaJoinSignup'), li=document.getElementById('hoaJoinLogin'), aw=document.getElementById('hoaJoinAddrWrap');
-  let info=null;
-  try{ info=await (await fetch(API+'/hoa/join-info?code='+encodeURIComponent(hoaJoinCode))).json(); }catch(e){}
-  if(!info||!info.name){ title.textContent='Join link problem'; text.textContent=(info&&info.error)||'That join link is not valid. Ask your HOA for a new one.'; go.classList.add('hidden'); su.classList.add('hidden'); li.classList.add('hidden'); aw.style.display='none'; hoaSession('lc_join',null); document.getElementById('hoaJoinModal').classList.add('show'); return; }
-  title.textContent='Join '+info.name;
-  const loggedHomeowner=currentUser&&authToken&&currentUser.role==='homeowner';
-  if(loggedHomeowner){
-    text.textContent=`${info.name} covers Plus for homes in your neighborhood, at no cost to you. Enter your home address so we can match it to your HOA's list.`;
-    go.classList.remove('hidden'); su.classList.add('hidden'); li.classList.add('hidden'); aw.style.display='';
-    const cur=(currentUser.address||''); document.getElementById('hoaJoinAddr').value=/^\s*\d+[a-z]?\s+[a-z]/i.test(cur)?cur:'';
-  }else if(currentUser&&authToken){
-    text.textContent='Only homeowner accounts can join an HOA program. Sign out and use a homeowner account.'; go.classList.add('hidden'); su.classList.add('hidden'); li.classList.add('hidden'); aw.style.display='none';
-  }else{
-    text.textContent=`${info.name} covers Plus for homes in your neighborhood, at no cost to you. Create a homeowner account (or sign in) with your home address to join.`;
-    go.classList.add('hidden'); su.classList.remove('hidden'); li.classList.remove('hidden'); aw.style.display='none';
-  }
-  document.getElementById('hoaJoinModal').classList.add('show');
-}
-function closeHoaJoin(){ document.getElementById('hoaJoinModal').classList.remove('show'); }
-function hoaJoinAuth(kind){ closeHoaJoin(); if(kind==='signup'){ if(typeof openSignup==='function') openSignup('homeowner'); } else openLogin(); }
-async function submitHoaJoin(){
-  const err=document.getElementById('hoaJoinError'); err.classList.add('hidden');
-  try{
-    const r=await api('/hoa/join',{method:'POST',body:JSON.stringify({code:hoaJoinCode,address:document.getElementById('hoaJoinAddr').value.trim()})});
-    hoaSession('lc_join',null); closeHoaJoin();
-    toast(r.state==='review'?`Joined ${r.orgName}. Your HOA will confirm your address.`:`Joined ${r.orgName}. Plus is on.`);
-    await loadDashboard();
-  }catch(e){ err.textContent=e.message; err.classList.remove('hidden'); }
-}
-function renderSponsorBanner(sp){
-  const el=document.getElementById('ho-sponsor-banner'); if(!el)return;
-  if(!sp){ el.innerHTML=''; return; }
-  const box=(inner,tone)=>`<div class="hoa-card" style="${tone==='warn'?'border-color:#f0d99a;background:#fff9e8':'background:var(--mint);border-color:transparent'}">${inner}</div>`;
-  if(sp.current){
-    const c=sp.current;
-    el.innerHTML=box(`<b>${esc(c.orgName)} covers your Plus plan.</b> ${c.state==='review'?'Your HOA is confirming your address. You have Plus in the meantime.':'Nothing to pay.'}${c.endsOn?` <b>Coverage ends ${esc(hoaDay(c.endsOn))}.</b>`:''} <button class="secondary hoa-mini" style="margin-left:8px" onclick="leaveHoaProgram()">Leave HOA program</button>`,c.endsOn?'warn':'ok');
-  }else if(sp.ended){
-    el.innerHTML=box(`<b>${esc(sp.ended.orgName)} ended your covered Plus plan.</b> Your saved home info is safe, but Plus features are locked. Keep Plus yourself for $9.99/month and everything unlocks right away. <button class="primary hoa-mini" style="margin-left:8px" onclick="openPlansPage('homeowner')">Keep Plus</button> <button class="secondary hoa-mini" onclick="dismissHoaEnded()">Dismiss</button>`,'warn');
-  }
-}
-async function leaveHoaProgram(){ if(!confirm('Leave your HOA program? Plus will end and your account goes back to Free. Your saved info stays.'))return; try{ await api('/hoa/leave',{method:'POST'}); toast('You left the HOA program'); await loadDashboard(); }catch(e){ toast(e.message); } }
-async function dismissHoaEnded(){ try{ await api('/hoa/dismiss-ended',{method:'POST'}); await loadDashboard(); }catch(e){ toast(e.message); } }
-async function handleHoaConfirmHash(){
-  const m=/^#hoa-confirm=([A-Za-z0-9_.\-]+)$/.exec(location.hash||''); if(!m)return false;
-  history.replaceState(null,'',location.pathname+location.search);
-  try{ const r=await api('/auth/hoa-confirm',{method:'POST',body:JSON.stringify({token:m[1]})}); toast(`Thank you. Roster confirmed for ${r.orgName}.`); }catch(e){ toast(e.message); }
-  return true;
-}
-
 initBilling();
-bootAuth().then(async()=>{ if(await handleInviteHash()) return; if(await handleJoinHash()) return; await handleHoaConfirmHash(); });
+bootAuth();
 </script>
 
 <div id="quoteSubmitModal" class="modal"><div class="modalbox">
