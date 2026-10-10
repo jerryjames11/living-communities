@@ -107,7 +107,7 @@ function publicProviderView(u){
     galleryPhotos:approvedGalleryPhotos(u)
   };
 }
-function mapRequest(r){ return {id:r.id,homeownerId:r.homeowner_id,serviceType:r.service_type,title:r.title,description:r.description,urgency:r.urgency,preferredDate:r.preferred_date,preferredTime:r.preferred_time,status:r.status,createdAt:toISO(r.created_at),dispatchedProviderId:r.dispatched_provider_id||null,dispatchedAt:toISO(r.dispatched_at)||null,delisted:!!r.delisted,delistedAt:toISO(r.delisted_at)}; }
+function mapRequest(r){ return {id:r.id,homeownerId:r.homeowner_id,serviceType:r.service_type,title:r.title,description:r.description,urgency:r.urgency,preferredDate:r.preferred_date,preferredTime:r.preferred_time,status:r.status,createdAt:toISO(r.created_at),dispatchedProviderId:r.dispatched_provider_id||null,dispatchedAt:toISO(r.dispatched_at)||null,delisted:!!r.delisted,delistedAt:toISO(r.delisted_at),closedBy:r.closed_by||null,closedAt:toISO(r.closed_at)||null}; }
 function mapPayment(r){ return {id:r.id,userId:r.user_id,plan:r.plan,planKind:r.plan_kind,amount:(r.amount_cents||0)/100,currency:r.currency,status:r.status,createdAt:toISO(r.created_at),refundedAt:toISO(r.refunded_at)||null}; }
 // Slim account view for the admin accounts list — everything an admin needs to monitor an
 // account and its subscription at a glance, but never the heavy/sensitive stuff (password data,
@@ -123,7 +123,7 @@ function adminAccountView(u){
   }
   return base;
 }
-function mapQuote(r){ return {id:r.id,requestId:r.request_id,providerId:r.provider_id,amountMin:Number(r.amount_min),amountMax:Number(r.amount_max),availability:r.availability,message:r.message,status:r.status,createdAt:toISO(r.created_at)}; }
+function mapQuote(r){ return {id:r.id,requestId:r.request_id,providerId:r.provider_id,amountMin:Number(r.amount_min),amountMax:Number(r.amount_max),availability:r.availability,message:r.message,status:r.status,archived:!!r.archived,createdAt:toISO(r.created_at)}; }
 function mapMessage(r){ return {id:r.id,quoteId:r.quote_id,senderId:r.sender_id,recipientId:r.recipient_id,body:r.body,createdAt:toISO(r.created_at),read:r.read}; }
 function mapAnnouncement(r){ return {id:r.id,title:r.title,body:r.body,createdAt:toISO(r.created_at)}; }
 function mapSupportMessage(r){ return {id:r.id,userId:r.user_id,senderRole:r.sender_role,body:r.body,createdAt:toISO(r.created_at),read:r.read}; }
@@ -1126,8 +1126,13 @@ async function initSchema(){
   // Homeowner can pull their own open request off the provider feed at any time without deleting
   // it (delist), and put it back (relist) — the request and any quotes/chats it already has stay
   // exactly as they were either way, this only controls whether new providers can see/quote it.
+  // Homeowner can archive one provider's conversation on a request without touching the others.
+  await pool.query(`ALTER TABLE quotes ADD COLUMN IF NOT EXISTS archived boolean DEFAULT false`);
+  await pool.query(`ALTER TABLE quotes ADD COLUMN IF NOT EXISTS archived_at timestamptz`);
   await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS delisted boolean DEFAULT false`);
   await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS delisted_at timestamptz`);
+  await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS closed_by text`);
+  await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS closed_at timestamptz`);
   // Chat is scoped to a quote (one request + one provider), never to a person. quote_id is
   // required going forward; any pre-existing message with no quote_id is unlinked legacy DM
   // data from the old person-to-person model and is dropped below, once, on boot.
@@ -1143,6 +1148,12 @@ async function initSchema(){
   await pool.query(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS receipt_data_url text`);
   await pool.query(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS receipt_note text`);
   await pool.query(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS receipt_uploaded_at timestamptz`);
+  // Accepting a quote no longer closes a request or declines the other quotes. Move older data to
+  // the new rules: a request is 'open' until a receipt closes it ('completed'), and quotes that were
+  // auto-declined by an acceptance go back to pending.
+  await pool.query(`UPDATE requests SET status='completed' WHERE status='scheduled' AND EXISTS (SELECT 1 FROM jobs j WHERE j.request_id=requests.id AND j.status='completed')`);
+  await pool.query(`UPDATE requests SET status='open' WHERE status='scheduled'`);
+  await pool.query(`UPDATE quotes SET status='pending' WHERE status='declined' AND request_id IN (SELECT id FROM requests WHERE status='open')`);
   await pool.query(`
     CREATE TABLE IF NOT EXISTS announcements (
       id text PRIMARY KEY,
@@ -1581,7 +1592,7 @@ const server=http.createServer(async (req,res)=>{
         const reqRows=await q('SELECT * FROM requests WHERE homeowner_id=$1 ORDER BY created_at DESC',[u.id]);
         const qMap=await quotesByRequestId(reqRows.map(r=>r.id),u.id);
         const requests=reqRows.map(r=>({...mapRequest(r),quotes:qMap[r.id]||[]}));
-        const unreadChatCount=Object.values(qMap).flat().reduce((sum,qq)=>sum+(qq.unreadCount||0),0);
+        const unreadChatCount=Object.values(qMap).flat().reduce((sum,qq)=>sum+(qq.archived?0:(qq.unreadCount||0)),0);
         const announcements=await q('SELECT * FROM announcements WHERE user_id=$1 OR user_id IS NULL ORDER BY created_at DESC LIMIT 50',[u.id]);
         const unreadAnnouncementsCount=Number((await q1("SELECT count(*)::int AS c FROM announcements WHERE (user_id=$1 OR user_id IS NULL) AND created_at > COALESCE($2::timestamptz,'-infinity')",[u.id,u.lastAnnouncementsViewAt])).c);
         const unreadSupportCount=isPaidPlan(u)?Number((await q1("SELECT count(*)::int AS c FROM support_messages WHERE user_id=$1 AND sender_role='admin' AND read=false",[u.id])).c):0;
@@ -1597,13 +1608,10 @@ const server=http.createServer(async (req,res)=>{
       // carry a distanceMi from this provider — used to filter/label the feed by service area.
       // Requests whose homeowner has no geocoded location get distanceMi:null and are never
       // filtered out, so incomplete address data never silently hides real leads.
-      // A request stays in the feed from posting all the way through an assigned provider's job,
-      // and only drops off once that job is completed or cancelled (or the homeowner delists it
-      // pre-award) — accepting a quote alone should never make it vanish for everyone else.
+      // A request stays in the feed until a provider submits a receipt (it then becomes 'completed')
+      // or the homeowner delists it. Accepting a quote alone never removes it for other providers.
       const openRows=await q(`SELECT r.*, uh.lat AS h_lat, uh.lng AS h_lng FROM requests r JOIN users uh ON uh.id=r.homeowner_id
-        WHERE r.delisted=false AND (r.status='open' OR (r.status='scheduled' AND EXISTS (
-          SELECT 1 FROM jobs j WHERE j.request_id=r.id AND j.status NOT IN ('completed','cancelled')
-        ))) ORDER BY r.created_at DESC`);
+        WHERE r.delisted=false AND r.status='open' ORDER BY r.created_at DESC`);
       const myQuotes=openRows.length?await q('SELECT * FROM quotes WHERE request_id = ANY($1::text[]) AND provider_id=$2',[openRows.map(r=>r.id),u.id]):[];
       const myActivity=await quoteActivity(myQuotes.map(qq=>qq.id),u.id);
       const quoteByReq=Object.fromEntries(myQuotes.map(qq=>[qq.request_id,{...mapQuote(qq),...myActivity[qq.id]}]));
@@ -1641,12 +1649,9 @@ const server=http.createServer(async (req,res)=>{
     }
 
     if(p==='/api/requests' && req.method==='GET'){
-      // Same feed rule as the dashboard load: stays visible through an assigned provider's job,
-      // only drops off once that job is completed/cancelled or the homeowner delists it.
+      // Same feed rule as the dashboard load: stays visible until a receipt closes it or the homeowner delists it.
       const rows=u.role==='homeowner'?await q('SELECT * FROM requests WHERE homeowner_id=$1 ORDER BY created_at DESC',[u.id]):await q(`SELECT * FROM requests r
-        WHERE r.delisted=false AND (r.status='open' OR (r.status='scheduled' AND EXISTS (
-          SELECT 1 FROM jobs j WHERE j.request_id=r.id AND j.status NOT IN ('completed','cancelled')
-        ))) ORDER BY r.created_at DESC`);
+        WHERE r.delisted=false AND r.status='open' ORDER BY r.created_at DESC`);
       return send(res,200,{requests:rows.map(mapRequest)});
     }
     if(p==='/api/requests' && req.method==='POST'){
@@ -1686,34 +1691,44 @@ const server=http.createServer(async (req,res)=>{
       const row=await q1('UPDATE requests SET delisted=false, delisted_at=NULL WHERE id=$1 RETURNING *',[rid]);
       return send(res,200,{request:mapRequest(row)});
     }
-    // Reopen: the homeowner can put a request back out for quotes any time, even after accepting a
-    // quote, UNLESS a provider has already submitted a receipt (that closes the job for good). Any
-    // active job on it is cancelled, all quotes go back to pending so the homeowner can pick again,
-    // and a delisted request is listed again.
-    if(p.startsWith('/api/requests/') && p.endsWith('/reopen') && req.method==='POST'){
-      const rid=p.split('/')[3];
-      const client=await pool.connect();
-      let cancelledJobs=[], reopened=null;
-      try{
-        await client.query('BEGIN');
-        const r=(await client.query('SELECT * FROM requests WHERE id=$1 FOR UPDATE',[rid])).rows[0];
-        if(!r){await client.query('ROLLBACK');return send(res,404,{error:'Request not found'});}
-        if(r.homeowner_id!==u.id){await client.query('ROLLBACK');return send(res,403,{error:'Not authorized'});}
-        if(r.status==='open' && !r.delisted){await client.query('ROLLBACK');return send(res,409,{error:'This request is already open.'});}
-        const done=await client.query("SELECT 1 FROM jobs WHERE request_id=$1 AND status='completed' LIMIT 1",[rid]);
-        if(done.rows.length){await client.query('ROLLBACK');return send(res,409,{error:'A provider already submitted a receipt for this request, so it can\'t be reopened. Submit a new request instead.'});}
-        cancelledJobs=(await client.query("UPDATE jobs SET status='cancelled' WHERE request_id=$1 AND status IN ('scheduled','in_progress') RETURNING *",[rid])).rows;
-        await client.query("UPDATE quotes SET status='pending' WHERE request_id=$1 AND status IN ('accepted','declined')",[rid]);
-        reopened=(await client.query("UPDATE requests SET status='open', delisted=false, delisted_at=NULL WHERE id=$1 RETURNING *",[rid])).rows[0];
-        await client.query('COMMIT');
-      }catch(e){ try{await client.query('ROLLBACK');}catch(_){} throw e; }
-      finally{ client.release(); }
-      for(const j of cancelledJobs){
-        const provider=await q1('SELECT * FROM users WHERE id=$1',[j.provider_id]);
-        if(provider) sendEmail({to:provider.email,type:'job_cancelled',subject:`"${j.title}" was reopened by the homeowner`,html:jobCancelledEmailHtml(provider.name,mapJob(j)),userId:provider.id}).catch(()=>{});
-        if(ADMIN_NOTIFY_EMAIL) sendEmail({to:ADMIN_NOTIFY_EMAIL,type:'admin_job_cancelled',subject:`Job cancelled (request reopened): "${j.title}"`,html:adminJobCancelledEmailHtml(mapJob(j),u.name,provider?.name||'—')}).catch(()=>{});
+    // Homeowner closes a request themselves. /complete = got the work done (status 'completed');
+    // /close = closing without hiring (status 'closed', also delisted). Any active appointment is
+    // cancelled and the provider told. Homeowner-closed requests can be reopened unless a provider
+    // receipt exists; a receipt closes a request for good.
+    if(p.startsWith('/api/requests/') && (p.endsWith('/complete')||p.endsWith('/close')) && req.method==='POST'){
+      const rid=p.split('/')[3], r=await q1('SELECT * FROM requests WHERE id=$1',[rid]); if(!r)return send(res,404,{error:'Request not found'});
+      if(r.homeowner_id!==u.id) return send(res,403,{error:'Not authorized'});
+      if(r.status!=='open') return send(res,409,{error:'This request is already closed.'});
+      const done=p.endsWith('/complete');
+      const act=(await pool.query("UPDATE jobs SET status='cancelled' WHERE request_id=$1 AND status IN ('scheduled','in_progress') RETURNING *",[rid])).rows;
+      for(const j of act){
+        if(j.quote_id) await pool.query("UPDATE quotes SET status='pending' WHERE id=$1 AND status='accepted'",[j.quote_id]);
+        const prov=await q1('SELECT * FROM users WHERE id=$1',[j.provider_id]);
+        if(prov) sendEmail({to:prov.email,type:'job_cancelled',subject:`"${j.title}" was closed by the homeowner`,html:jobCancelledEmailHtml(prov.name,mapJob(j)),userId:prov.id}).catch(()=>{});
       }
-      return send(res,200,{request:mapRequest(reopened),cancelledJobs:cancelledJobs.length});
+      const row=await q1("UPDATE requests SET status=$1, closed_by='homeowner', closed_at=now(), delisted=$2, delisted_at=CASE WHEN $2::boolean THEN now() ELSE delisted_at END WHERE id=$3 RETURNING *",[done?'completed':'closed',!done,rid]);
+      return send(res,200,{request:mapRequest(row)});
+    }
+    if(p.startsWith('/api/requests/') && p.endsWith('/reopen') && req.method==='POST'){
+      const rid=p.split('/')[3], r=await q1('SELECT * FROM requests WHERE id=$1',[rid]); if(!r)return send(res,404,{error:'Request not found'});
+      if(r.homeowner_id!==u.id) return send(res,403,{error:'Not authorized'});
+      if(r.status==='open') return send(res,409,{error:'This request is already open.'});
+      const blocked="A provider receipt closed this request, so it can't be reopened.";
+      if(r.closed_by!=='homeowner') return send(res,409,{error:blocked});
+      if(await q1("SELECT 1 AS x FROM jobs WHERE request_id=$1 AND status='completed'",[rid])) return send(res,409,{error:blocked});
+      const row=await q1("UPDATE requests SET status='open', closed_by=NULL, closed_at=NULL, delisted=false, delisted_at=NULL WHERE id=$1 RETURNING *",[rid]);
+      return send(res,200,{request:mapRequest(row)});
+    }
+    // Archive / unarchive one provider's conversation on a request (homeowner only). Archived
+    // conversations drop out of the active quote list, can't be accepted, and are closed to new
+    // messages from either side until the homeowner unarchives. An accepted quote can't be archived.
+    if(p.startsWith('/api/quotes/') && (p.endsWith('/archive')||p.endsWith('/unarchive')) && req.method==='POST'){
+      const qid=p.split('/')[3], t=await loadQuoteThread(qid); if(!t)return send(res,404,{error:'Quote not found'});
+      if(t.request.homeowner_id!==u.id) return send(res,403,{error:'Only the homeowner can archive a conversation.'});
+      const archiving=p.endsWith('/archive');
+      if(archiving && t.quote.status==='accepted') return send(res,409,{error:'You accepted this provider. Cancel the appointment first to archive the conversation.'});
+      const row=await q1('UPDATE quotes SET archived=$1, archived_at=$2 WHERE id=$3 RETURNING *',[archiving,archiving?new Date():null,qid]);
+      return send(res,200,{quote:mapQuote(row)});
     }
     if(p.startsWith('/api/requests/') && p.endsWith('/quotes') && req.method==='GET'){
       const rid=p.split('/')[3], r=await q1('SELECT * FROM requests WHERE id=$1',[rid]); if(!r)return send(res,404,{error:'Request not found'});
@@ -1730,7 +1745,7 @@ const server=http.createServer(async (req,res)=>{
       if(!u.approved) return send(res,403,{error:'Your account is waiting on admin approval before you can respond to requests. You can upload your verification documents in the meantime from Business Profile.',verificationRequired:true,accountPending:true});
       const rid=p.split('/')[3], r=await q1('SELECT * FROM requests WHERE id=$1',[rid]); if(!r)return send(res,404,{error:'Request not found'});
       if(r.delisted) return send(res,410,{error:'This homeowner took the request down. It\'s no longer accepting quotes.'});
-      if(r.status!=='open') return send(res,409,{error:'This request already has a provider scheduled.'});
+      if(r.status!=='open') return send(res,409,{error:'This request is closed.'});
       const existing=await q1('SELECT id FROM quotes WHERE request_id=$1 AND provider_id=$2',[rid,u.id]);
       if(existing)return send(res,409,{error:'You already responded to this request'});
       const quoteLimits=providerQuotaLimits(u.providerPlan);
@@ -1757,9 +1772,15 @@ const server=http.createServer(async (req,res)=>{
         const rr=await client.query('SELECT * FROM requests WHERE id=$1 FOR UPDATE',[quote.request_id]);
         const r=rr.rows[0];
         if(!r||r.homeowner_id!==u.id){await client.query('ROLLBACK');return send(res,403,{error:'Not authorized'});}
+        // Accepting a provider does NOT close the request or touch the other quotes. The request
+        // stays open (and in the provider feed) until a provider submits a receipt on the job.
+        if(r.status!=='open'){await client.query('ROLLBACK');return send(res,409,{error:'This request is closed because a provider already submitted a receipt.'});}
+        if(quote.status==='accepted'){await client.query('ROLLBACK');return send(res,409,{error:'You already accepted this provider.'});}
+        if(quote.archived){await client.query('ROLLBACK');return send(res,409,{error:'This conversation is archived. Unarchive it before accepting the quote.'});}
+        const activeJob=await client.query("SELECT 1 FROM jobs WHERE request_id=$1 AND status IN ('scheduled','in_progress') LIMIT 1",[r.id]);
+        if(activeJob.rows.length){await client.query('ROLLBACK');return send(res,409,{error:'You already have an appointment on this request. Cancel it in Appointments first if you want to accept a different provider.'});}
         await client.query("UPDATE quotes SET status='accepted' WHERE id=$1",[qid]);
-        await client.query("UPDATE quotes SET status='declined' WHERE request_id=$1 AND id<>$2",[r.id,qid]);
-        const updatedReq=(await client.query("UPDATE requests SET status='scheduled' WHERE id=$1 RETURNING *",[r.id])).rows[0];
+        const updatedReq=r;
         const job=(await client.query('INSERT INTO jobs (id,request_id,quote_id,homeowner_id,provider_id,service_type,title,status,scheduled_for) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *',
           [id('job'),r.id,qid,u.id,quote.provider_id,r.service_type,r.title,'scheduled',quote.availability])).rows[0];
         await client.query('COMMIT');
@@ -1790,6 +1811,7 @@ const server=http.createServer(async (req,res)=>{
       const qid=p.split('/')[3], t=await loadQuoteThread(qid); if(!t)return send(res,404,{error:'Quote not found'});
       const isHomeowner=t.request.homeowner_id===u.id, isProvider=t.quote.provider_id===u.id;
       if(!isHomeowner && !isProvider) return send(res,403,{error:'Not authorized'});
+      if(t.quote.archived) return send(res,409,{error:isHomeowner?'This conversation is archived. Unarchive it to send a message.':'The homeowner archived this conversation.'});
       if(isProvider && !u.approved) return send(res,403,{error:'Your account is waiting on admin approval before you can message about a request.',verificationRequired:true,accountPending:true});
       const b=await body(req);
       const text=String(b.body||'').trim().slice(0,2000); if(!text)return send(res,400,{error:'Message cannot be empty'});
@@ -1826,10 +1848,13 @@ const server=http.createServer(async (req,res)=>{
       if(job.homeowner_id!==u.id&&job.provider_id!==u.id)return send(res,403,{error:'Not authorized'});
       const b=await body(req);
       if(b.status==='completed') return send(res,400,{error:'Upload a receipt to mark this job complete.'});
+      if(job.status==='completed') return send(res,409,{error:'This job is already closed out with a receipt.'});
       let row=job;
       if(['scheduled','in_progress','cancelled'].includes(b.status) && b.status!==job.status){
         row=await q1('UPDATE jobs SET status=$1 WHERE id=$2 RETURNING *',[b.status,jid]);
         if(b.status==='cancelled'){
+          // The provider goes back to being a regular quote on a still-open request, chat intact.
+          if(row.quote_id) await pool.query("UPDATE quotes SET status='pending' WHERE id=$1 AND status='accepted'",[row.quote_id]);
           const [homeowner,provider]=await Promise.all([q1('SELECT * FROM users WHERE id=$1',[row.homeowner_id]),q1('SELECT * FROM users WHERE id=$1',[row.provider_id])]);
           if(homeowner) sendEmail({to:homeowner.email,type:'job_cancelled',subject:`"${row.title}" was cancelled`,html:jobCancelledEmailHtml(homeowner.name,mapJob(row)),userId:homeowner.id}).catch(()=>{});
           if(provider) sendEmail({to:provider.email,type:'job_cancelled',subject:`"${row.title}" was cancelled`,html:jobCancelledEmailHtml(provider.name,mapJob(row)),userId:provider.id}).catch(()=>{});
@@ -1850,6 +1875,8 @@ const server=http.createServer(async (req,res)=>{
         if(dataUrl.length>VERIFICATION_MAX_DOC_BYTES) return send(res,400,{error:'Receipt file is too large. Please keep it under 4MB.'});
       }
       const row=await q1(`UPDATE jobs SET status='completed', receipt_data_url=$1, receipt_note=$2, receipt_uploaded_at=now() WHERE id=$3 RETURNING *`,[dataUrl||null,note||null,jid]);
+      // The receipt is what closes the request for good.
+      await pool.query("UPDATE requests SET status='completed' WHERE id=$1",[job.request_id]);
       const homeowner=await q1('SELECT * FROM users WHERE id=$1',[row.homeowner_id]);
       if(homeowner) sendEmail({to:homeowner.email,type:'job_completed',subject:`"${row.title}" is complete`,html:jobCompletedEmailHtml(homeowner,mapJob(row)),userId:homeowner.id}).catch(()=>{});
       return send(res,200,{job:mapJob(row)});

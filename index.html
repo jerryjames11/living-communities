@@ -1070,7 +1070,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
  <div id="quoteProviderProfile"></div>
  <div class="mini-actions"><button class="primary" onclick="acceptQuote()">Accept & Schedule</button></div>
  <div style="margin-top:18px;border-top:1px solid var(--line);padding-top:14px">
-   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b style="font-size:13.5px">Chat about this request</b><a onclick="reportQuoteThread(activeQuoteChatId)" style="color:var(--muted);font-size:12px;cursor:pointer">Report</a></div>
+   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b style="font-size:13.5px">Chat about this request</b><span><a onclick="archiveQuote(activeQuoteChatId,true,true)" style="color:var(--muted);font-size:12px;cursor:pointer;margin-right:12px">Archive</a><a onclick="reportQuoteThread(activeQuoteChatId)" style="color:var(--muted);font-size:12px;cursor:pointer">Report</a></span></div>
    <div id="quoteChatMessages" style="max-height:220px;overflow:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:10px"></div>
    <div class="field"><textarea id="quoteChatReply" placeholder="Write a message..."></textarea></div>
    <button class="primary" style="width:100%;margin-top:6px" onclick="sendQuoteChatMessage('quoteChatReply',activeQuoteChatId,'quoteChatMessages')">Send</button>
@@ -1858,7 +1858,7 @@ async function acceptQuote(){
   try{const first=lastDashboard.homeowner&&lastDashboard.homeowner.requests[0];if(!first)return;const qs=await api('/requests/'+first.id+'/quotes');const q=qs.quotes[0];await api('/quotes/'+q.id+'/accept',{method:'POST'});closeModal();toast('Accepted — coordinate details directly with the provider');await loadDashboard()}catch(e){toast(e.message)}
 }
 async function loadQuotes(requestId){
-  try{const d=await api('/requests/'+requestId+'/quotes');quoteTargetRequestId=requestId;const cards=document.querySelector('#quotesModal .quotegrid');cards.innerHTML=d.quotes.map((q,i)=>`<div class="quoteCard ${i===0?'selected':''}" style="position:relative">${q.unreadCount?`<span class="card-unread-badge" style="position:absolute;top:12px;right:12px">${q.unreadCount} NEW</span>`:''}<div class="profilebar"><div class="avatar">${initials(q.provider.name)}</div><div><b>${esc(q.provider.name)}</b> ${q.featured?'<span class="featured-tag">Featured</span>':''}<div class="statusline">★ ${esc(q.provider.rating||'New')} · ${esc(q.provider.reviewCount||0)} jobs</div></div></div><h3>$${Number(q.amountMin)}–$${Number(q.amountMax)}</h3><p style="color:var(--muted);font-size:13px">${esc(q.availability)}</p><div class="card-activity-ts">${q.unreadCount?'New message':'Last activity'} ${timeAgo(q.lastActivityAt||q.createdAt)}</div><button class="${i===0?'primary':'secondary'}" style="width:100%;margin-top:8px" onclick="viewQuote('${esc(q.id)}')">View Response</button></div>`).join('')||'<div class="notice">No responses yet.</div>';const countEl=document.getElementById('quotesModalCount');if(countEl)countEl.textContent=`${d.quotes.length} response${d.quotes.length===1?'':'s'}`}catch(e){toast(e.message)}
+  try{const d=await api('/requests/'+requestId+'/quotes');quoteTargetRequestId=requestId;const cards=document.querySelector('#quotesModal .quotegrid');const liveQ=d.quotes.filter(q=>!q.archived);const archN=d.quotes.length-liveQ.length;cards.innerHTML=liveQ.map((q,i)=>`<div class="quoteCard ${i===0?'selected':''}" style="position:relative">${q.unreadCount?`<span class="card-unread-badge" style="position:absolute;top:12px;right:12px">${q.unreadCount} NEW</span>`:''}<div class="profilebar"><div class="avatar">${initials(q.provider.name)}</div><div><b>${esc(q.provider.name)}</b> ${q.status==='accepted'?'<span class="tag status-accepted">ACCEPTED</span>':''}${q.featured?'<span class="featured-tag">Featured</span>':''}<div class="statusline">★ ${esc(q.provider.rating||'New')} · ${esc(q.provider.reviewCount||0)} jobs</div></div></div><h3>$${Number(q.amountMin)}–$${Number(q.amountMax)}</h3><p style="color:var(--muted);font-size:13px">${esc(q.availability)}</p><div class="card-activity-ts">${q.unreadCount?'New message':'Last activity'} ${timeAgo(q.lastActivityAt||q.createdAt)}</div><button class="${i===0?'primary':'secondary'}" style="width:100%;margin-top:8px" onclick="viewQuote('${esc(q.id)}')">View Response</button>${q.status==='accepted'?'':`<a onclick="archiveQuote('${esc(q.id)}',true,true)" style="display:block;text-align:center;margin-top:8px;color:var(--muted);font-size:12px;cursor:pointer">Archive conversation</a>`}</div>`).join('')||'<div class="notice">No active responses.</div>';const countEl=document.getElementById('quotesModalCount');if(countEl)countEl.textContent=`${liveQ.length} response${liveQ.length===1?'':'s'}${archN?` · ${archN} archived (see My Quotes)`:''}`}catch(e){toast(e.message)}
 }
 async function viewQuote(id){try{
   const d=await api('/requests/'+quoteTargetRequestId+'/quotes');const q=d.quotes.find(x=>x.id===id);if(!q)return;
@@ -1872,7 +1872,13 @@ async function viewQuote(id){try{
   document.querySelector('#quoteModal p').textContent='"'+(q.message||'No message provided.')+'"';
   document.getElementById('quoteProviderProfile').innerHTML=providerProfileSnippetHTML(q.provider);
   document.getElementById('quotesModal').classList.remove('show');document.getElementById('quoteModal').classList.add('show');
-  document.querySelector('#quoteModal .primary').onclick=()=>acceptSpecificQuote(id);
+  const accBtn=document.querySelector('#quoteModal .mini-actions .primary');
+  const accepted=((req&&req.quotes)||[]).find(x=>x.status==='accepted');
+  accBtn.onclick=()=>acceptSpecificQuote(id);
+  accBtn.disabled=false; accBtn.title=''; accBtn.textContent='Accept & Schedule';
+  if(q.status==='accepted'){ accBtn.disabled=true; accBtn.textContent='Accepted'; }
+  else if(accepted){ accBtn.disabled=true; accBtn.textContent='Appointment already booked'; accBtn.title='Cancel your current appointment in Appointments to accept a different provider.'; }
+  else if(req && req.status==='completed'){ accBtn.disabled=true; accBtn.textContent='Request closed'; }
   activeQuoteChatId=id;
   loadQuoteChatMessages('quoteChatMessages',id);
 }catch(e){toast(e.message)}}
@@ -2085,14 +2091,20 @@ function renderPanel(role,panelName){
 }
 
 function requestCardHTML(r){
-  const tag = r.delisted ? '<span class="tag status-delisted">DELISTED</span>' : (requestHasReceipt(r.id) ? '<span class="tag status-completed">COMPLETED</span>' : `<span class="tag status-${esc(r.status)}">${esc(statusLabel(r.status).toUpperCase())}</span>`);
-  const receiptIn = requestHasReceipt(r.id);
+  const done = r.status==='completed';
+  const shut = r.status!=='open';
+  const hoClosed = shut && r.closedBy==='homeowner';
+  const acc = (r.quotes||[]).find(q=>q.status==='accepted');
+  const tag = done ? '<span class="tag status-completed">COMPLETED</span>' : (shut ? '<span class="tag status-delisted">CLOSED · DELISTED</span>' : (r.delisted ? '<span class="tag status-delisted">DELISTED</span>' : '<span class="tag status-open">OPEN</span>'));
+  const accTag = (!done && acc) ? '<span class="tag status-accepted">PROVIDER ACCEPTED</span>' : '';
   const delistBtn = r.status==='open'
     ? (r.delisted
         ? `<button class="secondary" onclick="relistRequest('${esc(r.id)}')">Re-list</button>`
         : `<button class="secondary" onclick="delistRequest('${esc(r.id)}')">Delist</button>`)
-    : (receiptIn ? '' : `<button class="secondary" onclick="reopenRequest('${esc(r.id)}')">Reopen request</button>`);
-  return `<div class="request">${photoSlotHTML(serviceImage(r.serviceType),null,'req-thumb')}<div class="requestrow"><div><span class="tag">${esc(r.serviceType.toUpperCase())}</span>${tag}<h3>${esc(r.title)}</h3><p>${esc(r.description||'')}</p><div class="statusline"><span class="dot"></span> ${r.quotes.length} provider${r.quotes.length===1?'':'s'} responded${r.delisted?' · Hidden from new providers':''}${receiptIn?' · Closed: receipt submitted':''}</div></div><div class="mini-actions">${delistBtn}<button class="primary" onclick="document.getElementById('quotesModal').classList.add('show');loadQuotes('${esc(r.id)}')">View ${r.quotes.length} Response${r.quotes.length===1?'':'s'}</button></div></div></div>`;
+      + `<button class="secondary" onclick="closeRequest('${esc(r.id)}',true)">Mark complete</button><button class="secondary" onclick="closeRequest('${esc(r.id)}',false)">Close &amp; delist</button>`
+    : (hoClosed ? `<button class="secondary" onclick="reopenRequest('${esc(r.id)}')">Reopen</button>` : '');
+  const n=activeQuotesOf(r).length;
+  return `<div class="request">${photoSlotHTML(serviceImage(r.serviceType),null,'req-thumb')}<div class="requestrow"><div><span class="tag">${esc(r.serviceType.toUpperCase())}</span>${tag}${accTag}<h3>${esc(r.title)}</h3><p>${esc(r.description||'')}</p><div class="statusline"><span class="dot"></span> ${n} provider${n===1?'':'s'} responded${(!done&&acc&&acc.provider)?' · '+esc(acc.provider.name)+' accepted':''}${r.delisted?' · Hidden from new providers':''}${done?' · Closed: provider submitted a receipt':''}</div></div><div class="mini-actions">${delistBtn}<button class="primary" onclick="document.getElementById('quotesModal').classList.add('show');loadQuotes('${esc(r.id)}')">View ${n} Response${n===1?'':'s'}</button></div></div></div>`;
 }
 let hoRequestsFilter='open';
 function setHoRequestsFilter(f){
@@ -2100,8 +2112,8 @@ function setHoRequestsFilter(f){
   document.querySelectorAll('#homeowner .filter-tab[data-status]').forEach(b=>b.classList.toggle('active',b.dataset.status===f));
   renderHoRequests(lastDashboard.homeowner);
 }
-// Open = accepting quotes and visible to providers. Closed = a provider was accepted (request.status
-// moves off 'open'). Delisted = still open, but the homeowner pulled it off the provider feed themselves.
+// Open = still active (accepting quotes, even if one provider is already accepted). Closed = a receipt or
+// the homeowner closed it (status 'completed' or 'closed'). Delisted = still open, but pulled off the provider feed.
 function bucketForRequest(r){
   if(r.status!=='open') return 'closed';
   return r.delisted ? 'delisted' : 'open';
@@ -2118,14 +2130,25 @@ function renderHoRequests(d){
   }
   el.innerHTML=filtered.map(requestCardHTML).join('');
 }
-// A request can be reopened any time, unless a provider already submitted a receipt on its job.
-function requestHasReceipt(requestId){
-  const d=lastDashboard.homeowner; if(!d||!d.jobs) return false;
-  return d.jobs.some(j=>j.requestId===requestId && j.status==='completed');
+// Archive or restore one provider's conversation on a request.
+async function archiveQuote(id,archive,keepModal){
+  try{
+    await api('/quotes/'+id+(archive?'/archive':'/unarchive'),{method:'POST'});
+    toast(archive?'Conversation archived.':'Conversation restored.');
+    await loadDashboard();
+    if(keepModal&&quoteTargetRequestId){ document.getElementById('quoteModal').classList.remove('show'); document.getElementById('quotesModal').classList.add('show'); loadQuotes(quoteTargetRequestId); }
+  }catch(e){ toast(e.message); }
+}
+function activeQuotesOf(r){ return (r.quotes||[]).filter(q=>!q.archived); }
+let showArchivedQuotes=false;
+function toggleArchivedQuotes(){ showArchivedQuotes=!showArchivedQuotes; if(lastDashboard.homeowner) renderHoQuotes(lastDashboard.homeowner); }
+async function closeRequest(id,complete){
+  const msg = complete ? 'Mark this request complete? Any booked appointment is cancelled and the provider is told. You can reopen it later.' : 'Close and delist this request? Any booked appointment is cancelled. You can reopen it later.';
+  if(!confirm(msg)) return;
+  try{ await api('/requests/'+id+(complete?'/complete':'/close'),{method:'POST'}); toast(complete?'Request marked complete.':'Request closed and delisted.'); await loadDashboard(); }catch(e){toast(e.message)}
 }
 async function reopenRequest(id){
-  if(!confirm('Reopen this request? Any provider you accepted will be released and all quotes go back to pending so you can choose again.')) return;
-  try{ const r=await api('/requests/'+id+'/reopen',{method:'POST'}); toast('Request reopened. You can review quotes again.'); setHoRequestsFilter('open'); await loadDashboard(); }catch(e){toast(e.message)}
+  try{ await api('/requests/'+id+'/reopen',{method:'POST'}); toast('Request reopened.'); await loadDashboard(); }catch(e){toast(e.message)}
 }
 async function delistRequest(id){
   try{ await api('/requests/'+id+'/delist',{method:'POST'}); toast('Request delisted — hidden from new providers.'); await loadDashboard(); }catch(e){toast(e.message)}
@@ -2133,13 +2156,27 @@ async function delistRequest(id){
 async function relistRequest(id){
   try{ await api('/requests/'+id+'/relist',{method:'POST'}); toast('Request re-listed — visible to providers again.'); await loadDashboard(); }catch(e){toast(e.message)}
 }
+function hoQuoteRowHTML(r,q){
+  const arch=!!q.archived;
+  const action = arch
+    ? `<button class="secondary" onclick="archiveQuote('${esc(q.id)}',false)">Restore</button>`
+    : (q.status==='accepted' ? '' : `<button class="secondary" onclick="archiveQuote('${esc(q.id)}',true)">Archive</button>`);
+  const viewBtn = arch ? '' : `<button class="secondary" onclick="document.getElementById('quotesModal').classList.add('show');loadQuotes('${esc(r.id)}')">View</button>`;
+  return `<div class="request"${arch?' style="opacity:.8"':''}>${photoSlotHTML(serviceImage(r.serviceType),null,'req-thumb')}<div class="requestrow"><div><span class="tag">${esc(r.serviceType.toUpperCase())}</span>${arch?'<span class="tag">ARCHIVED</span>':`<span class="tag status-${esc(q.status)}">${esc(q.status.toUpperCase())}</span>`}${q.featured?'<span class="featured-tag">Featured</span>':''}${!arch&&q.unreadCount?`<span class="card-unread-badge">${q.unreadCount} NEW</span>`:''}<h3>${esc(r.title)}</h3><p>${esc(q.provider.name)} · $${Number(q.amountMin)}–$${Number(q.amountMax)} · ${esc(q.availability)}</p><div class="card-activity-ts">${!arch&&q.unreadCount?'New message':'Last activity'} ${timeAgo(q.lastActivityAt||q.createdAt)}</div></div><div class="mini-actions">${action}${viewBtn}</div></div></div>`;
+}
 function renderHoQuotes(d){
   const el=document.getElementById('ho-quotes-list'); if(!el)return;
   const all=[];
   (d.requests||[]).forEach(r=>(r.quotes||[]).forEach(q=>all.push({r,q})));
   if(!all.length){el.innerHTML='<div class="notice">No quotes yet. Once providers respond to your requests, they\'ll show up here.</div>';return}
-  all.sort((a,b)=>(b.q.featured?1:0)-(a.q.featured?1:0)||new Date(b.q.lastActivityAt||b.q.createdAt)-new Date(a.q.lastActivityAt||a.q.createdAt));
-  el.innerHTML=all.map(({r,q})=>`<div class="request">${photoSlotHTML(serviceImage(r.serviceType),null,'req-thumb')}<div class="requestrow"><div><span class="tag">${esc(r.serviceType.toUpperCase())}</span><span class="tag status-${esc(q.status)}">${esc(q.status.toUpperCase())}</span>${q.featured?'<span class="featured-tag">Featured</span>':''}${q.unreadCount?`<span class="card-unread-badge">${q.unreadCount} NEW</span>`:''}<h3>${esc(r.title)}</h3><p>${esc(q.provider.name)} · $${Number(q.amountMin)}–$${Number(q.amountMax)} · ${esc(q.availability)}</p><div class="card-activity-ts">${q.unreadCount?'New message':'Last activity'} ${timeAgo(q.lastActivityAt||q.createdAt)}</div></div><button class="secondary" onclick="document.getElementById('quotesModal').classList.add('show');loadQuotes('${esc(r.id)}')">View</button></div></div>`).join('');
+  const sorter=(a,b)=>(b.q.featured?1:0)-(a.q.featured?1:0)||new Date(b.q.lastActivityAt||b.q.createdAt)-new Date(a.q.lastActivityAt||a.q.createdAt);
+  const active=all.filter(x=>!x.q.archived).sort(sorter), archived=all.filter(x=>x.q.archived).sort(sorter);
+  let html=active.length?active.map(({r,q})=>hoQuoteRowHTML(r,q)).join(''):'<div class="notice">No active conversations.</div>';
+  if(archived.length){
+    html+=`<div style="margin:18px 0 8px"><a onclick="toggleArchivedQuotes()" style="color:var(--green);font-weight:700;font-size:13.5px;cursor:pointer">${showArchivedQuotes?'Hide':'Show'} archived (${archived.length})</a></div>`;
+    if(showArchivedQuotes) html+=archived.map(({r,q})=>hoQuoteRowHTML(r,q)).join('');
+  }
+  el.innerHTML=html;
 }
 // Display-only relabeling — the underlying job/request status values in the database are
 // unchanged ('scheduled' etc still drives all the existing logic), this just controls the word
@@ -2154,7 +2191,11 @@ function renderHoJobs(d){
   const el=document.getElementById('ho-jobs-list'); if(!el)return;
   const jobs=d.jobs||[];
   if(!jobs.length){el.innerHTML='<div class="notice">No appointments yet. Accept a quote from My Requests to get started.</div>';return}
-  el.innerHTML=jobs.map(j=>`<div class="request">${photoSlotHTML(serviceImage(j.serviceType),null,'req-thumb')}<div class="requestrow"><div><span class="tag">${esc((j.serviceType||'SERVICE').toUpperCase())}</span><span class="tag status-${esc(j.status)}">${esc(statusLabel(j.status).toUpperCase())}</span><h3>${esc(j.title||'Service job')}</h3>${j.providerName?`<p class="statusline" style="margin:2px 0">With ${esc(j.providerName)}</p>`:''}<p>Provider's proposed time: ${esc(j.scheduledFor||'—')}</p>${j.status==='completed'?`<p class="statusline" style="margin-top:4px">Closed out ${j.receiptUploadedAt?new Date(j.receiptUploadedAt).toLocaleDateString():''}${j.receiptNote?' · '+esc(j.receiptNote):''}</p>`:'<p class="statusline" style="margin-top:4px">Awaiting the provider to close this job out with a receipt.</p>'}${(j.status==='scheduled'||j.status==='in_progress')?`<p class="subtle" style="font-size:11.5px;margin-top:6px;line-height:1.4">${HANDS_OFF_NOTE}</p>`:''}</div>${j.quoteId?`<button class="secondary" onclick="openJobChat('${esc(j.quoteId)}','${esc(j.title||'Service job')}')">Chat</button>`:''}</div></div>`).join('');
+  el.innerHTML=jobs.map(j=>`<div class="request">${photoSlotHTML(serviceImage(j.serviceType),null,'req-thumb')}<div class="requestrow"><div><span class="tag">${esc((j.serviceType||'SERVICE').toUpperCase())}</span><span class="tag status-${esc(j.status)}">${esc(statusLabel(j.status).toUpperCase())}</span><h3>${esc(j.title||'Service job')}</h3>${j.providerName?`<p class="statusline" style="margin:2px 0">With ${esc(j.providerName)}</p>`:''}<p>Provider's proposed time: ${esc(j.scheduledFor||'—')}</p>${j.status==='completed'?`<p class="statusline" style="margin-top:4px">Closed out ${j.receiptUploadedAt?new Date(j.receiptUploadedAt).toLocaleDateString():''}${j.receiptNote?' · '+esc(j.receiptNote):''}</p>`:'<p class="statusline" style="margin-top:4px">Awaiting the provider to close this job out with a receipt.</p>'}${(j.status==='scheduled'||j.status==='in_progress')?`<p class="subtle" style="font-size:11.5px;margin-top:6px;line-height:1.4">${HANDS_OFF_NOTE}</p>`:''}</div><div class="mini-actions">${(j.status==='scheduled'||j.status==='in_progress')?`<button class="secondary" onclick="cancelAppointment('${esc(j.id)}')">Cancel appointment</button>`:''}${j.quoteId?`<button class="secondary" onclick="openJobChat('${esc(j.quoteId)}','${esc(j.title||'Service job')}')">Chat</button>`:''}</div></div></div>`).join('');
+}
+async function cancelAppointment(jobId){
+  if(!confirm('Cancel this appointment? Your request stays open and every quote, including this provider\'s chat, stays available. You can pick a provider again any time.')) return;
+  try{ await api('/jobs/'+jobId,{method:'PATCH',body:JSON.stringify({status:'cancelled'})}); toast('Appointment cancelled. Your request is still open.'); await loadDashboard(); }catch(e){ toast(e.message); }
 }
 function paymentHistoryRowsHTML(payments){
   if(!payments.length) return '<div class="notice">No payments yet.</div>';
