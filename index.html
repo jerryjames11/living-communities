@@ -2085,13 +2085,14 @@ function renderPanel(role,panelName){
 }
 
 function requestCardHTML(r){
-  const tag = r.delisted ? '<span class="tag status-delisted">DELISTED</span>' : `<span class="tag status-${esc(r.status)}">${esc(statusLabel(r.status).toUpperCase())}</span>`;
+  const tag = r.delisted ? '<span class="tag status-delisted">DELISTED</span>' : (requestHasReceipt(r.id) ? '<span class="tag status-completed">COMPLETED</span>' : `<span class="tag status-${esc(r.status)}">${esc(statusLabel(r.status).toUpperCase())}</span>`);
+  const receiptIn = requestHasReceipt(r.id);
   const delistBtn = r.status==='open'
     ? (r.delisted
         ? `<button class="secondary" onclick="relistRequest('${esc(r.id)}')">Re-list</button>`
         : `<button class="secondary" onclick="delistRequest('${esc(r.id)}')">Delist</button>`)
-    : '';
-  return `<div class="request">${photoSlotHTML(serviceImage(r.serviceType),null,'req-thumb')}<div class="requestrow"><div><span class="tag">${esc(r.serviceType.toUpperCase())}</span>${tag}<h3>${esc(r.title)}</h3><p>${esc(r.description||'')}</p><div class="statusline"><span class="dot"></span> ${r.quotes.length} provider${r.quotes.length===1?'':'s'} responded${r.delisted?' · Hidden from new providers':''}</div></div><div class="mini-actions">${delistBtn}<button class="primary" onclick="document.getElementById('quotesModal').classList.add('show');loadQuotes('${esc(r.id)}')">View ${r.quotes.length} Response${r.quotes.length===1?'':'s'}</button></div></div></div>`;
+    : (receiptIn ? '' : `<button class="secondary" onclick="reopenRequest('${esc(r.id)}')">Reopen request</button>`);
+  return `<div class="request">${photoSlotHTML(serviceImage(r.serviceType),null,'req-thumb')}<div class="requestrow"><div><span class="tag">${esc(r.serviceType.toUpperCase())}</span>${tag}<h3>${esc(r.title)}</h3><p>${esc(r.description||'')}</p><div class="statusline"><span class="dot"></span> ${r.quotes.length} provider${r.quotes.length===1?'':'s'} responded${r.delisted?' · Hidden from new providers':''}${receiptIn?' · Closed: receipt submitted':''}</div></div><div class="mini-actions">${delistBtn}<button class="primary" onclick="document.getElementById('quotesModal').classList.add('show');loadQuotes('${esc(r.id)}')">View ${r.quotes.length} Response${r.quotes.length===1?'':'s'}</button></div></div></div>`;
 }
 let hoRequestsFilter='open';
 function setHoRequestsFilter(f){
@@ -2116,6 +2117,15 @@ function renderHoRequests(d){
     return;
   }
   el.innerHTML=filtered.map(requestCardHTML).join('');
+}
+// A request can be reopened any time, unless a provider already submitted a receipt on its job.
+function requestHasReceipt(requestId){
+  const d=lastDashboard.homeowner; if(!d||!d.jobs) return false;
+  return d.jobs.some(j=>j.requestId===requestId && j.status==='completed');
+}
+async function reopenRequest(id){
+  if(!confirm('Reopen this request? Any provider you accepted will be released and all quotes go back to pending so you can choose again.')) return;
+  try{ const r=await api('/requests/'+id+'/reopen',{method:'POST'}); toast('Request reopened. You can review quotes again.'); setHoRequestsFilter('open'); await loadDashboard(); }catch(e){toast(e.message)}
 }
 async function delistRequest(id){
   try{ await api('/requests/'+id+'/delist',{method:'POST'}); toast('Request delisted — hidden from new providers.'); await loadDashboard(); }catch(e){toast(e.message)}

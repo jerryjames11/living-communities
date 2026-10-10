@@ -1686,6 +1686,35 @@ const server=http.createServer(async (req,res)=>{
       const row=await q1('UPDATE requests SET delisted=false, delisted_at=NULL WHERE id=$1 RETURNING *',[rid]);
       return send(res,200,{request:mapRequest(row)});
     }
+    // Reopen: the homeowner can put a request back out for quotes any time, even after accepting a
+    // quote, UNLESS a provider has already submitted a receipt (that closes the job for good). Any
+    // active job on it is cancelled, all quotes go back to pending so the homeowner can pick again,
+    // and a delisted request is listed again.
+    if(p.startsWith('/api/requests/') && p.endsWith('/reopen') && req.method==='POST'){
+      const rid=p.split('/')[3];
+      const client=await pool.connect();
+      let cancelledJobs=[], reopened=null;
+      try{
+        await client.query('BEGIN');
+        const r=(await client.query('SELECT * FROM requests WHERE id=$1 FOR UPDATE',[rid])).rows[0];
+        if(!r){await client.query('ROLLBACK');return send(res,404,{error:'Request not found'});}
+        if(r.homeowner_id!==u.id){await client.query('ROLLBACK');return send(res,403,{error:'Not authorized'});}
+        if(r.status==='open' && !r.delisted){await client.query('ROLLBACK');return send(res,409,{error:'This request is already open.'});}
+        const done=await client.query("SELECT 1 FROM jobs WHERE request_id=$1 AND status='completed' LIMIT 1",[rid]);
+        if(done.rows.length){await client.query('ROLLBACK');return send(res,409,{error:'A provider already submitted a receipt for this request, so it can\'t be reopened. Submit a new request instead.'});}
+        cancelledJobs=(await client.query("UPDATE jobs SET status='cancelled' WHERE request_id=$1 AND status IN ('scheduled','in_progress') RETURNING *",[rid])).rows;
+        await client.query("UPDATE quotes SET status='pending' WHERE request_id=$1 AND status IN ('accepted','declined')",[rid]);
+        reopened=(await client.query("UPDATE requests SET status='open', delisted=false, delisted_at=NULL WHERE id=$1 RETURNING *",[rid])).rows[0];
+        await client.query('COMMIT');
+      }catch(e){ try{await client.query('ROLLBACK');}catch(_){} throw e; }
+      finally{ client.release(); }
+      for(const j of cancelledJobs){
+        const provider=await q1('SELECT * FROM users WHERE id=$1',[j.provider_id]);
+        if(provider) sendEmail({to:provider.email,type:'job_cancelled',subject:`"${j.title}" was reopened by the homeowner`,html:jobCancelledEmailHtml(provider.name,mapJob(j)),userId:provider.id}).catch(()=>{});
+        if(ADMIN_NOTIFY_EMAIL) sendEmail({to:ADMIN_NOTIFY_EMAIL,type:'admin_job_cancelled',subject:`Job cancelled (request reopened): "${j.title}"`,html:adminJobCancelledEmailHtml(mapJob(j),u.name,provider?.name||'—')}).catch(()=>{});
+      }
+      return send(res,200,{request:mapRequest(reopened),cancelledJobs:cancelledJobs.length});
+    }
     if(p.startsWith('/api/requests/') && p.endsWith('/quotes') && req.method==='GET'){
       const rid=p.split('/')[3], r=await q1('SELECT * FROM requests WHERE id=$1',[rid]); if(!r)return send(res,404,{error:'Request not found'});
       if(u.role==='homeowner'&&r.homeowner_id!==u.id)return send(res,403,{error:'Not authorized'});
