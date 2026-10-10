@@ -203,10 +203,11 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .stat-tile .lbl{color:var(--muted);font-size:12px;margin-top:4px}
 .content{min-width:0}
 
-.welcome{background:linear-gradient(120deg,var(--ink),#20493d);color:#fff;border-radius:20px;padding:0;margin-bottom:18px;overflow:hidden;display:grid;grid-template-columns:1.3fr 1fr;align-items:stretch;height:130px}
+.welcome{background:linear-gradient(120deg,var(--ink),#20493d);color:#fff;border-radius:20px;padding:0;margin-bottom:18px;overflow:hidden;display:grid;grid-template-columns:1.3fr 1fr;align-items:stretch;height:150px}
 .welcome-text{padding:16px 28px;display:flex;flex-direction:column;justify-content:center}
 .welcome-text h2{margin:0 0 6px;font-size:22px}
 .welcome-text p{color:#c9d8d3;margin:0}
+.welcome-text .pill-select{align-self:flex-start;margin-top:10px;display:inline-flex;align-items:center;gap:6px;padding:6px 12px;font-size:12.5px;background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.28);color:#fff}
 .welcome-photo{height:100%}
 @media(max-width:700px){.welcome{grid-template-columns:1fr;height:auto}.welcome-photo{display:none}}
 @media(max-width:480px){.dash-header{padding:12px 4%}.dash-header-right{gap:8px}.dash-user b,.dash-user small{display:none}.dash-user{padding:5px}.dash-user .chev{display:none}.header-plans-btn{padding:0 12px;font-size:12px}}
@@ -488,7 +489,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
   </div>
 </div>
 <div class="app">
-<div class="dash-titlebar"><div><h1>My Dashboard</h1><p class="subtle" id="ho-welcome-sub">Welcome back!</p></div><div class="pill-select" id="ho-location-pill"><svg class="icn" width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 18s6-5.6 6-10.2A6 6 0 104 7.8C4 12.4 10 18 10 18z"/><circle cx="10" cy="7.6" r="2"/></svg> Richardson Community</div></div>
+<div class="dash-titlebar"><div><h1>My Dashboard</h1><p class="subtle" id="ho-welcome-sub">Welcome back!</p></div></div>
 <div class="grid"><aside class="sidebar">
 <div class="sideitem active" data-panel="dashboard" onclick="switchPanel('homeowner','dashboard')"><svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor"><rect x="2" y="2" width="7" height="7" rx="1.5"/><rect x="11" y="2" width="7" height="7" rx="1.5"/><rect x="2" y="11" width="7" height="7" rx="1.5"/><rect x="11" y="11" width="7" height="7" rx="1.5"/></svg>Dashboard</div>
 <div class="sideitem" data-panel="requests" onclick="switchPanel('homeowner','requests')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="12" height="15" rx="2"/><path d="M7.5 3h5v2h-5z"/><path d="M7 9h6M7 12h6M7 15h3.5"/></svg>My Requests</div>
@@ -503,7 +504,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 <section class="content">
 <div class="panel" data-panel="dashboard">
 <div id="ho-sponsor-banner"></div>
-<div class="welcome"><div class="welcome-text"><h2>Welcome back!</h2><p>How can we help with your home today?</p></div><div class="photo-slot welcome-photo" data-label="images/dashboard-welcome.jpg"><img src="images/dashboard-welcome.jpg" alt="" onerror="this.closest('.photo-slot').classList.add('missing')"></div></div>
+<div class="welcome"><div class="welcome-text"><h2>Welcome back!</h2><p>How can we help with your home today?</p><div class="pill-select" id="ho-location-pill"><svg class="icn" width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 18s6-5.6 6-10.2A6 6 0 104 7.8C4 12.4 10 18 10 18z"/><circle cx="10" cy="7.6" r="2"/></svg> Richardson Community</div></div><div class="photo-slot welcome-photo" data-label="images/dashboard-welcome.jpg"><img src="images/dashboard-welcome.jpg" alt="" onerror="this.closest('.photo-slot').classList.add('missing')"></div></div>
 <div class="section-row"><h3 style="margin:0">Popular Services</h3></div>
 <div class="svc-bubbles" id="ho-bubbles" role="list"></div>
 <div class="section-row" style="margin-top:22px"><h3 style="margin:0">Recent Requests</h3></div>
