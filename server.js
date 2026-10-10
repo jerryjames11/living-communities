@@ -52,28 +52,45 @@ function tooManyAttempts(ip){
 // --- row -> API-shape mappers (DB stays snake_case; the frontend expects the original camelCase shape) ---
 function mapUser(r){
   if(!r) return null;
-  const u={id:r.id,role:r.role,name:r.name,email:r.email,passwordHash:r.password_hash,salt:r.salt,phone:r.phone,createdAt:toISO(r.created_at),subscription:r.subscription,carePlanServices:r.care_plan_services||[],avatarKind:r.avatar_kind||null,avatarValue:r.avatar_value||null,address:r.address,lat:r.lat!=null?Number(r.lat):null,lng:r.lng!=null?Number(r.lng):null};
-  if(r.role==='homeowner'){ u.community=r.community; u.carePlanNextBilling=r.care_plan_next_billing?new Date(r.care_plan_next_billing).toISOString().slice(0,10):null; }
+  const carePlanItems=r.care_plan_items||[];
+  const u={id:r.id,role:r.role,name:r.name,email:r.email,passwordHash:r.password_hash,salt:r.salt,phone:r.phone,createdAt:toISO(r.created_at),subscription:r.subscription,carePlanItems,carePlanServices:carePlanItems.filter(i=>i.status==='active').map(i=>i.key),avatarKind:r.avatar_kind||null,avatarValue:r.avatar_value||null,address:r.address,lat:r.lat!=null?Number(r.lat):null,lng:r.lng!=null?Number(r.lng):null,billingAddress:r.billing_address||null,suspended:!!r.suspended,deleted:!!r.deleted,deletedAt:toISO(r.deleted_at),lastAnnouncementsViewAt:toISO(r.last_announcements_view_at)};
+  u.sponsoredOrgId=r.sponsored_org_id||null;
+  if(r.role==='hoa'){ u.hoaOrgId=r.hoa_org_id||null; u.invitePending=!!r.invite_token_hash; }
+  if(r.role==='admin'){ u.adminPermissions=r.admin_permissions||null; u.isSuperAdmin=!r.admin_permissions; u.invitePending=!!r.invite_token_hash; }
+  if(r.role==='homeowner'){ u.community=r.community; u.carePlanNextBilling=r.care_plan_next_billing?new Date(r.care_plan_next_billing).toISOString().slice(0,10):null; u.subscriptionNextBilling=r.subscription_next_billing?new Date(r.subscription_next_billing).toISOString().slice(0,10):null; u.homeProfile=r.home_profile||{}; u.homeDocuments=r.home_documents||[]; }
   else if(r.role==='provider'){
-    u.serviceTypes=r.service_types||[]; u.rating=r.rating!=null?Number(r.rating):null; u.reviewCount=r.review_count||0; u.verified=!!r.verified; u.businessDescription=r.business_description; u.providerPlan=r.provider_plan||'free'; u.quotesUsed=r.quotes_sent_this_period||0; u.convosUsed=r.new_conversations_this_period||0;
+    u.serviceTypes=r.service_types||[]; u.rating=r.rating!=null?Number(r.rating):null; u.reviewCount=r.review_count||0; u.verified=!!r.verified; u.businessDescription=r.business_description; u.providerPlan=r.provider_plan||'free'; u.providerPlanNextBilling=r.provider_plan_next_billing?new Date(r.provider_plan_next_billing).toISOString().slice(0,10):null; u.quotesUsed=r.quotes_sent_this_period||0; u.convosUsed=r.new_conversations_this_period||0;
     u.serviceRadiusMi=r.service_radius_mi!=null?Number(r.service_radius_mi):null;
-    // Effective radius actually used to filter the feed: Free plan is capped at PROVIDER_FREE_MAX_RADIUS_MI
-    // (even if an older saved value exceeds it) and defaults to it once they have a location on file but
-    // never picked a radius themselves. Pro plan is unlimited unless they've set their own radius.
-    if(u.providerPlan==='pro'){ u.effectiveServiceRadiusMi = u.serviceRadiusMi; }
-    else if(u.serviceRadiusMi!=null){ u.effectiveServiceRadiusMi = Math.min(u.serviceRadiusMi, PROVIDER_FREE_MAX_RADIUS_MI); }
-    else { u.effectiveServiceRadiusMi = u.lat!=null ? PROVIDER_FREE_DEFAULT_RADIUS_MI : null; }
-    // Verification / background-check workflow
+    // Effective radius actually used to filter the feed: Free is capped at 20mi, Pro at 50mi (even
+    // if an older saved value exceeds their plan's cap), each defaulting to that cap once they have
+    // a location on file but never picked a radius themselves. Elite is unlimited unless they've
+    // chosen to narrow it themselves.
+    if(isProviderRadiusUnlimited(u.providerPlan)){ u.effectiveServiceRadiusMi = u.serviceRadiusMi; }
+    else if(u.serviceRadiusMi!=null){ u.effectiveServiceRadiusMi = Math.min(u.serviceRadiusMi, providerMaxRadiusMi(u.providerPlan)); }
+    else { u.effectiveServiceRadiusMi = u.lat!=null ? providerDefaultRadiusMi(u.providerPlan) : null; }
+    // Verification workflow
     u.entityType=r.provider_entity_type||null;
     u.verificationStatus=r.verification_status||'unverified';
+    u.approved=r.provider_approved!==false; // admin approval to respond to requests (separate from document verification)
     u.verificationNotes=r.verification_notes||null;
     u.verificationSubmittedAt=toISO(r.verification_submitted_at);
     u.verificationReviewedAt=toISO(r.verification_reviewed_at);
     u.verificationDocuments=r.verification_documents||[];
-    u.backgroundCheckStatus=r.background_check_status||'not_requested';
-    u.backgroundCheckRequestedAt=toISO(r.background_check_requested_at);
+    // Business profile: skills/specializations (freeform tags, provider-editable, no moderation
+    // needed since they're just text) and a work-photo gallery (each photo individually gated
+    // behind admin approval before it's visible to homeowners — see galleryPhotosForView).
+    u.skills=r.skills||[];
+    u.specializations=r.specializations||[];
+    u.galleryPhotos=r.gallery_photos||[];
+    u.notifyEmailEnabled=r.notify_email_enabled!==false;
+    u.notifyServiceTypes=r.notify_service_types||[];
   }
   return u;
+}
+// Approved-only gallery photos, safe to show to homeowners (strips review notes/status/uploadedAt
+// noise a homeowner has no use for).
+function approvedGalleryPhotos(u){
+  return (u.galleryPhotos||[]).filter(p=>p.status==='approved').map(p=>({id:p.id,dataUrl:p.dataUrl,caption:p.caption||''}));
 }
 // The subset of a provider's record that's safe to hand to OTHER users (homeowners viewing a
 // quote, the provider directory). Never includes verification documents (ID/license scans),
@@ -86,14 +103,80 @@ function publicProviderView(u){
     verified:u.verified, verificationStatus:u.verificationStatus, entityType:u.entityType,
     businessDescription:u.businessDescription, serviceTypes:u.serviceTypes,
     avatarKind:u.avatarKind, avatarValue:u.avatarValue, providerPlan:u.providerPlan,
-    createdAt:u.createdAt
+    createdAt:u.createdAt, skills:u.skills||[], specializations:u.specializations||[],
+    galleryPhotos:approvedGalleryPhotos(u)
   };
 }
-function mapRequest(r){ return {id:r.id,homeownerId:r.homeowner_id,serviceType:r.service_type,title:r.title,description:r.description,urgency:r.urgency,preferredDate:r.preferred_date,preferredTime:r.preferred_time,status:r.status,createdAt:toISO(r.created_at)}; }
+function mapRequest(r){ return {id:r.id,homeownerId:r.homeowner_id,serviceType:r.service_type,title:r.title,description:r.description,urgency:r.urgency,preferredDate:r.preferred_date,preferredTime:r.preferred_time,status:r.status,createdAt:toISO(r.created_at),dispatchedProviderId:r.dispatched_provider_id||null,dispatchedAt:toISO(r.dispatched_at)||null,delisted:!!r.delisted,delistedAt:toISO(r.delisted_at)}; }
+function mapPayment(r){ return {id:r.id,userId:r.user_id,plan:r.plan,planKind:r.plan_kind,amount:(r.amount_cents||0)/100,currency:r.currency,status:r.status,createdAt:toISO(r.created_at),refundedAt:toISO(r.refunded_at)||null}; }
+// Slim account view for the admin accounts list — everything an admin needs to monitor an
+// account and its subscription at a glance, but never the heavy/sensitive stuff (password data,
+// uploaded verification document images) that a bulk list endpoint has no business returning.
+function adminAccountView(u){
+  if(!u) return null;
+  const base={id:u.id,role:u.role,name:u.name,email:u.email,phone:u.phone,createdAt:u.createdAt,suspended:!!u.suspended,deleted:!!u.deleted,deletedAt:u.deletedAt};
+  if(u.role==='homeowner'){
+    return {...base,community:u.community,subscription:normalizeHomeownerPlanKey(u.subscription),carePlanServiceCount:(u.carePlanServices||[]).length,carePlanNextBilling:u.carePlanNextBilling};
+  }
+  if(u.role==='provider'){
+    return {...base,serviceTypes:u.serviceTypes,providerPlan:u.providerPlan,rating:u.rating,reviewCount:u.reviewCount,verified:u.verified,verificationStatus:u.verificationStatus,entityType:u.entityType};
+  }
+  return base;
+}
 function mapQuote(r){ return {id:r.id,requestId:r.request_id,providerId:r.provider_id,amountMin:Number(r.amount_min),amountMax:Number(r.amount_max),availability:r.availability,message:r.message,status:r.status,createdAt:toISO(r.created_at)}; }
-function mapMessage(r){ return {id:r.id,senderId:r.sender_id,recipientId:r.recipient_id,participants:r.participants,body:r.body,createdAt:toISO(r.created_at),read:r.read}; }
-function mapJob(r){ return {id:r.id,requestId:r.request_id,homeownerId:r.homeowner_id,providerId:r.provider_id,serviceType:r.service_type,title:r.title,status:r.status,scheduledFor:r.scheduled_for,createdAt:toISO(r.created_at)}; }
+function mapMessage(r){ return {id:r.id,quoteId:r.quote_id,senderId:r.sender_id,recipientId:r.recipient_id,body:r.body,createdAt:toISO(r.created_at),read:r.read}; }
+function mapAnnouncement(r){ return {id:r.id,title:r.title,body:r.body,createdAt:toISO(r.created_at)}; }
+function mapSupportMessage(r){ return {id:r.id,userId:r.user_id,senderRole:r.sender_role,body:r.body,createdAt:toISO(r.created_at),read:r.read}; }
+function isPaidPlan(u){ return u.role==='provider' ? u.providerPlan!=='free' : ['plus','premium'].includes(u.subscription); }
+function mapJob(r){ return {id:r.id,requestId:r.request_id,quoteId:r.quote_id||null,homeownerId:r.homeowner_id,providerId:r.provider_id,serviceType:r.service_type,title:r.title,status:r.status,scheduledFor:r.scheduled_for,createdAt:toISO(r.created_at),receiptDataUrl:r.receipt_data_url||null,receiptNote:r.receipt_note||null,receiptUploadedAt:r.receipt_uploaded_at?toISO(r.receipt_uploaded_at):null}; }
 function mapReview(r){ return {id:r.id,jobId:r.job_id,homeownerId:r.homeowner_id,providerId:r.provider_id,rating:Number(r.rating),text:r.text,createdAt:toISO(r.created_at)}; }
+
+// ---- Scoped admin permissions ------------------------------------------------------------
+// Levels: 0 none, 1 view (read only), 2 edit (approve, reply, dispatch), 3 full (also delete, suspend, plan change, refund).
+// A NULL admin_permissions column means super admin (everything, plus managing the team).
+const ADMIN_SECTIONS=['overview','accounts','dispatch','payments','verification','reported','support','system','hoas'];
+function adminLevel(u,section){
+  if(!u||u.role!=='admin') return 0;
+  if(u.isSuperAdmin) return 3;
+  return Math.max(0,Math.min(3,Number((u.adminPermissions||{})[section])||0));
+}
+function cleanAdminPermissions(input){
+  const out={};
+  for(const k of ADMIN_SECTIONS){ out[k]=Math.max(0,Math.min(3,parseInt((input||{})[k],10)||0)); }
+  return out;
+}
+// Maps an /api/admin/* request to the section and level it needs. null = super admin only.
+function adminRequirement(p,method){
+  const w=method==='GET'?1:2;
+  if(p.startsWith('/api/admin/team')) return null;
+  if(p.startsWith('/api/admin/hoas')){
+    // Billing-affecting actions (create an HOA, settings, invoices, maintenance run) need Full; roster/queue work needs Edit.
+    if(method!=='GET' && (p==='/api/admin/hoas'||p.endsWith('/settings')||p.includes('/invoices/')||p.endsWith('/run-maintenance'))) return {section:'hoas',level:3};
+    return {section:'hoas',level:w};
+  }
+  if(p.startsWith('/api/admin/verifications')||p.startsWith('/api/admin/gallery')) return {section:'verification',level:w};
+  if(p==='/api/admin/stats') return {section:'overview',level:1};
+  if(p.startsWith('/api/admin/accounts/')&&(p.endsWith('/suspend')||p.endsWith('/subscription')||p.endsWith('/delete'))) return {section:'accounts',level:3};
+  if(p.startsWith('/api/admin/accounts')||p.startsWith('/api/admin/deleted-accounts')) return {section:'accounts',level:w};
+  if(p.startsWith('/api/admin/payments/')&&p.endsWith('/refund')) return {section:'payments',level:3};
+  if(p.startsWith('/api/admin/payments')) return {section:'payments',level:w};
+  if(p.startsWith('/api/admin/requests')||p.startsWith('/api/admin/care-plan')) return {section:'dispatch',level:w};
+  if(p.startsWith('/api/admin/reported-quotes')) return {section:'reported',level:w};
+  if(p.startsWith('/api/admin/support')||p.startsWith('/api/admin/announcements')) return {section:'support',level:w};
+  if(p.startsWith('/api/admin/email-log')) return {section:'system',level:1};
+  return null;
+}
+const ADMIN_LEVEL_NAMES=['no access','view only','edit','full'];
+const INVITE_TTL_MS=7*24*3600*1000;
+const hashInviteToken=t=>crypto.createHash('sha256').update(String(t)).digest('hex');
+function adminTeamView(r){
+  const super_=!r.admin_permissions;
+  return {id:r.id,name:r.name,email:r.email,isSuper:super_,permissions:super_?null:cleanAdminPermissions(r.admin_permissions),invitePending:!!r.invite_token_hash,inviteExpired:!!r.invite_token_hash&&!!r.invite_expires_at&&new Date(r.invite_expires_at)<new Date(),suspended:!!r.suspended,createdAt:toISO(r.created_at)};
+}
+function adminInviteEmailHtml(name,inviterName,link){
+  return emailShell('You have been invited as an admin',`<h2 style="margin:0 0 10px;color:#17352f">Hi ${esc_(name)}, you're invited to help run Living Communities</h2><p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">${esc_(inviterName)} added you as an admin. Set your password to get started. This link works for 7 days.</p>${btn('Set my password',link)}<p style="color:#6b7a75;font-size:12.5px;margin-top:16px">If you weren't expecting this, ignore this email.</p>`);
+}
+
 function safeUser(u){ if(!u) return null; const {passwordHash,salt,...x}=u; return x; }
 
 // --- geocoding (Nominatim/OpenStreetMap — free, no API key; usage-policy limit ~1 req/sec, demo-scale only) ---
@@ -111,6 +194,10 @@ async function geocodeAddress(address){
     return {lat,lng};
   }catch(e){ console.error('geocode error:',e.message); return null; }
 }
+// Full one-off request service-type catalog (kept in sync with index.html's copies:
+// the signup/request-form <select> options, the "view all services" grid, and the
+// client-side ALL_SERVICE_TYPES fallback used to render this same list).
+const ALL_SERVICE_TYPES=['Lawn & Landscaping','House Cleaning','Pool Service','Handyman','Plumbing','Electrical','HVAC','Pest Control','Mobile Mechanic','Power Washing','Bulk Trash Pickup','Moving Services','Pet Waste Cleanup'];
 function haversineMiles(lat1,lon1,lat2,lon2){
   const R=3958.8; // earth radius, miles
   const toRad=d=>d*Math.PI/180;
@@ -118,11 +205,62 @@ function haversineMiles(lat1,lon1,lat2,lon2){
   const a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
   return R*2*Math.asin(Math.sqrt(a));
 }
+// Fallback "is this a Texas ZIP" check — only used when a billing address has a ZIP but no state
+// (shouldn't normally happen since the checkout form requires state, but cheap to cover).
+const TX_ZIP_RANGES=[[75001,79999],[88500,88595]]; // 885xx is split with NM; fine for this heuristic
+function isTexasZip(zip){
+  const z=Number(String(zip||'').trim().slice(0,5));
+  if(!Number.isFinite(z)) return false;
+  return TX_ZIP_RANGES.some(([lo,hi])=>z>=lo&&z<=hi);
+}
+// Cleans up a billing address object posted from the checkout form. Every field is optional at
+// the type level (caller decides whether to require them) but each is trimmed/length-capped.
+function sanitizeBillingAddress(b){
+  if(!b || typeof b!=='object') return null;
+  const line1=String(b.line1||'').trim().slice(0,120);
+  const city=String(b.city||'').trim().slice(0,80);
+  const state=String(b.state||'').trim().slice(0,2).toUpperCase();
+  const zip=String(b.zip||'').trim().slice(0,10);
+  if(!line1&&!city&&!state&&!zip) return null;
+  return {line1,city,state,zip};
+}
+// Sales-tax jurisdiction decision for a SaaS subscription (Plus/Premium, Pro Provider): based on
+// the billing address collected at checkout, not the homeowner/provider's service-area address —
+// those can differ, and the billing address is the one that actually determines tax. State code
+// is authoritative when present; ZIP is only a fallback if state is somehow missing.
+function isTexasBilling(billingAddress){
+  if(!billingAddress) return false;
+  if(billingAddress.state) return billingAddress.state==='TX';
+  return isTexasZip(billingAddress.zip);
+}
 
 // --- email (Resend REST API — https://resend.com; no SDK dependency, just fetch) ---
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 const EMAIL_FROM = process.env.EMAIL_FROM || 'Living Communities <onboarding@resend.dev>';
-const APP_URL = process.env.APP_URL || 'http://localhost:' + PORT;
+// Public site address used in email buttons and invite links. Set APP_URL in production (e.g. https://yoursite.com).
+// If it is unset, the address is learned from a signed-in admin or HOA request so invite links still work.
+const APP_URL_ENV = String(process.env.APP_URL || '').trim().replace(/\/+$/, '');
+let learnedOrigin = '';
+const appUrl = () => APP_URL_ENV || learnedOrigin || ('http://localhost:' + PORT);
+function originFromReq(req){
+  const host = String(req.headers['x-forwarded-host'] || req.headers.host || '').split(',')[0].trim();
+  if(!host || !/^[a-z0-9.-]+(:\d+)?$/i.test(host) || /^(localhost|127\.|0\.0\.0\.0)/i.test(host)) return '';
+  const proto = String(req.headers['x-forwarded-proto'] || 'https').split(',')[0].trim();
+  return (proto === 'http' ? 'http' : 'https') + '://' + host;
+}
+function learnOrigin(req){
+  if(APP_URL_ENV) return;
+  const o = originFromReq(req);
+  if(o) learnedOrigin = o;
+}
+// Address used for public SEO files (canonical tag, sitemap). Configured address first, then the
+// address this request came in on.
+const siteBase = req => APP_URL_ENV || originFromReq(req) || appUrl();
+
+// Optional: where "a provider needs review" style admin alerts go. Falls back to ADMIN_EMAIL
+// (the bootstrap admin account's address) so this works with zero extra config; set
+// ADMIN_NOTIFY_EMAIL separately if admin alerts should go somewhere else (e.g. a shared inbox).
+const ADMIN_NOTIFY_EMAIL = process.env.ADMIN_NOTIFY_EMAIL || process.env.ADMIN_EMAIL || '';
 const INTERNAL_JOB_KEY = process.env.INTERNAL_JOB_KEY || '';
 
 // --- payments (Stripe REST API — https://stripe.com; no SDK dependency, just fetch) ---
@@ -130,12 +268,81 @@ const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || '';
 const STRIPE_PUBLISHABLE_KEY = process.env.STRIPE_PUBLISHABLE_KEY || '';
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
 function stripeConfigured(){ return !!STRIPE_SECRET_KEY; }
-// $29/mo is a suggested default for the provider paywall plan — change freely, it's just a constant.
-const PROVIDER_PLAN_PRICE_CENTS = 2900;
+// TX sales tax on SaaS subscriptions (Plus/Premium, Pro Provider): Texas taxes SaaS as a "data
+// processing service" (Admin Code Rule 3.330), but only 80% of the charge is taxable. Effective
+// rate = combined local rate * 0.8. This uses the business's own Richardson, TX combined rate
+// (8.25%) as a flat approximation applied to every TX customer, regardless of their own city's
+// exact combined rate — simplest thing that's directionally correct for a single-location small
+// business. Not a substitute for a CPA confirming the right rate/sourcing. Override via env if
+// the rate changes or a CPA gives a different number.
+const TX_SAAS_TAX_PERCENT = Number(process.env.TX_SAAS_TAX_PERCENT || 6.6); // 8.25% * 80%
+let _txSaasTaxRateId=null; // cached Stripe Tax Rate object id, looked up/created lazily
+async function ensureTxSaasTaxRateId(){
+  if(!stripeConfigured()) return null;
+  if(_txSaasTaxRateId) return _txSaasTaxRateId;
+  const existing=await stripeRequest('GET','tax_rates?limit=100&active=true').catch(()=>null);
+  const found=existing?.data?.find(r=>r.metadata && r.metadata.key==='tx_saas_tax');
+  if(found){ _txSaasTaxRateId=found.id; return _txSaasTaxRateId; }
+  const created=await stripeRequest('POST','tax_rates',{
+    display_name:'TX Sales Tax (SaaS)', percentage:TX_SAAS_TAX_PERCENT, inclusive:'false',
+    country:'US', state:'TX', jurisdiction:'TX', metadata:{key:'tx_saas_tax'}
+  }).catch(e=>{ console.error('Failed to create TX tax rate:',e.message); return null; });
+  _txSaasTaxRateId=created?.id||null;
+  return _txSaasTaxRateId;
+}
+// $9.99/mo and $20.99/mo are suggested defaults for the two paid provider plans — change freely,
+// they're just constants.
+const PROVIDER_PLAN_PRICE_CENTS = 999;
+const PROVIDER_ELITE_PLAN_PRICE_CENTS = 2099;
 const PROVIDER_FREE_QUOTE_LIMIT = 3;
 const PROVIDER_FREE_CONVO_LIMIT = 3;
-const PROVIDER_FREE_MAX_RADIUS_MI = 50;
-const PROVIDER_FREE_DEFAULT_RADIUS_MI = 50;
+// Pro used to be unlimited; it's now capped like Free, just at a higher number. Elite is the only
+// plan left with no cap (see providerQuotaLimits).
+const PROVIDER_PRO_QUOTE_LIMIT = 20;
+const PROVIDER_PRO_CONVO_LIMIT = 20;
+const PROVIDER_FREE_MAX_RADIUS_MI = 20;
+const PROVIDER_FREE_DEFAULT_RADIUS_MI = 20;
+const PROVIDER_PRO_MAX_RADIUS_MI = 50;
+const PROVIDER_PRO_DEFAULT_RADIUS_MI = 50;
+// Single source of truth for "how many quotes/conversations can this provider plan send this
+// month" — Infinity means unlimited. Used both to decide whether to even check usage, and to
+// build the error message when a cap is hit.
+function providerQuotaLimits(plan){
+  if(plan==='elite') return {quotes:Infinity, convos:Infinity};
+  if(plan==='pro') return {quotes:PROVIDER_PRO_QUOTE_LIMIT, convos:PROVIDER_PRO_CONVO_LIMIT};
+  return {quotes:PROVIDER_FREE_QUOTE_LIMIT, convos:PROVIDER_FREE_CONVO_LIMIT};
+}
+// Service-area radius caps: Free 20mi, Pro 50mi, Elite unlimited (no cap at all — the only plan
+// that can clear its address entirely and see every open request nationwide).
+function providerMaxRadiusMi(plan){
+  if(plan==='pro') return PROVIDER_PRO_MAX_RADIUS_MI;
+  if(plan==='elite') return 500; // slider ceiling only; isProviderRadiusUnlimited makes this moot
+  return PROVIDER_FREE_MAX_RADIUS_MI;
+}
+function providerDefaultRadiusMi(plan){ return plan==='pro' ? PROVIDER_PRO_DEFAULT_RADIUS_MI : PROVIDER_FREE_DEFAULT_RADIUS_MI; }
+function isProviderRadiusUnlimited(plan){ return plan==='elite'; }
+function isEliteProvider(plan){ return plan==='elite'; }
+// Upgrade copy shown when a Free/Pro provider hits their monthly quote/conversation cap — Pro's
+// only remaining upsell is Elite (unlimited); Free can go to either.
+function providerQuotaUpsellText(plan,noun){
+  return plan==='pro' ? `Upgrade to Elite for unlimited ${noun}.` : `Upgrade to Pro for ${PROVIDER_PRO_QUOTE_LIMIT}/month, or Elite for unlimited.`;
+}
+// Featured tag/priority-placement eligibility: Elite plan is necessary but not sufficient — the
+// provider must also have at least a 4.5 rating and 10 completed jobs (a job counts as completed
+// once the provider uploads the payment receipt — see the /api/jobs/:id/receipt handler and the
+// completedJobCount query below, which use the exact same definition).
+const FEATURED_MIN_RATING = 4.5;
+const FEATURED_MIN_COMPLETED_JOBS = 10;
+function isFeaturedEligible(plan,rating,completedJobCount){
+  return plan==='elite' && Number(rating||0)>=FEATURED_MIN_RATING && Number(completedJobCount||0)>=FEATURED_MIN_COMPLETED_JOBS;
+}
+// Same "completed" definition used for the provider dashboard's own completedJobCount stat:
+// status='completed' AND a receipt was actually uploaded (not just marked done).
+async function completedJobCounts(providerIds){
+  if(!providerIds.length) return {};
+  const rows=await q("SELECT provider_id, count(*)::int AS c FROM jobs WHERE provider_id = ANY($1::text[]) AND status='completed' AND receipt_uploaded_at IS NOT NULL GROUP BY provider_id",[providerIds]);
+  return Object.fromEntries(rows.map(r=>[r.provider_id,r.c]));
+}
 
 // Flattens a nested object into Stripe's bracket-notation form encoding, e.g.
 // {items:[{price_data:{unit_amount:100}}]} -> "items[0][price_data][unit_amount]=100"
@@ -170,18 +377,38 @@ async function ensureStripeCustomer(u){
   await pool.query('UPDATE users SET stripe_customer_id=$1 WHERE id=$2',[customer.id,u.id]);
   return customer.id;
 }
+// Stripe's inline price_data used to accept product_data (create-a-product-on-the-fly) directly
+// on a subscription item; current API versions reject that param and want an existing Product
+// id instead ("Received unknown parameter: items[0][price_data][product_data]. Did you mean
+// product?"). This looks up a Product by name (so redeploys don't spawn duplicates) and creates
+// one on first use, caching the id in memory for the life of the process.
+const _stripeProductIdCache = new Map();
+async function ensureStripeProductId(name){
+  if(_stripeProductIdCache.has(name)) return _stripeProductIdCache.get(name);
+  const existing=await stripeRequest('GET','products?active=true&limit=100').catch(()=>null);
+  const found=existing?.data?.find(p=>p.name===name);
+  if(found){ _stripeProductIdCache.set(name,found.id); return found.id; }
+  const created=await stripeRequest('POST','products',{name});
+  _stripeProductIdCache.set(name,created.id);
+  return created.id;
+}
 // Attaches the payment method, sets it as the customer's default, cancels any prior subscription
 // for this slot (community plan / care plan / provider plan each track their own), and creates a
-// fresh subscription with one inline price_data item per line (no pre-created Price objects needed).
+// fresh subscription with one inline price_data item per line (each referencing a Product looked
+// up/created by name via ensureStripeProductId — no pre-created Price objects needed).
 // This "cancel & recreate" approach keeps the integration simple; the tradeoff is that changing a
 // plan resets that plan's billing-anchor date rather than prorating in place.
 async function stripeSubscribe(customerId, paymentMethodId, existingSubId, items){
   await stripeRequest('POST','payment_methods/'+paymentMethodId+'/attach',{customer:customerId});
   await stripeRequest('POST','customers/'+customerId,{invoice_settings:{default_payment_method:paymentMethodId}});
   if(existingSubId) await stripeRequest('DELETE','subscriptions/'+existingSubId).catch(()=>{});
+  const resolvedItems=await Promise.all(items.map(async it=>({
+    price_data:{currency:'usd',unit_amount:it.unitAmount,recurring:{interval:it.interval||'month'},product:await ensureStripeProductId(it.name)},
+    ...(it.taxRateId?{tax_rates:[it.taxRateId]}:{})
+  })));
   const sub=await stripeRequest('POST','subscriptions',{
     customer:customerId,
-    items:items.map(it=>({price_data:{currency:'usd',unit_amount:it.unitAmount,recurring:{interval:it.interval||'month'},product_data:{name:it.name}}})),
+    items:resolvedItems,
     default_payment_method:paymentMethodId,
   });
   return sub;
@@ -254,67 +481,402 @@ async function sendEmail({to,type,subject,html,userId}){
 // server-side allowlist so an /api/profile/avatar call can't stash an arbitrary string.
 const AVATAR_ICON_IDS=['h1','h2','h3','h4','h5','p1','p2','p3','p4','p5'];
 
-// --- provider verification / background-check workflow ---
+// --- provider verification workflow ---
 const VERIFICATION_DOC_RE=/^data:(image\/(png|jpe?g|webp)|application\/pdf);base64,[A-Za-z0-9+/=]+$/;
 const VERIFICATION_MAX_DOC_BYTES=5_500_000; // ~4MB file once base64-encoded
-const VERIFICATION_MAX_DOCS=5;
-// No real screening vendor is wired up (needs a signed vendor account + API keys we don't have,
-// and this sandbox can't reach the internet to test one anyway). This just records that a check
-// was requested so it shows up in the admin queue. To go live: sign up with a vendor that offers
-// a HOSTED candidate flow (e.g. Checkr Invitations) — the provider enters SSN/DOB directly on the
-// vendor's own site, so this server never touches that data — then call the vendor's "create
-// invitation" API here and flip background_check_status via their webhook, the same pattern used
-// for the Stripe webhook above.
-async function initiateBackgroundCheck(provider){
-  console.log(`[background-check] requested for provider ${provider.id} (${provider.email}) — no vendor configured, left as 'requested' for manual admin follow-up.`);
-}
+const VERIFICATION_MAX_DOCS=6;
+
+// --- provider business-profile: skills/specializations + work gallery ---
+const GALLERY_PHOTO_RE=/^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=]+$/;
+const GALLERY_MAX_PHOTO_BYTES=5_500_000; // ~4MB file once base64-encoded
+const GALLERY_MAX_PHOTOS=12;
+const SKILL_MAX_LEN=40;
+const SKILLS_MAX_COUNT=20;
+const SPECIALIZATIONS_MAX_COUNT=20;
 
 const CARE_SERVICE_INFO={
-  landscaping:{name:'Landscaping',price:89,billing:'mo'},
-  pest:{name:'Pest Control',price:39,billing:'mo'},
-  cleaning:{name:'Home Cleaning',price:129,billing:'mo'},
-  pool:{name:'Pool Cleaning',price:99,billing:'mo'},
-  holiday_lighting:{name:'Holiday Lighting',price:65,billing:'season'}
+  landscaping:{name:'Landscaping',price:110,billing:'mo'},
+  pest:{name:'Pest Control',price:70,billing:'mo'},
+  cleaning:{name:'Home Cleaning',price:275,billing:'mo'},
+  pool:{name:'Pool Cleaning',price:210,billing:'mo'}
 };
-function carePlanMonthlyTotal(services){ return (services||[]).reduce((sum,k)=>{const s=CARE_SERVICE_INFO[k]; return s&&s.billing==='mo'?sum+s.price:sum},0); }
+// Monthly total is now driven by each item's admin-set priceCents (once active), not the catalog
+// price — the catalog price only remains as a marketing "starting around" figure and an admin
+// pre-fill suggestion when quoting.
+function carePlanMonthlyTotal(items){ return (items||[]).filter(i=>i.status==='active'&&CARE_SERVICE_INFO[i.key]&&CARE_SERVICE_INFO[i.key].billing==='mo').reduce((sum,i)=>sum+(i.priceCents||0),0)/100; }
+function carePlanActiveDetails(items){ return (items||[]).filter(i=>i.status==='active'&&CARE_SERVICE_INFO[i.key]).map(i=>({key:i.key,name:CARE_SERVICE_INFO[i.key].name,billing:CARE_SERVICE_INFO[i.key].billing,price:(i.priceCents||0)/100})); }
+// Plan catalogs used by the admin account panel: labels/prices for the invoice email, and a rank
+// order so we can tell an upgrade (send an invoice) from a downgrade or lateral change (don't).
+const HOMEOWNER_PLAN_INFO={free:{label:'Free',priceCents:0,rank:0},plus:{label:'Plus',priceCents:999,rank:1},premium:{label:'Premium',priceCents:2999,rank:2}};
+const PROVIDER_PLAN_INFO={free:{label:'Free',priceCents:0,rank:0},pro:{label:'Pro Provider',priceCents:PROVIDER_PLAN_PRICE_CENTS,rank:1},elite:{label:'Elite Provider',priceCents:PROVIDER_ELITE_PLAN_PRICE_CENTS,rank:2}};
+// The self-service /api/subscription route has historically stored the homeowner Premium tier as
+// 'pro' (a leftover naming mismatch with the admin panel's 'premium'). Normalize on read so both
+// old and new rows resolve to the same HOMEOWNER_PLAN_INFO entry everywhere admin code looks up a
+// homeowner's plan label/price — the self-service write path itself is untouched.
+function normalizeHomeownerPlanKey(v){ return v==='pro' ? 'premium' : (v||'free'); }
+// Maps a Home Care Plan service key to the closest provider-facing service category, so the admin's
+// "assign a provider" picker can rank providers who actually offer that kind of work first.
+const CARE_SERVICE_TO_PROVIDER_TYPE={landscaping:'Lawn & Landscaping',pest:'Pest Control',cleaning:'House Cleaning',pool:'Pool Service'};
 function fmtDate(d){ return new Date(d).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}); }
+
+// --- Home Profile (Plus/Premium perk): "Your Home" status list, maintenance timeline, Home Health score ---
+const HOME_DOC_CATEGORIES=['warranty','receipt','manual','other'];
+const HOME_MAX_DOCS=30;
+function daysBetween(a,b){ return Math.round((b-a)/86400000); }
+function addMonths(d,months){ const r=new Date(d); r.setMonth(r.getMonth()+months); return r; }
+// True once the homeowner has actually entered something (vs. an empty {} default) — the client
+// uses this to decide between the "Build Your Home Profile" empty state and the full dashboard.
+function homeProfileHasData(hp){
+  hp=hp||{};
+  return !!(hp.hvac?.brand||hp.hvac?.installYear||hp.waterHeater?.installYear||hp.roof?.installYear||
+    hp.pool||hp.sprinkler||(hp.appliances&&Object.values(hp.appliances).some(v=>v&&String(v).trim()))||
+    (hp.reminders&&hp.reminders.length));
+}
+// Pure/deterministic — no DB or network calls — so it's cheap to recompute on every load rather than
+// caching a stale status. carePlanItems drives the Lawn/Pest/Pool rows so this stays in sync with the
+// Home Care Plan the homeowner already manages, instead of tracking those twice.
+function computeHomeStatus(hp,carePlanItems){
+  hp=hp||{};
+  const today=new Date(); today.setHours(0,0,0,0);
+  const items=[]; const upcoming=[];
+  const activeCareKeys=new Set((carePlanItems||[]).filter(i=>i.status==='active').map(i=>i.key));
+  const careItem=(key,label)=>{ items.push(activeCareKeys.has(key)?{key,label,tone:'ok',detail:'Current'}:{key,label,tone:'neutral',detail:'Not on Home Care Plan'}); };
+  careItem('landscaping','Lawn');
+  careItem('pest','Pest Control');
+  if(hp.pool) careItem('pool','Pool');
+
+  if(hp.hvac && (hp.hvac.brand||hp.hvac.installYear)){
+    const filterBase=hp.hvac.lastFilterChange?new Date(hp.hvac.lastFilterChange):(hp.hvac.installYear?new Date(Number(hp.hvac.installYear),0,1):today);
+    let filterDue=addMonths(filterBase,3); while(filterDue<today) filterDue=addMonths(filterDue,3);
+    const serviceBase=hp.hvac.lastService?new Date(hp.hvac.lastService):(hp.hvac.installYear?new Date(Number(hp.hvac.installYear),0,1):today);
+    let serviceDue=addMonths(serviceBase,12); while(serviceDue<today) serviceDue=addMonths(serviceDue,12);
+    const soonestIsFilter=filterDue<=serviceDue;
+    const days=daysBetween(today,soonestIsFilter?filterDue:serviceDue);
+    const tone=days<0?'bad':(days<=30?'warn':'ok');
+    const what=soonestIsFilter?'Filter change':'Annual service';
+    items.push({key:'hvac',label:'HVAC',tone,detail:days<0?`${what} overdue`:(days===0?`${what} due today`:`${what} due in ${days} day${days===1?'':'s'}`)});
+    const filterDays=daysBetween(today,filterDue), serviceDays=daysBetween(today,serviceDue);
+    upcoming.push({label:`Replace HVAC filter${hp.hvac.filterSize?' — '+hp.hvac.filterSize:''}`,detail:'Reminder',date:filterDue});
+    upcoming.push({label:'HVAC annual service due',detail:serviceDays<0?'Overdue':`Due in ${serviceDays} day${serviceDays===1?'':'s'}`,date:serviceDue});
+  }
+
+  if(hp.waterHeater && hp.waterHeater.installYear){
+    const age=today.getFullYear()-Number(hp.waterHeater.installYear);
+    const tone=age>=12?'bad':(age>=10?'warn':'ok');
+    items.push({key:'waterHeater',label:'Water Heater',tone,detail:age>=12?`${age} yrs old — past typical lifespan`:(age>=10?`${age} yrs old — nearing end of lifespan`:`${age} yrs old — current`)});
+  }
+
+  if(hp.roof && hp.roof.installYear){
+    const age=today.getFullYear()-Number(hp.roof.installYear);
+    const tone=age>=25?'bad':(age>=15?'warn':'ok');
+    items.push({key:'roof',label:'Roof',tone,detail:age>=25?`${age} yrs old — inspection strongly recommended`:(age>=15?`${age} yrs old — consider an inspection`:`${age} yrs old — current`)});
+    if(age>=15) upcoming.push({label:'Roof inspection recommended',detail:`${age} years old`,date:today});
+  }
+
+  if(hp.sprinkler){
+    // No real usage data to key off — a simple twice-a-year cadence (spring start-up / fall winterization).
+    const year=today.getFullYear();
+    let start=new Date(year,2,15), winterize=new Date(year,10,1);
+    if(start<today) start=new Date(year+1,2,15);
+    if(winterize<today) winterize=new Date(year+1,10,1);
+    const next=start<winterize?start:winterize;
+    const days=daysBetween(today,next);
+    items.push({key:'sprinkler',label:'Sprinkler System',tone:days<=30?'warn':'ok',detail:days<=30?`Inspection due in ${days} day${days===1?'':'s'}`:'Current'});
+    upcoming.push({label:next.getTime()===start.getTime()?'Sprinkler inspection due':'Sprinkler system winterization',detail:'Reminder',date:next});
+  }
+
+  for(const rem of (hp.reminders||[])){
+    if(!rem||!rem.name) continue;
+    const freq=Math.max(7,Number(rem.frequencyDays)||90);
+    const base=rem.lastDone?new Date(rem.lastDone):today;
+    let due=new Date(base.getTime()+freq*86400000); while(due<today) due=new Date(due.getTime()+freq*86400000);
+    const days=daysBetween(today,due);
+    const tone=days<0?'bad':(days<=30?'warn':'ok');
+    items.push({key:'custom-'+rem.name,label:rem.name,tone,detail:days<0?'Overdue':(days<=30?`Due in ${days} day${days===1?'':'s'}`:'Current')});
+    upcoming.push({label:rem.name,detail:days<0?'Overdue':'Reminder',date:due});
+  }
+
+  upcoming.sort((a,b)=>a.date-b.date);
+  const overdueCount=items.filter(i=>i.tone==='bad').length;
+  const warnCount=items.filter(i=>i.tone==='warn').length;
+  const homeHealth=Math.max(0,Math.min(100,100-overdueCount*15-warnCount*7));
+  return {
+    items,
+    upcoming:upcoming.slice(0,8).map(x=>({label:x.label,detail:x.detail,date:x.date.toISOString().slice(0,10)})),
+    homeHealth,
+    hasProfile:homeProfileHasData(hp)
+  };
+}
 
 function welcomeEmailHtml(u){
   const isProvider=u.role==='provider';
+  if(isProvider){
+    return emailShell('Welcome to Living Communities',
+      `<h2 style="margin:0 0 10px;color:#17352f">Welcome, ${esc_(u.name.split(' ')[0])}!</h2>
+       <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px"><b>Next step: get verified.</b> Upload your verification documents from Business Profile right now. It only takes a few minutes, and verified providers get a trust badge homeowners see on your profile and every quote.</p>
+       <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Individual contractors only need a government-issued photo ID. Registered businesses upload a business license and certificate of insurance.</p>
+       <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Your account is also waiting on a quick admin approval, usually within a couple of business days. You can browse open requests now, and you'll be able to respond to them once you're approved. We'll email you.</p>
+       ${btn('Upload My Documents',appUrl())}`);
+  }
   return emailShell('Welcome to Living Communities',
     `<h2 style="margin:0 0 10px;color:#17352f">Welcome, ${esc_(u.name.split(' ')[0])}!</h2>
-     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">${isProvider?"Your provider account is ready. Browse open requests and start sending quotes to local homeowners.":"Your account is ready. Post a request and local providers will start sending you quotes."}</p>
-     ${btn(isProvider?'View Request Feed':'Go to My Dashboard',APP_URL)}`);
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Your account is ready. Post a request and local providers will start sending you quotes.</p>
+     ${btn('Go to My Dashboard',appUrl())}`);
 }
 function newQuoteEmailHtml(homeowner,request,quote,provider){
   return emailShell('You received a new quote',
     `<h2 style="margin:0 0 10px;color:#17352f">New quote on "${esc_(request.title)}"</h2>
      <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px"><b>${esc_(provider.name)}</b> sent a quote: <b>$${quote.amount_min}–$${quote.amount_max}</b>, available ${esc_(quote.availability||'flexible')}.</p>
-     ${btn('View Quote',APP_URL)}`);
+     ${btn('View Quote',appUrl())}`);
 }
 function quoteAcceptedEmailHtml(provider,request){
   return emailShell('Your quote was accepted',
     `<h2 style="margin:0 0 10px;color:#17352f">You got the job! 🎉</h2>
-     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Your quote on "${esc_(request.title)}" was accepted. It's now on your Active Jobs list.</p>
-     ${btn('View Job',APP_URL)}`);
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Your quote on "${esc_(request.title)}" was accepted. It's now on your Active Jobs list. Reach out to the homeowner directly to confirm the exact date/time and any details — Living Communities isn't involved in scheduling.</p>
+     ${btn('View Job',appUrl())}`);
 }
 function newMessageEmailHtml(recipientName,senderName,body){
   return emailShell('New message',
     `<h2 style="margin:0 0 10px;color:#17352f">New message from ${esc_(senderName)}</h2>
      <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px;background:#eaf4ef;border-radius:10px;padding:12px 14px">${esc_(body).slice(0,200)}</p>
-     ${btn('Reply',APP_URL)}`);
+     ${btn('Reply',appUrl())}`);
 }
-function carePlanReminderEmailHtml(u,amount,billingDate){
+function newMatchingRequestEmailHtml(provider,request,distanceMi){
+  const distLine = distanceMi!=null ? `${distanceMi} mi from your service area. ` : '';
+  return emailShell(`New ${request.serviceType} request near you`,
+    `<h2 style="margin:0 0 10px;color:#17352f">New ${esc_(request.serviceType)} request</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px"><b>${esc_(request.title)}</b><br>${distLine}Posted just now. You're getting this because you turned on email notifications for ${esc_(request.serviceType)} in Business Profile.</p>
+     ${btn('View Request',appUrl())}`);
+}
+// Emails every provider who opted in to hear about this service type, right after a homeowner
+// posts a new request. Best-effort and fire-and-forget from the caller (POST /api/requests) so a
+// slow or failing email never delays or breaks the request actually being created.
+async function notifyProvidersOfNewRequest(request,homeowner){
+  const rows=await pool.query(
+    `SELECT * FROM users WHERE role='provider' AND deleted=false AND suspended=false AND notify_email_enabled=true`
+  );
+  for(const row of rows.rows){
+    const provider=mapUser(row);
+    // Notify list is opt-in and no longer limited to the provider's offered service types, so a
+    // provider can pick up lead types outside their usual work. Falls back to their offered
+    // services only if they've never saved a preference.
+    const chosen=provider.notifyServiceTypes&&provider.notifyServiceTypes.length ? provider.notifyServiceTypes : (provider.serviceTypes||[]);
+    if(!chosen.includes(request.serviceType)) continue;
+    let distanceMi=null;
+    if(provider.lat!=null&&provider.lng!=null&&homeowner.lat!=null&&homeowner.lng!=null){
+      distanceMi=Math.round(haversineMiles(provider.lat,provider.lng,homeowner.lat,homeowner.lng)*10)/10;
+      if(provider.effectiveServiceRadiusMi!=null && distanceMi>provider.effectiveServiceRadiusMi) continue;
+    }
+    sendEmail({to:provider.email,type:'new_matching_request',subject:`New ${request.serviceType} request near you`,html:newMatchingRequestEmailHtml(provider,request,distanceMi),userId:provider.id}).catch(()=>{});
+  }
+}
+// details: [{key,name,billing,price}] — every ACTIVE, priced service, so the homeowner sees exactly
+// what they're being charged for, not just a total.
+function carePlanItemRowsHtml(details){
+  return details.map(d=>`<tr><td style="padding:6px 0;color:#3f4f4a">${esc_(d.name)}</td><td style="padding:6px 0;text-align:right;color:#3f4f4a">$${d.price.toFixed(2)}/${d.billing==='season'?'season':'mo'}</td></tr>`).join('');
+}
+function carePlanReminderEmailHtml(u,details,amount,billingDate){
   return emailShell('Your Home Care Plan renews soon',
     `<h2 style="margin:0 0 10px;color:#17352f">Your plan renews in 7 days</h2>
-     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Your Home Care Plan will renew on <b>${fmtDate(billingDate)}</b> and your card on file will be charged <b>$${amount}</b>. No action needed — manage or cancel anytime from your dashboard.</p>
-     ${btn('Manage My Plan',APP_URL)}`);
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Your Home Care Plan will renew on <b>${fmtDate(billingDate)}</b>. Here's what your card on file will be charged for:</p>
+     <table style="width:100%;border-collapse:collapse;margin-top:10px;font-size:13.5px">${carePlanItemRowsHtml(details)}</table>
+     <p style="color:#17352f;font-weight:800;margin-top:10px;font-size:14px;border-top:1px solid #e4e9e6;padding-top:10px">Total: $${Number(amount).toFixed(2)}</p>
+     <p style="color:#6d7b77;line-height:1.6;font-size:12.5px;margin-top:12px">No action needed — manage or cancel anytime from your dashboard.</p>
+     ${btn('Manage My Plan',appUrl())}`);
 }
-function carePlanBilledEmailHtml(u,amount,billingDate){
+function carePlanBilledEmailHtml(u,details,amount,billingDate){
   return emailShell('Your card was charged',
     `<h2 style="margin:0 0 10px;color:#17352f">Payment received</h2>
-     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Your card on file was charged <b>$${amount}</b> for your Home Care Plan, renewing on ${fmtDate(billingDate)}. This is a demo charge — no real payment was processed.</p>
-     ${btn('View Billing',APP_URL)}`);
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Your card on file was charged for your Home Care Plan, renewing ${fmtDate(billingDate)}. This is a demo charge — no real payment was processed.</p>
+     <table style="width:100%;border-collapse:collapse;margin-top:10px;font-size:13.5px">${carePlanItemRowsHtml(details)}</table>
+     <p style="color:#17352f;font-weight:800;margin-top:10px;font-size:14px;border-top:1px solid #e4e9e6;padding-top:10px">Total: $${Number(amount).toFixed(2)}</p>
+     ${btn('View Billing',appUrl())}`);
+}
+function adminPlanInvoiceEmailHtml(u,planLabel,priceCents,invoiceNo){
+  const amount=(priceCents/100).toFixed(2);
+  return emailShell(`Invoice ${invoiceNo}`,
+    `<h2 style="margin:0 0 10px;color:#17352f">Your plan was upgraded</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Our team moved your account to the <b>${esc_(planLabel)}</b> plan. Here's your invoice for the record.</p>
+     <table style="width:100%;border-collapse:collapse;margin-top:14px;font-size:13.5px">
+       <tr><td style="padding:6px 0;color:#6d7b77">Invoice #</td><td style="padding:6px 0;text-align:right;color:#17352f;font-weight:700">${esc_(invoiceNo)}</td></tr>
+       <tr><td style="padding:6px 0;color:#6d7b77">Date</td><td style="padding:6px 0;text-align:right;color:#17352f;font-weight:700">${fmtDate(new Date())}</td></tr>
+       <tr><td style="padding:6px 0;color:#6d7b77">Billed to</td><td style="padding:6px 0;text-align:right;color:#17352f;font-weight:700">${esc_(u.name)}</td></tr>
+     </table>
+     <table style="width:100%;border-collapse:collapse;margin-top:14px;border-top:1px solid #e4e9e6;font-size:13.5px">
+       <tr><td style="padding:10px 0 4px;color:#3f4f4a">${esc_(planLabel)} plan (monthly)</td><td style="padding:10px 0 4px;text-align:right;color:#3f4f4a">$${amount}</td></tr>
+       <tr><td style="padding:10px 0 0;color:#17352f;font-weight:800;border-top:1px solid #e4e9e6">Total</td><td style="padding:10px 0 0;text-align:right;color:#17352f;font-weight:800;border-top:1px solid #e4e9e6">$${amount}/mo</td></tr>
+     </table>
+     <p style="color:#6d7b77;line-height:1.6;font-size:12.5px;margin-top:16px">Charged to the card on file going forward. Questions about this change? Reply to this email or reach out from your dashboard.</p>
+     ${btn('View My Plan',appUrl())}`);
+}
+function planChangedEmailHtml(u,planLabel,priceCents){
+  const isFree=priceCents<=0;
+  return emailShell(isFree?'Your plan was changed':'Your plan is confirmed',
+    `<h2 style="margin:0 0 10px;color:#17352f">${isFree?'Plan updated':'You\'re on the '+esc_(planLabel)+' plan'}</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">${isFree
+        ? `Your account is now on the <b>${esc_(planLabel)}</b> plan. No further charges will be made.`
+        : `Your account was switched to <b>${esc_(planLabel)}</b> at <b>$${(priceCents/100).toFixed(2)}/mo</b>, billed to the card on file.`}</p>
+     ${btn('View My Plan',appUrl())}`);
+}
+function carePlanRequestedEmailHtml(u,serviceNames){
+  return emailShell('We received your Home Care Plan request',
+    `<h2 style="margin:0 0 10px;color:#17352f">Got it — pricing coming soon</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">You requested <b>${esc_(serviceNames.join(', '))}</b> on your Home Care Plan. Our team will follow up to schedule a quick visit or consultation, then send you exact pricing to review before anything is billed.</p>
+     ${btn('View My Plan',appUrl())}`);
+}
+function adminCarePlanQuoteNeededEmailHtml(homeowner,serviceNames){
+  return emailShell('Care Plan pricing needed',
+    `<h2 style="margin:0 0 10px;color:#17352f">${esc_(homeowner.name)} needs a Care Plan quote</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px"><b>${esc_(homeowner.name)}</b> (${esc_(homeowner.email)}) requested <b>${esc_(serviceNames.join(', '))}</b>. Schedule a visit or consultation, then set pricing from the admin panel.</p>
+     ${btn('Set Pricing in Admin',appUrl()+'/#admin')}`);
+}
+function carePlanQuoteReadyEmailHtml(u,serviceName,priceCents){
+  return emailShell('Your Care Plan quote is ready',
+    `<h2 style="margin:0 0 10px;color:#17352f">Your ${esc_(serviceName)} quote is ready</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Based on your visit, <b>${esc_(serviceName)}</b> is <b>$${(priceCents/100).toFixed(2)}/mo</b>. Review it and accept from your dashboard to start service — nothing is billed until you accept.</p>
+     ${btn('Review & Accept',appUrl())}`);
+}
+function carePlanServiceActivatedEmailHtml(u,serviceName,priceCents,monthlyTotal){
+  return emailShell(`${serviceName} is active`,
+    `<h2 style="margin:0 0 10px;color:#17352f">${esc_(serviceName)} is now active</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">You accepted <b>${esc_(serviceName)}</b> at <b>$${(priceCents/100).toFixed(2)}/mo</b>. Your Home Care Plan now totals <b>$${Number(monthlyTotal).toFixed(2)}/mo</b>.</p>
+     ${btn('Manage My Plan',appUrl())}`);
+}
+function carePlanServiceCanceledEmailHtml(u,serviceNames){
+  return emailShell('A Home Care Plan service was removed',
+    `<h2 style="margin:0 0 10px;color:#17352f">Removed from your plan</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px"><b>${esc_(serviceNames.join(', '))}</b> ${serviceNames.length>1?'were':'was'} removed from your Home Care Plan and billing for ${serviceNames.length>1?'them':'it'} has stopped.</p>
+     ${btn('View My Plan',appUrl())}`);
+}
+function carePlanCanceledEmailHtml(u){
+  return emailShell('Your Home Care Plan was canceled',
+    `<h2 style="margin:0 0 10px;color:#17352f">Your Home Care Plan was canceled</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">All recurring services on your Home Care Plan were removed and billing for them has stopped.</p>
+     ${btn('View My Dashboard',appUrl())}`);
+}
+function accountSuspendedEmailHtml(u){
+  return emailShell('Your account was suspended',
+    `<h2 style="margin:0 0 10px;color:#17352f">Your account has been suspended</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Your Living Communities account (${esc_(u.email)}) has been suspended and you've been signed out. If you think this is a mistake, reply to this email and we'll take a look.</p>`);
+}
+function accountReactivatedEmailHtml(u){
+  return emailShell('Your account is active again',
+    `<h2 style="margin:0 0 10px;color:#17352f">Welcome back</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Your account has been reactivated. You can log back in whenever you're ready.</p>
+     ${btn('Log In',appUrl())}`);
+}
+function accountDeletedEmailHtml(u){
+  return emailShell('Your account was deleted',
+    `<h2 style="margin:0 0 10px;color:#17352f">Your account has been deleted</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Your Living Communities account (${esc_(u.email)}) was deleted at your request. You've been signed out and can no longer log in with it. If this wasn't you, reply to this email right away.</p>`);
+}
+function adminAccountDeletedEmailHtml(u){
+  return emailShell('Account deleted',
+    `<h2 style="margin:0 0 10px;color:#17352f">${esc_(u.name)} deleted their account</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">${esc_(u.role)} · ${esc_(u.email)}</p>
+     ${btn('View Deleted Accounts',appUrl()+'/#admin')}`);
+}
+function verificationApprovedEmailHtml(u){
+  return emailShell('You\'re verified',
+    `<h2 style="margin:0 0 10px;color:#17352f">You're verified ✅</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Your provider account is now verified. A verified badge now shows on your profile, which homeowners trust more when comparing quotes.</p>
+     ${btn('View My Profile',appUrl())}`);
+}
+function providerAccountApprovedEmailHtml(u){
+  return emailShell('Your account was approved',
+    `<h2 style="margin:0 0 10px;font-size:22px">You're approved, ${esc_(u.name)}</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">An admin approved your provider account. You can now respond to open requests and message homeowners.${u.verificationStatus==='verified'?'':' If you haven\'t yet, upload your verification documents from Business Profile to earn the Verified badge.'}</p>
+     ${btn('Browse Open Requests',appUrl())}`);
+}
+function verificationRejectedEmailHtml(u,notes){
+  return emailShell('Update needed on your verification',
+    `<h2 style="margin:0 0 10px;color:#17352f">We couldn't verify your account yet</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Here's what needs fixing:</p>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px;background:#fbe4e1;border-radius:10px;padding:12px 14px">${esc_(notes)}</p>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Once it's fixed, resubmit your documents from your dashboard.</p>
+     ${btn('Resubmit Verification',appUrl())}`);
+}
+function verificationSubmittedEmailHtml(u){
+  return emailShell('Verification submitted',
+    `<h2 style="margin:0 0 10px;color:#17352f">Got it — under review</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">We received your verification documents. Our team typically reviews these within a couple of business days. We'll email you as soon as there's a decision.</p>`);
+}
+function adminNewVerificationEmailHtml(provider){
+  return emailShell('New verification pending',
+    `<h2 style="margin:0 0 10px;color:#17352f">A provider needs review</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px"><b>${esc_(provider.name)}</b> (${esc_(provider.email)}) submitted verification documents and is waiting on a decision.</p>
+     ${btn('Review in Admin',appUrl()+'/#admin')}`);
+}
+function adminNewSignupEmailHtml(u){
+  return emailShell('New signup',
+    `<h2 style="margin:0 0 10px;color:#17352f">New ${esc_(u.role)}: ${esc_(u.name)}</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">${esc_(u.name)} (${esc_(u.email)}) just created a ${esc_(u.role)} account.</p>
+     ${btn('View in Admin',appUrl()+'/#admin')}`);
+}
+function adminPlanCancelledEmailHtml(u,planLabel){
+  return emailShell('Plan downgraded to Free',
+    `<h2 style="margin:0 0 10px;color:#17352f">${esc_(u.name)} dropped to Free</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px"><b>${esc_(u.name)}</b> (${esc_(u.email)}) downgraded from ${esc_(planLabel)} to the Free plan.</p>
+     ${btn('View in Admin',appUrl()+'/#admin')}`);
+}
+function adminPaymentFailedEmailHtml(u){
+  return emailShell('A payment failed',
+    `<h2 style="margin:0 0 10px;color:#17352f">Payment failed</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">A card charge failed for <b>${esc_(u.name)}</b> (${esc_(u.email)}). They've been emailed to update their payment method.</p>
+     ${btn('View in Admin',appUrl()+'/#admin')}`);
+}
+function adminLowRatingReviewEmailHtml(provider,homeownerName,rating,text){
+  const stars='★'.repeat(rating)+'☆'.repeat(5-rating);
+  return emailShell('Low rating posted',
+    `<h2 style="margin:0 0 10px;color:#17352f">${stars} for ${esc_(provider.name)}</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px"><b>${esc_(homeownerName)}</b> left <b>${esc_(provider.name)}</b> (${esc_(provider.email)}) a ${rating}-star review.</p>
+     ${text?`<p style="color:#3f4f4a;line-height:1.6;font-size:14.5px;background:#fbe4e1;border-radius:10px;padding:12px 14px">"${esc_(text)}"</p>`:''}
+     ${btn('View in Admin',appUrl()+'/#admin')}`);
+}
+function adminJobCancelledEmailHtml(job,homeownerName,providerName){
+  return emailShell('Job cancelled',
+    `<h2 style="margin:0 0 10px;color:#17352f">"${esc_(job.title)}" was cancelled</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Between <b>${esc_(homeownerName)}</b> and <b>${esc_(providerName)}</b>.</p>
+     ${btn('View in Admin',appUrl()+'/#admin')}`);
+}
+function adminDigestEmailHtml(stats){
+  const row=(label,val)=>`<tr><td style="padding:6px 0;color:#3f4f4a">${esc_(label)}</td><td style="padding:6px 0;text-align:right;color:#17352f;font-weight:700">${val}</td></tr>`;
+  return emailShell('Your daily admin digest',
+    `<h2 style="margin:0 0 10px;color:#17352f">Daily digest</h2>
+     <table style="width:100%;border-collapse:collapse;margin-top:10px;font-size:13.5px">
+       ${row('New homeowners (24h)',stats.newHomeowners)}
+       ${row('New providers (24h)',stats.newProviders)}
+       ${row('Open requests',stats.openRequests)}
+       ${row('Stale requests (24h+, no quotes)',stats.staleRequests)}
+       ${row('Verification queue (pending)',stats.pendingVerifications)}
+       ${row('Suspended accounts',stats.suspendedAccounts)}
+     </table>
+     ${btn('Open Admin Dashboard',appUrl()+'/#admin')}`);
+}
+function jobCompletedEmailHtml(homeowner,job){
+  return emailShell('Job completed',
+    `<h2 style="margin:0 0 10px;color:#17352f">"${esc_(job.title)}" is complete</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Your provider marked this job as completed. Take a minute to leave a review — it helps other homeowners in your community.</p>
+     ${btn('Leave a Review',appUrl())}`);
+}
+function jobCancelledEmailHtml(recipientName,job){
+  return emailShell('Job cancelled',
+    `<h2 style="margin:0 0 10px;color:#17352f">"${esc_(job.title)}" was cancelled</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">This job has been marked as cancelled. No further action is needed.</p>
+     ${btn('View My Dashboard',appUrl())}`);
+}
+function newReviewEmailHtml(provider,rating,text){
+  const stars='★'.repeat(rating)+'☆'.repeat(5-rating);
+  return emailShell('You got a new review',
+    `<h2 style="margin:0 0 10px;color:#17352f">New review: ${stars}</h2>
+     ${text?`<p style="color:#3f4f4a;line-height:1.6;font-size:14.5px;background:#eaf4ef;border-radius:10px;padding:12px 14px">"${esc_(text)}"</p>`:''}
+     ${btn('View My Profile',appUrl())}`);
+}
+function carePlanVisitAssignedEmailHtml(provider,homeownerName,serviceName,note){
+  return emailShell('New recurring service assigned',
+    `<h2 style="margin:0 0 10px;color:#17352f">You were assigned a recurring service</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Our team connected you with <b>${esc_(homeownerName)}</b> for their <b>${esc_(serviceName)}</b> Home Care Plan service.${note?(' Note: '+esc_(note)):''}</p>
+     ${btn('View My Dashboard',appUrl())}`);
 }
 
 // Simulated monthly billing for Home Care Plan: sends a reminder 7 days before the next_billing
@@ -330,25 +892,47 @@ async function runBillingCheck(){
   // below) — this simulated check only ever touches demo-mode (no Stripe key) subscribers.
   const rows=await q("SELECT * FROM users WHERE role='homeowner' AND care_plan_next_billing IS NOT NULL AND care_plan_stripe_subscription_id IS NULL");
   for(const r of rows){
-    const services=r.care_plan_services||[];
-    if(!services.length) continue;
+    const mu=mapUser(r);
+    const details=carePlanActiveDetails(mu.carePlanItems);
+    if(!details.length) continue;
     const nextBilling=new Date(r.care_plan_next_billing).toISOString().slice(0,10);
-    const amount=carePlanMonthlyTotal(services);
+    const amount=carePlanMonthlyTotal(mu.carePlanItems);
     if(!amount) continue;
     const reminderSentFor=r.care_plan_reminder_sent_for?new Date(r.care_plan_reminder_sent_for).toISOString().slice(0,10):null;
     if(nextBilling===in7Str && reminderSentFor!==nextBilling){
-      await sendEmail({to:r.email,type:'care_plan_reminder',subject:'Your Home Care Plan renews in 7 days',html:carePlanReminderEmailHtml(r,amount,nextBilling),userId:r.id});
+      await sendEmail({to:r.email,type:'care_plan_reminder',subject:'Your Home Care Plan renews in 7 days',html:carePlanReminderEmailHtml(mu,details,amount,nextBilling),userId:r.id});
       await pool.query('UPDATE users SET care_plan_reminder_sent_for=$1 WHERE id=$2',[nextBilling,r.id]);
       reminders++;
     }
     if(nextBilling<=todayStr){
-      await sendEmail({to:r.email,type:'care_plan_billed',subject:'Your card was charged for your Home Care Plan',html:carePlanBilledEmailHtml(r,amount,nextBilling),userId:r.id});
+      await sendEmail({to:r.email,type:'care_plan_billed',subject:'Your card was charged for your Home Care Plan',html:carePlanBilledEmailHtml(mu,details,amount,nextBilling),userId:r.id});
       const newNext=new Date(nextBilling+'T00:00:00Z'); newNext.setUTCMonth(newNext.getUTCMonth()+1);
       await pool.query('UPDATE users SET care_plan_next_billing=$1, care_plan_reminder_sent_for=NULL WHERE id=$2',[newNext.toISOString().slice(0,10),r.id]);
       charges++;
     }
   }
   return {reminders,charges,checked:rows.length};
+}
+
+// Admin digest — a single rollup email instead of pinging on every event. Meant to be triggered
+// once a day (or however often you like) by the same external cron/pinger that hits
+// run-billing-check, via /api/internal/run-admin-digest.
+async function runAdminDigest(){
+  if(!ADMIN_NOTIFY_EMAIL) return {sent:false,reason:'no ADMIN_NOTIFY_EMAIL/ADMIN_EMAIL configured'};
+  const [newHomeowners,newProviders,openReqs,staleReqs,pendingVerif,suspendedCount]=await Promise.all([
+    q1("SELECT count(*)::int AS n FROM users WHERE role='homeowner' AND created_at > now() - interval '24 hours'"),
+    q1("SELECT count(*)::int AS n FROM users WHERE role='provider' AND created_at > now() - interval '24 hours'"),
+    q1("SELECT count(*)::int AS n FROM requests WHERE status='open'"),
+    q1("SELECT count(*)::int AS n FROM requests r WHERE r.status='open' AND r.created_at < now() - interval '24 hours' AND NOT EXISTS (SELECT 1 FROM quotes qq WHERE qq.request_id=r.id)"),
+    q1("SELECT count(*)::int AS n FROM users WHERE role='provider' AND deleted=false AND (provider_approved=false OR (verification_status='unverified' AND jsonb_array_length(COALESCE(verification_documents,'[]'::jsonb))>0))"),
+    q1("SELECT count(*)::int AS n FROM users WHERE suspended=true"),
+  ]);
+  const stats={
+    newHomeowners:newHomeowners.n, newProviders:newProviders.n, openRequests:openReqs.n,
+    staleRequests:staleReqs.n, pendingVerifications:pendingVerif.n, suspendedAccounts:suspendedCount.n,
+  };
+  await sendEmail({to:ADMIN_NOTIFY_EMAIL,type:'admin_digest',subject:'Your daily admin digest',html:adminDigestEmailHtml(stats)});
+  return {sent:true,stats};
 }
 
 async function initSchema(){
@@ -439,7 +1023,8 @@ async function initSchema(){
     CREATE INDEX IF NOT EXISTS idx_jobs_provider ON jobs(provider_id);
   `);
   // Migration-safe: adds columns/tables for databases whose schema predates these features.
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS care_plan_services text[] DEFAULT '{}'`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS care_plan_services text[] DEFAULT '{}'`); // legacy — superseded by care_plan_items below, kept only so old rows aren't lost
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS care_plan_items jsonb DEFAULT '[]'::jsonb`); // [{key,status:'requested'|'quoted'|'active',priceCents,quotedAt,acceptedAt}]
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS lat double precision`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS lng double precision`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS geocoded_at timestamptz`);
@@ -454,18 +1039,144 @@ async function initSchema(){
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS new_conversations_this_period integer DEFAULT 0`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS usage_period_start date`);
   await pool.query(`CREATE TABLE IF NOT EXISTS stripe_events (id text PRIMARY KEY, type text, created_at timestamptz DEFAULT now())`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_next_billing date`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS provider_plan_next_billing date`);
+  // Payment history log — filled by the Stripe webhook going forward (no retroactive backfill).
+  // plan_kind is one of 'subscription' (homeowner Plus/Premium), 'provider_plan' (Pro/Elite),
+  // or 'care_plan'; plan is the human label shown in the admin Payments page.
+  await pool.query(`CREATE TABLE IF NOT EXISTS payments (
+    id text PRIMARY KEY,
+    user_id text REFERENCES users(id),
+    plan text,
+    plan_kind text,
+    amount_cents integer NOT NULL DEFAULT 0,
+    currency text DEFAULT 'usd',
+    status text NOT NULL,
+    stripe_invoice_id text,
+    stripe_customer_id text,
+    stripe_subscription_id text,
+    created_at timestamptz DEFAULT now()
+  )`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_payments_user ON payments(user_id)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_payments_created ON payments(created_at DESC)`);
+  await pool.query(`ALTER TABLE payments ADD COLUMN IF NOT EXISTS refunded_at timestamptz`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_kind text`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_value text`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS service_radius_mi integer`);
-  // Provider verification / background-check workflow
+  // Billing address collected at checkout for paid subscriptions (Plus/Premium, Pro Provider) —
+  // {line1,city,state,zip}. This, not the homeowner/provider's service-area address, is what
+  // decides sales-tax jurisdiction (see isTexasBilling). Stored so the decision made at the time
+  // of charge is auditable later, separate from whatever address they have on file today.
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS billing_address jsonb`);
+  // Provider verification workflow
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS provider_entity_type text`); // 'individual' | 'business'
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_status text DEFAULT 'unverified'`); // unverified | pending | verified | rejected
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_notes text`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_submitted_at timestamptz`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_reviewed_at timestamptz`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_documents jsonb DEFAULT '[]'::jsonb`);
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS background_check_status text DEFAULT 'not_requested'`); // not_requested | requested | in_progress | clear | consider
+  // Admin approval (needed to respond to requests) is separate from document verification.
+  // Default true so every existing provider stays approved; new signups insert false.
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS provider_approved boolean DEFAULT true`);
+  // Scoped admins. admin_permissions NULL on an admin row = full (super) admin, so every existing admin keeps full access.
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_permissions jsonb`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS invite_token_hash text`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS invite_expires_at timestamptz`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS invited_by text`);
+  // 'pending' is no longer a verification_status value. Older rows: docs submitted -> 'unverified' (docs awaiting review);
+  // no docs (accounts created under the short-lived "approve before upload" build) -> 'unverified' and not yet approved.
+  // Safe to rerun: once no 'pending' rows remain these match nothing.
+  await pool.query(`UPDATE users SET verification_status='unverified' WHERE role='provider' AND verification_status='pending' AND jsonb_array_length(COALESCE(verification_documents,'[]'::jsonb))>0`);
+  await pool.query(`UPDATE users SET verification_status='unverified', provider_approved=false WHERE role='provider' AND verification_status='pending'`);
+  // Provider business-profile: skills/specializations tags + a work-photo gallery. Each gallery
+  // photo is stored with its own moderation status so a photo never appears to homeowners until
+  // an admin approves it (mirrors the verification-document review flow above).
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS skills jsonb DEFAULT '[]'::jsonb`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS specializations jsonb DEFAULT '[]'::jsonb`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS gallery_photos jsonb DEFAULT '[]'::jsonb`);
+  // Provider email notification preferences: whether to email them at all when a new request
+  // comes in, and which of their service types should trigger one. notify_service_types being
+  // empty is treated client-side as "all offered services" (see providerNotificationsHTML), but
+  // once the provider has saved preferences at least once it holds their explicit chosen subset.
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_email_enabled boolean DEFAULT true`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_service_types jsonb DEFAULT '[]'::jsonb`);
+  // background_check_status / background_check_requested_at columns were used by a removed
+  // feature and are no longer read or written; left in place (harmless, unused) rather than
+  // dropped, so this stays idempotent if an older deploy still references them.
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS background_check_status text DEFAULT 'not_requested'`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS background_check_requested_at timestamptz`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS suspended boolean DEFAULT false`);
+  // Self-service account deletion is a SOFT delete: the row and all its requests/quotes/jobs/chats
+  // stay in place (admin needs full history in the Deleted Accounts log), the account just can't
+  // log in or be matched/contacted anymore.
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted boolean DEFAULT false`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_at timestamptz`);
+  // Tracks when a user last opened the Messages panel, so new announcements since then can badge
+  // the nav item instead of it always looking the same regardless of anything new.
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_announcements_view_at timestamptz`);
+  // Home Profile — a Plus/Premium perk. Structured facts about the house (HVAC, water heater, roof,
+  // appliances, pool/sprinkler/pest) that computeHomeStatus() turns into the "Your Home" status list,
+  // a maintenance timeline, and a Home Health score — plus a small document repository (warranties,
+  // receipts, manuals) stored the same way verification_documents are (dataUrl in jsonb, no blob store).
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS home_profile jsonb DEFAULT '{}'::jsonb`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS home_documents jsonb DEFAULT '[]'::jsonb`);
+  await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS dispatched_provider_id text`);
+  await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS dispatched_at timestamptz`);
+  await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS dispatched_note text`);
+  // Homeowner can pull their own open request off the provider feed at any time without deleting
+  // it (delist), and put it back (relist) — the request and any quotes/chats it already has stay
+  // exactly as they were either way, this only controls whether new providers can see/quote it.
+  await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS delisted boolean DEFAULT false`);
+  await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS delisted_at timestamptz`);
+  // Chat is scoped to a quote (one request + one provider), never to a person. quote_id is
+  // required going forward; any pre-existing message with no quote_id is unlinked legacy DM
+  // data from the old person-to-person model and is dropped below, once, on boot.
+  await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS quote_id text REFERENCES quotes(id)`);
+  await pool.query(`DELETE FROM messages WHERE quote_id IS NULL`);
+  // Either side of a quote thread can flag it for admin review.
+  await pool.query(`ALTER TABLE quotes ADD COLUMN IF NOT EXISTS reported boolean DEFAULT false`);
+  await pool.query(`ALTER TABLE quotes ADD COLUMN IF NOT EXISTS reported_by text`);
+  await pool.query(`ALTER TABLE quotes ADD COLUMN IF NOT EXISTS reported_reason text`);
+  await pool.query(`ALTER TABLE quotes ADD COLUMN IF NOT EXISTS reported_at timestamptz`);
+  // A job only counts as done, for the provider, once a receipt closes it out.
+  await pool.query(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS quote_id text REFERENCES quotes(id)`);
+  await pool.query(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS receipt_data_url text`);
+  await pool.query(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS receipt_note text`);
+  await pool.query(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS receipt_uploaded_at timestamptz`);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS announcements (
+      id text PRIMARY KEY,
+      user_id text REFERENCES users(id),
+      title text NOT NULL,
+      body text NOT NULL,
+      created_at timestamptz DEFAULT now()
+    )
+  `);
+  // One thread per user, all messages ordered by time. sender_role is 'user' or 'admin'.
+  // Posting/reading is gated to paid plans at the route level, not here.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS support_messages (
+      id text PRIMARY KEY,
+      user_id text NOT NULL REFERENCES users(id),
+      sender_role text NOT NULL,
+      body text NOT NULL,
+      created_at timestamptz DEFAULT now(),
+      read boolean DEFAULT false
+    )
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS care_plan_visits (
+      id text PRIMARY KEY,
+      homeowner_id text NOT NULL REFERENCES users(id),
+      service_key text NOT NULL,
+      provider_id text,
+      status text NOT NULL DEFAULT 'upcoming',
+      scheduled_date date,
+      note text,
+      created_at timestamptz DEFAULT now(),
+      updated_at timestamptz DEFAULT now(),
+      UNIQUE(homeowner_id, service_key)
+    )`);
   await pool.query(`
     CREATE TABLE IF NOT EXISTS email_log (
       id text PRIMARY KEY,
@@ -490,6 +1201,20 @@ async function initSchema(){
     );
     CREATE INDEX IF NOT EXISTS idx_neighborhood_posts_created ON neighborhood_posts(created_at DESC);
   `);
+  // One-time move to admin-priced Care Plan services: every account still on the old flat-rate
+  // text[] column (and not yet migrated into care_plan_items) gets re-quoted — each of their
+  // services drops back to 'requested' with no price, and billing pauses immediately (any real
+  // Stripe subscription for it is cancelled) until an admin sets a new price and the homeowner
+  // accepts it. Guarded by "care_plan_items is still empty" so this only ever runs once per row.
+  const legacyRows = await pool.query("SELECT id, care_plan_services, care_plan_stripe_subscription_id FROM users WHERE role='homeowner' AND care_plan_services<>'{}' AND care_plan_items='[]'::jsonb");
+  for(const r of legacyRows.rows){
+    if(stripeConfigured() && r.care_plan_stripe_subscription_id){
+      await stripeRequest('DELETE','subscriptions/'+r.care_plan_stripe_subscription_id).catch(()=>{});
+    }
+    const items=(r.care_plan_services||[]).map(k=>({key:k,status:'requested',priceCents:null,quotedAt:null,acceptedAt:null}));
+    await pool.query('UPDATE users SET care_plan_items=$1::jsonb, care_plan_next_billing=NULL, care_plan_reminder_sent_for=NULL, care_plan_stripe_subscription_id=NULL WHERE id=$2',[JSON.stringify(items),r.id]);
+  }
+  if(legacyRows.rows.length) console.log(`[care-plan] re-quoted ${legacyRows.rows.length} existing account(s) onto admin pricing — billing paused pending new quotes.`);
 }
 async function seedIfEmpty(){
   const {rows} = await pool.query('SELECT count(*)::int AS n FROM users');
@@ -526,39 +1251,128 @@ async function requireAuth(req,res,roles){
   const row=await q1('SELECT * FROM users WHERE id=$1',[uid]);
   if(!row){sessions.delete(token);send(res,401,{error:'Session invalid'});return null}
   const u=mapUser(row);
+  if(u.deleted){sessions.delete(token);send(res,403,{error:'This account has been deleted.',deleted:true});return null}
+  if(u.suspended){sessions.delete(token);send(res,403,{error:'This account has been suspended. Contact support if you think this is a mistake.',suspended:true});return null}
   if(roles&&!roles.includes(u.role)){send(res,403,{error:'Not authorized'});return null}
+  if(u.role==='admin'||u.role==='hoa') learnOrigin(req);
   return u;
 }
 
+// Requests per service over the last 30 days, site-wide. Counts only, no personal data. Cached 5 minutes.
+let _demandCache={at:0,data:{}};
+async function serviceDemand(){
+  if(Date.now()-_demandCache.at<5*60*1000) return _demandCache.data;
+  const rows=await q("SELECT service_type, count(*)::int AS c FROM requests WHERE created_at > now() - interval '30 days' GROUP BY service_type");
+  const ok=new Set(ALL_SERVICE_TYPES); const data={};
+  for(const r of rows){ if(ok.has(r.service_type)) data[r.service_type]=r.c; }
+  _demandCache={at:Date.now(),data}; return data;
+}
 const MIME={'.html':'text/html','.js':'application/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.ico':'image/x-icon'};
+// Only the site page and its image folders are public. Server code, docs, config and the internal
+// planning/flyer folders are never served.
+const PUBLIC_FILE = rel => rel==='/index.html' || ((rel.startsWith('/images/')||rel.startsWith('/assets/')) && !/\.(md|js|json|html)$/i.test(rel));
+const SEO_DESCRIPTION = 'Living Communities connects homeowners with trusted local home service providers, keeps home maintenance on track, and brings neighbors and HOAs together. Quality work, transparent pricing, peace of mind.';
+function seoHead(base){
+  const verify = [];
+  if(process.env.GOOGLE_SITE_VERIFICATION) verify.push(`<meta name="google-site-verification" content="${esc_(process.env.GOOGLE_SITE_VERIFICATION)}">`);
+  if(process.env.BING_SITE_VERIFICATION) verify.push(`<meta name="msvalidate.01" content="${esc_(process.env.BING_SITE_VERIFICATION)}">`);
+  const ld = JSON.stringify({'@context':'https://schema.org','@graph':[
+    {'@type':'Organization','@id':base+'/#org','name':'Living Communities','url':base+'/','logo':base+'/assets/logo.png'},
+    {'@type':'WebSite','@id':base+'/#site','url':base+'/','name':'Living Communities','alternateName':['LivingCommunities','Living Communities home services'],'publisher':{'@id':base+'/#org'}}
+  ]}).replace(/</g,'\\u003c');
+  return `<meta name="description" content="${esc_(SEO_DESCRIPTION)}">
+<link rel="canonical" href="${esc_(base)}/">
+<link rel="icon" type="image/png" href="/assets/logo.png">
+<meta name="theme-color" content="#286b58">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Living Communities">
+<meta property="og:title" content="Living Communities: property care made simple">
+<meta property="og:description" content="${esc_(SEO_DESCRIPTION)}">
+<meta property="og:url" content="${esc_(base)}/">
+<meta property="og:image" content="${esc_(base)}/images/hero-house.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Living Communities: property care made simple">
+<meta name="twitter:description" content="${esc_(SEO_DESCRIPTION)}">
+<meta name="twitter:image" content="${esc_(base)}/images/hero-house.jpg">
+${verify.join('\n')}
+<script type="application/ld+json">${ld}</script>`;
+}
 function serveStatic(req,res,pathname){
+  if(pathname==='/robots.txt'){
+    res.writeHead(200,{'Content-Type':'text/plain; charset=utf-8','Cache-Control':'public, max-age=3600'});
+    return res.end(`User-agent: *\nAllow: /\nDisallow: /api/\n\nSitemap: ${siteBase(req)}/sitemap.xml\n`);
+  }
+  if(pathname==='/sitemap.xml'){
+    res.writeHead(200,{'Content-Type':'application/xml; charset=utf-8','Cache-Control':'public, max-age=3600'});
+    return res.end(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>${siteBase(req)}/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>\n</urlset>\n`);
+  }
   let rel=pathname==='/'?'/index.html':pathname;
+  if(!PUBLIC_FILE(rel)){res.writeHead(404,{'Content-Type':'text/plain'});return res.end('Not found');}
   const filePath=path.normalize(path.join(ROOT,rel));
   if(!filePath.startsWith(ROOT)){res.writeHead(403);return res.end('Forbidden');}
   fs.readFile(filePath,(err,content)=>{
     if(err){res.writeHead(404,{'Content-Type':'text/plain'});return res.end('Not found');}
     const ext=path.extname(filePath);
-    res.writeHead(200,{'Content-Type':MIME[ext]||'application/octet-stream','Cache-Control':'no-store'});
+    if(rel==='/index.html') content=Buffer.from(content.toString('utf8').replace('<!--SEO-->',seoHead(siteBase(req))));
+    res.writeHead(200,{'Content-Type':(MIME[ext]||'application/octet-stream')+(ext==='.html'?'; charset=utf-8':''),'Cache-Control':ext==='.html'?'no-store':'public, max-age=86400'});
     res.end(content);
   });
 }
 
-// Loads quotes (with embedded provider) for a set of requests, keyed by request id.
-async function quotesByRequestId(reqIds){
+// Chat activity per quote thread, from one viewer's point of view: how many messages are
+// addressed to them and still unread, and when the thread was last touched at all (falls back to
+// null — callers fall back further to the quote's own createdAt). This is what lets a lead/quote
+// card show "new" and a real timestamp instead of looking identical to every other card.
+async function quoteActivity(quoteIds,viewerId){
+  const out={};
+  for(const qid of quoteIds) out[qid]={unreadCount:0,lastActivityAt:null};
+  if(!quoteIds.length) return out;
+  const rows=await q('SELECT quote_id, max(created_at) AS last_at, count(*) FILTER (WHERE recipient_id=$2 AND read=false) AS unread FROM messages WHERE quote_id = ANY($1::text[]) GROUP BY quote_id',[quoteIds,viewerId||null]);
+  for(const r of rows) out[r.quote_id]={unreadCount:Number(r.unread||0),lastActivityAt:toISO(r.last_at)};
+  return out;
+}
+// Loads quotes (with embedded provider) for a set of requests, keyed by request id. viewerId (the
+// homeowner asking) is who chat unread counts are computed for.
+async function quotesByRequestId(reqIds,viewerId){
   if(!reqIds.length) return {};
   const quotes=await q('SELECT * FROM quotes WHERE request_id = ANY($1::text[]) ORDER BY created_at',[reqIds]);
   const providerIds=[...new Set(quotes.map(x=>x.provider_id))];
   const providers=providerIds.length?await q('SELECT * FROM users WHERE id = ANY($1::text[])',[providerIds]):[];
   const providerMap=Object.fromEntries(providers.map(p=>[p.id,publicProviderView(mapUser(p))]));
+  const activity=await quoteActivity(quotes.map(x=>x.id),viewerId);
+  const completedCounts=await completedJobCounts(providerIds);
   const out={};
-  for(const qq of quotes){ (out[qq.request_id]=out[qq.request_id]||[]).push({...mapQuote(qq),provider:providerMap[qq.provider_id]}); }
+  for(const qq of quotes){
+    const provider=providerMap[qq.provider_id];
+    const featured=isFeaturedEligible(provider&&provider.providerPlan,provider&&provider.rating,completedCounts[qq.provider_id]);
+    (out[qq.request_id]=out[qq.request_id]||[]).push({...mapQuote(qq),provider,featured,...activity[qq.id]});
+  }
+  // Elite ("featured") providers' quotes surface first — the priority-placement perk — then within
+  // each tier, most recently active first (same tiebreak the UI already used).
+  for(const rid in out){
+    out[rid].sort((a,b)=>{
+      if(a.featured!==b.featured) return a.featured?-1:1;
+      return new Date(b.lastActivityAt||b.createdAt)-new Date(a.lastActivityAt||a.createdAt);
+    });
+  }
   return out;
 }
+
+const hoa=require('./hoa')({pool,q,q1,id,sendEmail,emailShell,btn,esc_,appUrl,send,body,mapUser,safeUser,crypto,hash,newSalt,geocodeAddress,sessions,hashInviteToken,INVITE_TTL_MS,adminNotifyEmail:ADMIN_NOTIFY_EMAIL});
 
 const server=http.createServer(async (req,res)=>{
   try{
     if(req.method==='OPTIONS'){res.writeHead(204,{'Access-Control-Allow-Origin':ALLOWED_ORIGIN,'Access-Control-Allow-Headers':'Content-Type, Authorization','Access-Control-Allow-Methods':'GET,POST,PATCH,OPTIONS'});return res.end();}
     const url=new URL(req.url,`http://${req.headers.host}`); const p=url.pathname;
+    // Extra domains (www, misspelled domains pointed at this service) send visitors to the main address.
+    // The *.onrender.com address keeps working as a backup.
+    if(APP_URL_ENV && (req.method==='GET'||req.method==='HEAD') && !p.startsWith('/api/')){
+      const reqHost=String(req.headers['x-forwarded-host']||req.headers.host||'').split(',')[0].trim().toLowerCase();
+      let mainHost=''; try{ mainHost=new URL(APP_URL_ENV).host.toLowerCase(); }catch(e){}
+      if(mainHost && reqHost && reqHost!==mainHost && !/^(localhost|127\.|\[::1\])/.test(reqHost) && !/\.onrender\.com(:\d+)?$/.test(reqHost)){
+        res.writeHead(301,{Location:APP_URL_ENV+req.url,'Cache-Control':'public, max-age=3600'}); return res.end();
+      }
+    }
     if(!p.startsWith('/api/') && req.method==='GET') return serveStatic(req,res,p);
     if(p==='/api/health') return send(res,200,{ok:true,service:'Living Communities API',time:new Date().toISOString()});
 
@@ -569,7 +1383,32 @@ const server=http.createServer(async (req,res)=>{
       const row=await q1('SELECT * FROM users WHERE lower(email)=lower($1)',[String(b.email||'')]);
       const u=mapUser(row);
       if(!u || u.passwordHash!==hash(String(b.password||''),u.salt)) return send(res,401,{error:'Invalid email or password'});
+      if(u.deleted) return send(res,403,{error:'This account has been deleted.',deleted:true});
+      if(u.suspended) return send(res,403,{error:'This account has been suspended. Contact support if you think this is a mistake.',suspended:true});
       const token=crypto.randomBytes(24).toString('hex'); sessions.set(token,u.id); return send(res,200,{token,user:safeUser(u)});
+    }
+    // Admin invite: look up + accept (sets the invited admin's own password; nobody else ever sees it).
+    if(p==='/api/auth/invite' && req.method==='GET'){
+      const ip=req.socket.remoteAddress||'unknown';
+      if(tooManyAttempts(ip+':invite')) return send(res,429,{error:'Too many attempts. Try again later.'});
+      const tok=String(url.searchParams.get('token')||'');
+      const row=tok?await q1("SELECT * FROM users WHERE role IN ('admin','hoa') AND invite_token_hash=$1",[hashInviteToken(tok)]):null;
+      if(!row||(row.invite_expires_at&&new Date(row.invite_expires_at)<new Date())) return send(res,404,{error:'This invite link is invalid or has expired. Ask for a new one.'});
+      return send(res,200,{name:row.name,email:row.email});
+    }
+    if(p==='/api/auth/invite/accept' && req.method==='POST'){
+      const ip=req.socket.remoteAddress||'unknown';
+      if(tooManyAttempts(ip+':invite')) return send(res,429,{error:'Too many attempts. Try again later.'});
+      const b=await body(req);
+      const tok=String(b.token||''); const pw=String(b.password||'');
+      if(pw.length<8) return send(res,400,{error:'Password must be at least 8 characters.'});
+      const row=tok?await q1("SELECT * FROM users WHERE role IN ('admin','hoa') AND invite_token_hash=$1",[hashInviteToken(tok)]):null;
+      if(!row||(row.invite_expires_at&&new Date(row.invite_expires_at)<new Date())) return send(res,404,{error:'This invite link is invalid or has expired. Ask for a new one.'});
+      const salt=newSalt();
+      const upd=await q1('UPDATE users SET password_hash=$1,salt=$2,invite_token_hash=NULL,invite_expires_at=NULL WHERE id=$3 RETURNING *',[hash(pw,salt),salt,row.id]);
+      const nu=mapUser(upd);
+      const token=crypto.randomBytes(24).toString('hex'); sessions.set(token,nu.id);
+      return send(res,200,{token,user:safeUser(nu)});
     }
     if(p==='/api/auth/register' && req.method==='POST'){
       const ip=req.socket.remoteAddress||'unknown';
@@ -598,12 +1437,13 @@ const server=http.createServer(async (req,res)=>{
         }
       }else{
         const serviceTypes=Array.isArray(b.serviceTypes)?b.serviceTypes.map(s=>String(s).trim()).filter(Boolean).slice(0,10):[];
-        row=await q1('INSERT INTO users (id,role,name,email,password_hash,salt,phone,service_types,rating,review_count,verified,subscription,business_description) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *',
-          [uid,'provider',name,email,hash(password,salt),salt,phone,serviceTypes,null,0,false,'free',String(b.businessDescription||'').trim().slice(0,1000)]);
+        row=await q1('INSERT INTO users (id,role,name,email,password_hash,salt,phone,service_types,rating,review_count,verified,subscription,business_description,provider_approved) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *',
+          [uid,'provider',name,email,hash(password,salt),salt,phone,serviceTypes,null,0,false,'free',String(b.businessDescription||'').trim().slice(0,1000),false]);
       }
       const u=mapUser(row);
       const token=crypto.randomBytes(24).toString('hex'); sessions.set(token,u.id);
       sendEmail({to:u.email,type:'welcome',subject:'Welcome to Living Communities',html:welcomeEmailHtml(u),userId:u.id}).catch(()=>{});
+      if(ADMIN_NOTIFY_EMAIL) sendEmail({to:ADMIN_NOTIFY_EMAIL,type:'admin_new_signup',subject:`New ${role}: ${u.name}`,html:adminNewSignupEmailHtml(u)}).catch(()=>{});
       return send(res,201,{token,user:safeUser(u)});
     }
     if(p==='/api/auth/me' && req.method==='GET'){
@@ -617,6 +1457,23 @@ const server=http.createServer(async (req,res)=>{
       const key=req.headers['x-internal-key']||'';
       if(!INTERNAL_JOB_KEY || key!==INTERNAL_JOB_KEY) return send(res,401,{error:'Unauthorized'});
       const result=await runBillingCheck();
+      return send(res,200,{ok:true,...result});
+    }
+    // Same shared-secret pattern as run-billing-check above — point an external cron/pinger at this
+    // once a day (or whatever cadence you like) to get the admin rollup email.
+    // Same pattern for the HOA program: roster removals that reached their date, floor baselines,
+    // invoice previews/invoices, and quarterly roster-confirm reminders. Safe to run as often as hourly.
+    if(p==='/api/internal/run-hoa-maintenance' && req.method==='POST'){
+      const key=req.headers['x-internal-key']||'';
+      if(!INTERNAL_JOB_KEY || key!==INTERNAL_JOB_KEY) return send(res,401,{error:'Unauthorized'});
+      const b=await body(req).catch(()=>({}));
+      const asOf=b&&/^\d{4}-\d{2}-\d{2}$/.test(String(b.asOf||''))?new Date(b.asOf+'T12:00:00Z'):undefined;
+      return send(res,200,{ok:true,...await hoa.runMaintenance(asOf)});
+    }
+    if(p==='/api/internal/run-admin-digest' && req.method==='POST'){
+      const key=req.headers['x-internal-key']||'';
+      if(!INTERNAL_JOB_KEY || key!==INTERNAL_JOB_KEY) return send(res,401,{error:'Unauthorized'});
+      const result=await runAdminDigest();
       return send(res,200,{ok:true,...result});
     }
 
@@ -641,35 +1498,72 @@ const server=http.createServer(async (req,res)=>{
           if(row){
             const subId=inv.subscription;
             const periodEnd=inv.lines?.data?.[0]?.period?.end || inv.period_end;
-            const amount=((inv.amount_paid||0)/100).toFixed(2);
+            const amountCents=inv.amount_paid||0;
+            const amount=(amountCents/100).toFixed(2);
+            const nextBilling=periodEnd?new Date(periodEnd*1000).toISOString().slice(0,10):null;
+            let planKind=null, planLabel=null;
             if(subId && subId===row.care_plan_stripe_subscription_id){
-              const nextBilling=periodEnd?new Date(periodEnd*1000).toISOString().slice(0,10):null;
+              planKind='care_plan'; planLabel='Home Care Plan';
               await pool.query('UPDATE users SET care_plan_next_billing=$1, care_plan_reminder_sent_for=NULL WHERE id=$2',[nextBilling,row.id]);
-              await sendEmail({to:row.email,type:'care_plan_billed',subject:'Your card was charged for your Home Care Plan',html:carePlanBilledEmailHtml(row,amount,nextBilling||new Date()),userId:row.id});
+              await sendEmail({to:row.email,type:'care_plan_billed',subject:'Your card was charged for your Home Care Plan',html:carePlanBilledEmailHtml(mapUser(row),carePlanActiveDetails(mapUser(row).carePlanItems),amount,nextBilling||new Date()),userId:row.id});
             } else if(subId && subId===row.stripe_subscription_id){
+              const info=HOMEOWNER_PLAN_INFO[normalizeHomeownerPlanKey(row.subscription)];
+              planKind='subscription'; planLabel=info?info.label:row.subscription;
+              await pool.query('UPDATE users SET subscription_next_billing=$1 WHERE id=$2',[nextBilling,row.id]);
               await sendEmail({to:row.email,type:'subscription_billed',subject:'Your Living Communities plan was renewed',html:emailShell('Plan renewed',`<h2 style="margin:0 0 10px;color:#17352f">Payment received</h2><p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Your card on file was charged $${amount} for your ${esc_(row.subscription)} plan.</p>`),userId:row.id});
             } else if(subId && subId===row.provider_plan_stripe_subscription_id){
+              const info=PROVIDER_PLAN_INFO[row.provider_plan];
+              planKind='provider_plan'; planLabel=info?info.label:row.provider_plan;
+              await pool.query('UPDATE users SET provider_plan_next_billing=$1 WHERE id=$2',[nextBilling,row.id]);
               await sendEmail({to:row.email,type:'provider_plan_billed',subject:'Your Pro Provider plan was renewed',html:emailShell('Plan renewed',`<h2 style="margin:0 0 10px;color:#17352f">Payment received</h2><p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Your card on file was charged $${amount} for your Pro Provider plan.</p>`),userId:row.id});
             }
+            await pool.query(
+              `INSERT INTO payments (id,user_id,plan,plan_kind,amount_cents,currency,status,stripe_invoice_id,stripe_customer_id,stripe_subscription_id)
+               VALUES ($1,$2,$3,$4,$5,$6,'succeeded',$7,$8,$9)`,
+              [id('pay'),row.id,planLabel,planKind,amountCents,inv.currency||'usd',inv.id,inv.customer,subId||null]
+            ).catch(()=>{});
           }
         } else if(event.type==='invoice.payment_failed'){
           const inv=event.data.object;
           const row=await q1('SELECT * FROM users WHERE stripe_customer_id=$1',[inv.customer]);
-          if(row) await sendEmail({to:row.email,type:'payment_failed',subject:'Your payment could not be processed',html:emailShell('Payment failed',`<h2 style="margin:0 0 10px;color:#17352f">We couldn't charge your card</h2><p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Please update your payment method from your dashboard to keep your plan active.</p>`),userId:row.id});
+          if(row){
+            const subId=inv.subscription;
+            let planKind=null, planLabel=null;
+            if(subId && subId===row.care_plan_stripe_subscription_id){ planKind='care_plan'; planLabel='Home Care Plan'; }
+            else if(subId && subId===row.stripe_subscription_id){ const info=HOMEOWNER_PLAN_INFO[normalizeHomeownerPlanKey(row.subscription)]; planKind='subscription'; planLabel=info?info.label:row.subscription; }
+            else if(subId && subId===row.provider_plan_stripe_subscription_id){ const info=PROVIDER_PLAN_INFO[row.provider_plan]; planKind='provider_plan'; planLabel=info?info.label:row.provider_plan; }
+            await pool.query(
+              `INSERT INTO payments (id,user_id,plan,plan_kind,amount_cents,currency,status,stripe_invoice_id,stripe_customer_id,stripe_subscription_id)
+               VALUES ($1,$2,$3,$4,$5,$6,'failed',$7,$8,$9)`,
+              [id('pay'),row.id,planLabel,planKind,inv.amount_due||0,inv.currency||'usd',inv.id,inv.customer,subId||null]
+            ).catch(()=>{});
+            await sendEmail({to:row.email,type:'payment_failed',subject:'Your payment could not be processed',html:emailShell('Payment failed',`<h2 style="margin:0 0 10px;color:#17352f">We couldn't charge your card</h2><p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Please update your payment method from your dashboard to keep your plan active.</p>`),userId:row.id});
+            if(ADMIN_NOTIFY_EMAIL) sendEmail({to:ADMIN_NOTIFY_EMAIL,type:'admin_payment_failed',subject:`Payment failed: ${row.name}`,html:adminPaymentFailedEmailHtml(mapUser(row))}).catch(()=>{});
+          }
         } else if(event.type==='customer.subscription.deleted'){
           const sub=event.data.object;
           const row=await q1('SELECT * FROM users WHERE stripe_customer_id=$1',[sub.customer]);
           if(row){
-            if(sub.id===row.care_plan_stripe_subscription_id) await pool.query('UPDATE users SET care_plan_services=$1, care_plan_next_billing=NULL, care_plan_stripe_subscription_id=NULL WHERE id=$2',[[],row.id]);
-            if(sub.id===row.stripe_subscription_id) await pool.query("UPDATE users SET subscription='free', stripe_subscription_id=NULL WHERE id=$1",[row.id]);
-            if(sub.id===row.provider_plan_stripe_subscription_id) await pool.query("UPDATE users SET provider_plan='free', provider_plan_stripe_subscription_id=NULL WHERE id=$1",[row.id]);
+            if(sub.id===row.care_plan_stripe_subscription_id) await pool.query("UPDATE users SET care_plan_items='[]'::jsonb, care_plan_next_billing=NULL, care_plan_stripe_subscription_id=NULL WHERE id=$1",[row.id]);
+            if(sub.id===row.stripe_subscription_id) await pool.query("UPDATE users SET subscription='free', stripe_subscription_id=NULL, subscription_next_billing=NULL WHERE id=$1",[row.id]);
+            if(sub.id===row.provider_plan_stripe_subscription_id) await pool.query("UPDATE users SET provider_plan='free', provider_plan_stripe_subscription_id=NULL, provider_plan_next_billing=NULL WHERE id=$1",[row.id]);
           }
         }
       }catch(e){ console.error('webhook handling error:',e.message); }
       return send(res,200,{ok:true});
     }
 
+    if(await hoa.handlePublic(req,res,p,url)) return;
+
     const u=await requireAuth(req,res); if(!u)return;
+
+    // Self-service billing history — the logged-in account's own payments only (never another
+    // user's), for the Payments tab on the homeowner/provider dashboards.
+    if(p==='/api/billing/history' && req.method==='GET'){
+      const rows=await q('SELECT * FROM payments WHERE user_id=$1 ORDER BY created_at DESC LIMIT 100',[u.id]);
+      const payments=rows.map(mapPayment);
+      return send(res,200,{payments});
+    }
 
     if(p==='/api/billing/setup-intent' && req.method==='POST'){
       if(!stripeConfigured()) return send(res,501,{error:'Stripe is not configured on this server yet.',demoMode:true});
@@ -682,35 +1576,77 @@ const server=http.createServer(async (req,res)=>{
 
     if(p==='/api/dashboard' && req.method==='GET'){
       if(u.role==='admin') return send(res,403,{error:'Admins use /api/admin/verifications instead of /api/dashboard'});
+      if(u.role==='hoa') return send(res,403,{error:'HOA logins use the HOA portal.'});
       if(u.role==='homeowner'){
         const reqRows=await q('SELECT * FROM requests WHERE homeowner_id=$1 ORDER BY created_at DESC',[u.id]);
-        const qMap=await quotesByRequestId(reqRows.map(r=>r.id));
+        const qMap=await quotesByRequestId(reqRows.map(r=>r.id),u.id);
         const requests=reqRows.map(r=>({...mapRequest(r),quotes:qMap[r.id]||[]}));
-        const messages=await q('SELECT * FROM messages WHERE $1 = ANY(participants) ORDER BY created_at',[u.id]);
-        const jobs=await q('SELECT * FROM jobs WHERE homeowner_id=$1 ORDER BY created_at DESC',[u.id]);
+        const unreadChatCount=Object.values(qMap).flat().reduce((sum,qq)=>sum+(qq.unreadCount||0),0);
+        const announcements=await q('SELECT * FROM announcements WHERE user_id=$1 OR user_id IS NULL ORDER BY created_at DESC LIMIT 50',[u.id]);
+        const unreadAnnouncementsCount=Number((await q1("SELECT count(*)::int AS c FROM announcements WHERE (user_id=$1 OR user_id IS NULL) AND created_at > COALESCE($2::timestamptz,'-infinity')",[u.id,u.lastAnnouncementsViewAt])).c);
+        const unreadSupportCount=isPaidPlan(u)?Number((await q1("SELECT count(*)::int AS c FROM support_messages WHERE user_id=$1 AND sender_role='admin' AND read=false",[u.id])).c):0;
+        // Joins in the provider's name so the appointment card can say who the homeowner is
+        // dealing with, not just "scheduled" with no counterparty shown.
+        const jobs=await q('SELECT j.*, up.name AS provider_name FROM jobs j JOIN users up ON up.id=j.provider_id WHERE j.homeowner_id=$1 ORDER BY j.created_at DESC',[u.id]);
         const reviews=await q('SELECT * FROM reviews WHERE homeowner_id=$1',[u.id]);
-        return send(res,200,{user:safeUser(u),requests,messages:messages.map(mapMessage),jobs:jobs.map(mapJob),reviews:reviews.map(mapReview)});
+        return send(res,200,{user:safeUser(u),sponsor:await hoa.sponsorInfo(u),serviceDemand:await serviceDemand(),requests,announcements:announcements.map(mapAnnouncement),jobs:jobs.map(r=>({...mapJob(r),providerName:r.provider_name})),reviews:reviews.map(mapReview),unreadChatCount,unreadMessagesCount:unreadAnnouncementsCount+unreadSupportCount});
       }
-      if(u.role==='provider'){ const usage=await ensureUsagePeriod(u); u.quotesUsed=usage.quotes; u.convosUsed=usage.convos; }
+      let providerUsage=null;
+      if(u.role==='provider'){ providerUsage=await ensureUsagePeriod(u); u.quotesUsed=providerUsage.quotes; u.convosUsed=providerUsage.convos; }
       // Joins in the homeowner's lat/lng (if they ever geocoded an address) so each request can
       // carry a distanceMi from this provider — used to filter/label the feed by service area.
       // Requests whose homeowner has no geocoded location get distanceMi:null and are never
       // filtered out, so incomplete address data never silently hides real leads.
-      const openRows=await q("SELECT r.*, uh.lat AS h_lat, uh.lng AS h_lng FROM requests r JOIN users uh ON uh.id=r.homeowner_id WHERE r.status='open' ORDER BY r.created_at DESC");
+      // A request stays in the feed from posting all the way through an assigned provider's job,
+      // and only drops off once that job is completed or cancelled (or the homeowner delists it
+      // pre-award) — accepting a quote alone should never make it vanish for everyone else.
+      const openRows=await q(`SELECT r.*, uh.lat AS h_lat, uh.lng AS h_lng FROM requests r JOIN users uh ON uh.id=r.homeowner_id
+        WHERE r.delisted=false AND (r.status='open' OR (r.status='scheduled' AND EXISTS (
+          SELECT 1 FROM jobs j WHERE j.request_id=r.id AND j.status NOT IN ('completed','cancelled')
+        ))) ORDER BY r.created_at DESC`);
       const myQuotes=openRows.length?await q('SELECT * FROM quotes WHERE request_id = ANY($1::text[]) AND provider_id=$2',[openRows.map(r=>r.id),u.id]):[];
-      const quoteByReq=Object.fromEntries(myQuotes.map(qq=>[qq.request_id,mapQuote(qq)]));
+      const myActivity=await quoteActivity(myQuotes.map(qq=>qq.id),u.id);
+      const quoteByReq=Object.fromEntries(myQuotes.map(qq=>[qq.request_id,{...mapQuote(qq),...myActivity[qq.id]}]));
       const requests=openRows.map(r=>{
         const distanceMi=(u.lat!=null&&u.lng!=null&&r.h_lat!=null&&r.h_lng!=null)?Math.round(haversineMiles(u.lat,u.lng,Number(r.h_lat),Number(r.h_lng))*10)/10:null;
         return {...mapRequest(r),quote:quoteByReq[r.id]||null,distanceMi};
       });
-      const messages=await q('SELECT * FROM messages WHERE $1 = ANY(participants) ORDER BY created_at',[u.id]);
-      const jobs=await q('SELECT * FROM jobs WHERE provider_id=$1 ORDER BY created_at DESC',[u.id]);
+      const unreadChatCount=Object.values(quoteByReq).reduce((sum,qq)=>sum+(qq.unreadCount||0),0);
+      const announcements=await q('SELECT * FROM announcements WHERE user_id=$1 OR user_id IS NULL ORDER BY created_at DESC LIMIT 50',[u.id]);
+      const unreadAnnouncementsCount=Number((await q1("SELECT count(*)::int AS c FROM announcements WHERE (user_id=$1 OR user_id IS NULL) AND created_at > COALESCE($2::timestamptz,'-infinity')",[u.id,u.lastAnnouncementsViewAt])).c);
+      const unreadSupportCount=isPaidPlan(u)?Number((await q1("SELECT count(*)::int AS c FROM support_messages WHERE user_id=$1 AND sender_role='admin' AND read=false",[u.id])).c):0;
+      // Same join, mirrored: the provider's job cards show which homeowner it is.
+      const jobs=await q('SELECT j.*, uh.name AS homeowner_name FROM jobs j JOIN users uh ON uh.id=j.homeowner_id WHERE j.provider_id=$1 ORDER BY j.created_at DESC',[u.id]);
       const reviews=await q('SELECT * FROM reviews WHERE provider_id=$1',[u.id]);
-      return send(res,200,{user:safeUser(u),requests,messages:messages.map(mapMessage),jobs:jobs.map(mapJob),reviews:reviews.map(mapReview)});
+      const completedJobCount=Number((await q1("SELECT count(*)::int AS c FROM jobs WHERE provider_id=$1 AND status='completed' AND receipt_uploaded_at IS NOT NULL",[u.id])).c);
+      // Quote performance analytics — an Elite-only perk. All-time send/accept counts plus this
+      // month's usage (already tracked for everyone; just surfaced here for Elite's dashboard panel).
+      let providerAnalytics=null;
+      if(isEliteProvider(u.providerPlan)){
+        const stats=await q1("SELECT count(*)::int AS total, count(*) FILTER (WHERE status='accepted')::int AS accepted FROM quotes WHERE provider_id=$1",[u.id]);
+        providerAnalytics={
+          quotesSentTotal:stats.total,
+          quotesAcceptedTotal:stats.accepted,
+          winRatePct:stats.total?Math.round(stats.accepted/stats.total*100):null,
+          quotesThisMonth:providerUsage?providerUsage.quotes:0,
+          convosThisMonth:providerUsage?providerUsage.convos:0
+        };
+      }
+      return send(res,200,{user:{...safeUser(u),completedJobCount},requests,announcements:announcements.map(mapAnnouncement),jobs:jobs.map(r=>({...mapJob(r),homeownerName:r.homeowner_name})),reviews:reviews.map(mapReview),unreadChatCount,unreadMessagesCount:unreadAnnouncementsCount+unreadSupportCount,providerAnalytics});
+    }
+    // Clears the "new" badge on the Messages nav item — call when the user opens that panel.
+    if(p==='/api/announcements/mark-seen' && req.method==='POST'){
+      await pool.query('UPDATE users SET last_announcements_view_at=now() WHERE id=$1',[u.id]);
+      return send(res,200,{ok:true});
     }
 
     if(p==='/api/requests' && req.method==='GET'){
-      const rows=u.role==='homeowner'?await q('SELECT * FROM requests WHERE homeowner_id=$1 ORDER BY created_at DESC',[u.id]):await q("SELECT * FROM requests WHERE status='open' ORDER BY created_at DESC");
+      // Same feed rule as the dashboard load: stays visible through an assigned provider's job,
+      // only drops off once that job is completed/cancelled or the homeowner delists it.
+      const rows=u.role==='homeowner'?await q('SELECT * FROM requests WHERE homeowner_id=$1 ORDER BY created_at DESC',[u.id]):await q(`SELECT * FROM requests r
+        WHERE r.delisted=false AND (r.status='open' OR (r.status='scheduled' AND EXISTS (
+          SELECT 1 FROM jobs j WHERE j.request_id=r.id AND j.status NOT IN ('completed','cancelled')
+        ))) ORDER BY r.created_at DESC`);
       return send(res,200,{requests:rows.map(mapRequest)});
     }
     if(p==='/api/requests' && req.method==='POST'){
@@ -730,27 +1666,53 @@ const server=http.createServer(async (req,res)=>{
       const serviceType=b.serviceType||'Handyman';
       const row=await q1('INSERT INTO requests (id,homeowner_id,service_type,title,description,urgency,preferred_date,preferred_time,status) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *',
         [id('req'),u.id,serviceType,String(b.title||`${serviceType} service request`).slice(0,120),String(b.description||'').slice(0,2000),b.urgency||'Flexible',b.preferredDate||'',b.preferredTime||'Any time','open']);
+      notifyProvidersOfNewRequest(mapRequest(row),{...u,lat,lng}).catch(()=>{});
       return send(res,201,{request:mapRequest(row)});
+    }
+    // Delist/relist: the homeowner's own on/off switch for whether their still-open request is
+    // visible to providers. Doesn't touch the request, any quotes already sent, or their chats —
+    // only whether NEW providers can see and quote it.
+    if(p.startsWith('/api/requests/') && p.endsWith('/delist') && req.method==='POST'){
+      const rid=p.split('/')[3], r=await q1('SELECT * FROM requests WHERE id=$1',[rid]); if(!r)return send(res,404,{error:'Request not found'});
+      if(r.homeowner_id!==u.id) return send(res,403,{error:'Not authorized'});
+      if(r.status!=='open') return send(res,409,{error:'Only an open request can be delisted.'});
+      const row=await q1('UPDATE requests SET delisted=true, delisted_at=now() WHERE id=$1 RETURNING *',[rid]);
+      return send(res,200,{request:mapRequest(row)});
+    }
+    if(p.startsWith('/api/requests/') && p.endsWith('/relist') && req.method==='POST'){
+      const rid=p.split('/')[3], r=await q1('SELECT * FROM requests WHERE id=$1',[rid]); if(!r)return send(res,404,{error:'Request not found'});
+      if(r.homeowner_id!==u.id) return send(res,403,{error:'Not authorized'});
+      if(r.status!=='open') return send(res,409,{error:'Only an open request can be relisted.'});
+      const row=await q1('UPDATE requests SET delisted=false, delisted_at=NULL WHERE id=$1 RETURNING *',[rid]);
+      return send(res,200,{request:mapRequest(row)});
     }
     if(p.startsWith('/api/requests/') && p.endsWith('/quotes') && req.method==='GET'){
       const rid=p.split('/')[3], r=await q1('SELECT * FROM requests WHERE id=$1',[rid]); if(!r)return send(res,404,{error:'Request not found'});
       if(u.role==='homeowner'&&r.homeowner_id!==u.id)return send(res,403,{error:'Not authorized'});
-      const qMap=await quotesByRequestId([rid]);
+      const qMap=await quotesByRequestId([rid],u.id);
       return send(res,200,{quotes:qMap[rid]||[]});
     }
     if(p.startsWith('/api/requests/') && p.endsWith('/quotes') && req.method==='POST'){
       if(u.role!=='provider')return send(res,403,{error:'Only providers can submit quotes'});
+      // Providers can browse the open-requests feed as soon as they sign up, but can't respond
+      // (quote, message, get scheduled) until an admin has reviewed and approved their
+      // verification documents — see providerVerificationHTML/submitVerification client-side and
+      // /api/profile/verification + /api/admin/verifications/:id/decision server-side.
+      if(!u.approved) return send(res,403,{error:'Your account is waiting on admin approval before you can respond to requests. You can upload your verification documents in the meantime from Business Profile.',verificationRequired:true,accountPending:true});
       const rid=p.split('/')[3], r=await q1('SELECT * FROM requests WHERE id=$1',[rid]); if(!r)return send(res,404,{error:'Request not found'});
+      if(r.delisted) return send(res,410,{error:'This homeowner took the request down. It\'s no longer accepting quotes.'});
+      if(r.status!=='open') return send(res,409,{error:'This request already has a provider scheduled.'});
       const existing=await q1('SELECT id FROM quotes WHERE request_id=$1 AND provider_id=$2',[rid,u.id]);
       if(existing)return send(res,409,{error:'You already responded to this request'});
-      if(u.providerPlan!=='pro'){
+      const quoteLimits=providerQuotaLimits(u.providerPlan);
+      if(Number.isFinite(quoteLimits.quotes)){
         const usage=await ensureUsagePeriod(u);
-        if(usage.quotes>=PROVIDER_FREE_QUOTE_LIMIT) return send(res,402,{error:"You've sent "+PROVIDER_FREE_QUOTE_LIMIT+" quotes this month on the Free plan. Upgrade to Pro Provider for unlimited quotes.",upgradeRequired:true});
+        if(usage.quotes>=quoteLimits.quotes) return send(res,402,{error:`You've sent ${quoteLimits.quotes} quotes this month on the ${PROVIDER_PLAN_INFO[u.providerPlan||'free'].label} plan. ${providerQuotaUpsellText(u.providerPlan,'quotes')}`,upgradeRequired:true});
       }
       const b=await body(req);
       const row=await q1('INSERT INTO quotes (id,request_id,provider_id,amount_min,amount_max,availability,message,status) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *',
         [id('quote'),rid,u.id,Number(b.amountMin||0),Number(b.amountMax||0),String(b.availability||'Flexible').slice(0,120),String(b.message||'').slice(0,1000),'pending']);
-      if(u.providerPlan!=='pro') await pool.query('UPDATE users SET quotes_sent_this_period=quotes_sent_this_period+1 WHERE id=$1',[u.id]);
+      if(Number.isFinite(quoteLimits.quotes)) await pool.query('UPDATE users SET quotes_sent_this_period=quotes_sent_this_period+1 WHERE id=$1',[u.id]);
       const homeownerRow=await q1('SELECT * FROM users WHERE id=$1',[r.homeowner_id]);
       if(homeownerRow) sendEmail({to:homeownerRow.email,type:'new_quote',subject:`New quote on "${r.title}"`,html:newQuoteEmailHtml(homeownerRow,r,row,u),userId:homeownerRow.id}).catch(()=>{});
       return send(res,201,{quote:mapQuote(row)});
@@ -769,8 +1731,8 @@ const server=http.createServer(async (req,res)=>{
         await client.query("UPDATE quotes SET status='accepted' WHERE id=$1",[qid]);
         await client.query("UPDATE quotes SET status='declined' WHERE request_id=$1 AND id<>$2",[r.id,qid]);
         const updatedReq=(await client.query("UPDATE requests SET status='scheduled' WHERE id=$1 RETURNING *",[r.id])).rows[0];
-        const job=(await client.query('INSERT INTO jobs (id,request_id,homeowner_id,provider_id,service_type,title,status,scheduled_for) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *',
-          [id('job'),r.id,u.id,quote.provider_id,r.service_type,r.title,'scheduled',quote.availability])).rows[0];
+        const job=(await client.query('INSERT INTO jobs (id,request_id,quote_id,homeowner_id,provider_id,service_type,title,status,scheduled_for) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *',
+          [id('job'),r.id,qid,u.id,quote.provider_id,r.service_type,r.title,'scheduled',quote.availability])).rows[0];
         await client.query('COMMIT');
         const providerRow=await q1('SELECT * FROM users WHERE id=$1',[quote.provider_id]);
         if(providerRow) sendEmail({to:providerRow.email,type:'quote_accepted',subject:`You got the job: "${updatedReq.title}"`,html:quoteAcceptedEmailHtml(providerRow,updatedReq),userId:providerRow.id}).catch(()=>{});
@@ -778,40 +1740,89 @@ const server=http.createServer(async (req,res)=>{
       }catch(e){ await client.query('ROLLBACK'); throw e; }
       finally{ client.release(); }
     }
-    if(p==='/api/messages' && req.method==='GET'){
-      const other=url.searchParams.get('with');
-      const rows=other
-        ? await q('SELECT * FROM messages WHERE $1 = ANY(participants) AND $2 = ANY(participants) ORDER BY created_at',[u.id,other])
-        : await q('SELECT * FROM messages WHERE $1 = ANY(participants) ORDER BY created_at',[u.id]);
+    // A quote thread: only the homeowner who owns the request, or the provider who sent this
+    // quote, may read/post/report it. Loads request+quote together so both sides of the auth
+    // check are available from one round trip.
+    async function loadQuoteThread(qid){
+      const quote=await q1('SELECT * FROM quotes WHERE id=$1',[qid]); if(!quote)return null;
+      const request=await q1('SELECT * FROM requests WHERE id=$1',[quote.request_id]); if(!request)return null;
+      return {quote,request};
+    }
+    if(p.startsWith('/api/quotes/') && p.endsWith('/messages') && req.method==='GET'){
+      const qid=p.split('/')[3], t=await loadQuoteThread(qid); if(!t)return send(res,404,{error:'Quote not found'});
+      if(u.role!=='admin' && t.request.homeowner_id!==u.id && t.quote.provider_id!==u.id) return send(res,403,{error:'Not authorized'});
+      const rows=await q('SELECT * FROM messages WHERE quote_id=$1 ORDER BY created_at',[qid]);
+      // Opening the thread as a participant clears its unread badge (no-op for admin's read-only view,
+      // since admin is never the recipient on a homeowner/provider message).
+      await pool.query('UPDATE messages SET read=true WHERE quote_id=$1 AND recipient_id=$2 AND read=false',[qid,u.id]);
       return send(res,200,{messages:rows.map(mapMessage)});
     }
-    if(p==='/api/messages' && req.method==='POST'){
-      const b=await body(req), recipient=b.recipientId;
-      const recipientRow=await q1('SELECT * FROM users WHERE id=$1',[recipient]); if(!recipientRow)return send(res,404,{error:'Recipient not found'});
+    if(p.startsWith('/api/quotes/') && p.endsWith('/messages') && req.method==='POST'){
+      const qid=p.split('/')[3], t=await loadQuoteThread(qid); if(!t)return send(res,404,{error:'Quote not found'});
+      const isHomeowner=t.request.homeowner_id===u.id, isProvider=t.quote.provider_id===u.id;
+      if(!isHomeowner && !isProvider) return send(res,403,{error:'Not authorized'});
+      if(isProvider && !u.approved) return send(res,403,{error:'Your account is waiting on admin approval before you can message about a request.',verificationRequired:true,accountPending:true});
+      const b=await body(req);
       const text=String(b.body||'').trim().slice(0,2000); if(!text)return send(res,400,{error:'Message cannot be empty'});
+      const recipientId=isHomeowner?t.quote.provider_id:t.request.homeowner_id;
+      const recipientRow=await q1('SELECT * FROM users WHERE id=$1',[recipientId]);
       let isNewConversation=false;
-      if(u.role==='provider' && u.providerPlan!=='pro'){
-        const priorMsg=await q1('SELECT id FROM messages WHERE sender_id=$1 AND recipient_id=$2 LIMIT 1',[u.id,recipient]);
+      if(isProvider){
+        const priorMsg=await q1('SELECT id FROM messages WHERE quote_id=$1 AND sender_id=$2 LIMIT 1',[qid,u.id]);
         isNewConversation=!priorMsg;
         if(isNewConversation){
-          const usage=await ensureUsagePeriod(u);
-          if(usage.convos>=PROVIDER_FREE_CONVO_LIMIT) return send(res,402,{error:"You've started "+PROVIDER_FREE_CONVO_LIMIT+" new conversations this month on the Free plan. Upgrade to Pro Provider to message more homeowners.",upgradeRequired:true});
+          const convoLimits=providerQuotaLimits(u.providerPlan);
+          if(Number.isFinite(convoLimits.convos)){
+            const usage=await ensureUsagePeriod(u);
+            if(usage.convos>=convoLimits.convos) return send(res,402,{error:`You've started ${convoLimits.convos} new conversations this month on the ${PROVIDER_PLAN_INFO[u.providerPlan||'free'].label} plan. ${providerQuotaUpsellText(u.providerPlan,'new conversations')}`,upgradeRequired:true});
+          }
         }
       }
-      const row=await q1('INSERT INTO messages (id,sender_id,recipient_id,participants,body,read) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *',
-        [id('msg'),u.id,recipient,[u.id,recipient],text,false]);
+      const row=await q1('INSERT INTO messages (id,quote_id,sender_id,recipient_id,participants,body,read) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *',
+        [id('msg'),qid,u.id,recipientId,[u.id,recipientId],text,false]);
       if(isNewConversation) await pool.query('UPDATE users SET new_conversations_this_period=new_conversations_this_period+1 WHERE id=$1',[u.id]);
-      sendEmail({to:recipientRow.email,type:'new_message',subject:`New message from ${u.name}`,html:newMessageEmailHtml(recipientRow.name,u.name,text),userId:recipientRow.id}).catch(()=>{});
+      if(recipientRow) sendEmail({to:recipientRow.email,type:'new_message',subject:`New message from ${u.name}`,html:newMessageEmailHtml(recipientRow.name,u.name,text),userId:recipientRow.id}).catch(()=>{});
       return send(res,201,{message:mapMessage(row)});
+    }
+    if(p.startsWith('/api/quotes/') && p.endsWith('/report') && req.method==='POST'){
+      const qid=p.split('/')[3], t=await loadQuoteThread(qid); if(!t)return send(res,404,{error:'Quote not found'});
+      if(t.request.homeowner_id!==u.id && t.quote.provider_id!==u.id) return send(res,403,{error:'Not authorized'});
+      const b=await body(req);
+      const row=await q1("UPDATE quotes SET reported=true, reported_by=$1, reported_reason=$2, reported_at=now() WHERE id=$3 RETURNING *",[u.id,String(b.reason||'').slice(0,500),qid]);
+      if(ADMIN_NOTIFY_EMAIL) sendEmail({to:ADMIN_NOTIFY_EMAIL,type:'admin_quote_reported',subject:`A conversation was reported: "${t.request.title}"`,html:emailShell('Reported conversation',`<h2 style="margin:0 0 10px;color:#17352f">"${esc_(t.request.title)}" was reported</h2><p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Reported by ${esc_(u.name)}. ${b.reason?esc_(String(b.reason).slice(0,300)):''}</p>${btn('Review in Admin',appUrl()+'/#admin')}`)}).catch(()=>{});
+      return send(res,200,{quote:mapQuote(row)});
     }
     if(p.startsWith('/api/jobs/') && req.method==='PATCH'){
       const jid=p.split('/')[3], job=await q1('SELECT * FROM jobs WHERE id=$1',[jid]); if(!job)return send(res,404,{error:'Job not found'});
       if(job.homeowner_id!==u.id&&job.provider_id!==u.id)return send(res,403,{error:'Not authorized'});
       const b=await body(req);
+      if(b.status==='completed') return send(res,400,{error:'Upload a receipt to mark this job complete.'});
       let row=job;
-      if(['scheduled','in_progress','completed','cancelled'].includes(b.status)){
+      if(['scheduled','in_progress','cancelled'].includes(b.status) && b.status!==job.status){
         row=await q1('UPDATE jobs SET status=$1 WHERE id=$2 RETURNING *',[b.status,jid]);
+        if(b.status==='cancelled'){
+          const [homeowner,provider]=await Promise.all([q1('SELECT * FROM users WHERE id=$1',[row.homeowner_id]),q1('SELECT * FROM users WHERE id=$1',[row.provider_id])]);
+          if(homeowner) sendEmail({to:homeowner.email,type:'job_cancelled',subject:`"${row.title}" was cancelled`,html:jobCancelledEmailHtml(homeowner.name,mapJob(row)),userId:homeowner.id}).catch(()=>{});
+          if(provider) sendEmail({to:provider.email,type:'job_cancelled',subject:`"${row.title}" was cancelled`,html:jobCancelledEmailHtml(provider.name,mapJob(row)),userId:provider.id}).catch(()=>{});
+          if(ADMIN_NOTIFY_EMAIL) sendEmail({to:ADMIN_NOTIFY_EMAIL,type:'admin_job_cancelled',subject:`Job cancelled: "${row.title}"`,html:adminJobCancelledEmailHtml(mapJob(row),homeowner?.name||'—',provider?.name||'—')}).catch(()=>{});
+        }
       }
+      return send(res,200,{job:mapJob(row)});
+    }
+    if(p.startsWith('/api/jobs/') && p.endsWith('/receipt') && req.method==='POST'){
+      const jid=p.split('/')[3], job=await q1('SELECT * FROM jobs WHERE id=$1',[jid]); if(!job)return send(res,404,{error:'Job not found'});
+      if(job.provider_id!==u.id) return send(res,403,{error:'Only the provider on this job can close it out'});
+      if(job.status==='completed') return send(res,400,{error:'This job is already marked complete'});
+      const b=await body(req);
+      const dataUrl=String(b.receiptDataUrl||''), note=String(b.receiptNote||'').trim().slice(0,500);
+      if(!dataUrl && !note) return send(res,400,{error:'Attach a receipt photo/PDF or add a note describing payment.'});
+      if(dataUrl){
+        if(!VERIFICATION_DOC_RE.test(dataUrl)) return send(res,400,{error:'Receipt must be a PNG, JPEG, WEBP, or PDF file.'});
+        if(dataUrl.length>VERIFICATION_MAX_DOC_BYTES) return send(res,400,{error:'Receipt file is too large. Please keep it under 4MB.'});
+      }
+      const row=await q1(`UPDATE jobs SET status='completed', receipt_data_url=$1, receipt_note=$2, receipt_uploaded_at=now() WHERE id=$3 RETURNING *`,[dataUrl||null,note||null,jid]);
+      const homeowner=await q1('SELECT * FROM users WHERE id=$1',[row.homeowner_id]);
+      if(homeowner) sendEmail({to:homeowner.email,type:'job_completed',subject:`"${row.title}" is complete`,html:jobCompletedEmailHtml(homeowner,mapJob(row)),userId:homeowner.id}).catch(()=>{});
       return send(res,200,{job:mapJob(row)});
     }
     if(p==='/api/reviews' && req.method==='POST'){
@@ -825,94 +1836,278 @@ const server=http.createServer(async (req,res)=>{
         [id('review'),job.id,u.id,job.provider_id,rating,String(b.text||'').slice(0,2000)]);
       const agg=await q1('SELECT count(*)::int AS n, avg(rating) AS avg FROM reviews WHERE provider_id=$1',[job.provider_id]);
       await pool.query('UPDATE users SET review_count=$1, rating=$2 WHERE id=$3',[agg.n,Math.round(Number(agg.avg)*10)/10,job.provider_id]);
+      const providerRow=await q1('SELECT * FROM users WHERE id=$1',[job.provider_id]);
+      if(providerRow){
+        sendEmail({to:providerRow.email,type:'new_review',subject:`You got a new ${rating}-star review`,html:newReviewEmailHtml(providerRow,rating,row.text),userId:providerRow.id}).catch(()=>{});
+        if(rating<=2 && ADMIN_NOTIFY_EMAIL) sendEmail({to:ADMIN_NOTIFY_EMAIL,type:'admin_low_rating_review',subject:`Low rating for ${providerRow.name}`,html:adminLowRatingReviewEmailHtml(mapUser(providerRow),u.name,rating,row.text)}).catch(()=>{});
+      }
       return send(res,201,{review:mapReview(row)});
     }
     if(p==='/api/subscription' && req.method==='POST'){
       const b=await body(req); if(!['free','plus','pro'].includes(b.plan))return send(res,400,{error:'Invalid plan'});
+      if(b.plan==='free' && u.sponsoredOrgId && (u.subscription||'free')!=='free' && !(await q1('SELECT stripe_subscription_id FROM users WHERE id=$1',[u.id])).stripe_subscription_id) return send(res,400,{error:'Your HOA covers your Plus plan. Use "Leave HOA program" if you want to leave it.'});
+      if(b.plan!=='free') await pool.query('UPDATE users SET sponsor_ended_name=NULL,sponsor_ended_at=NULL WHERE id=$1',[u.id]);
       let row;
       if(b.plan==='free'){
         if(stripeConfigured()){
           const existing=await q1('SELECT stripe_subscription_id FROM users WHERE id=$1',[u.id]);
           if(existing?.stripe_subscription_id) await stripeRequest('DELETE','subscriptions/'+existing.stripe_subscription_id).catch(()=>{});
         }
-        row=await q1('UPDATE users SET subscription=$1, stripe_subscription_id=NULL WHERE id=$2 RETURNING *',[b.plan,u.id]);
-      }else if(stripeConfigured()){
-        if(!b.paymentMethodId) return send(res,400,{error:'Payment method required'});
-        try{
-          const customerId=await ensureStripeCustomer(u);
-          const priceCents=b.plan==='plus'?999:2499;
-          const existing=await q1('SELECT stripe_subscription_id FROM users WHERE id=$1',[u.id]);
-          const sub=await stripeSubscribe(customerId,b.paymentMethodId,existing?.stripe_subscription_id,[{unitAmount:priceCents,name:(b.plan==='plus'?'Plus':'Premium')+' plan',interval:'month'}]);
-          row=await q1('UPDATE users SET subscription=$1, stripe_subscription_id=$2, stripe_customer_id=$3 WHERE id=$4 RETURNING *',[b.plan,sub.id,customerId,u.id]);
-        }catch(e){ return sendStripeError(res,e); }
+        row=await q1('UPDATE users SET subscription=$1, stripe_subscription_id=NULL, subscription_next_billing=NULL WHERE id=$2 RETURNING *',[b.plan,u.id]);
       }else{
-        row=await q1('UPDATE users SET subscription=$1 WHERE id=$2 RETURNING *',[b.plan,u.id]);
+        const billingAddress=sanitizeBillingAddress(b.billingAddress);
+        if(!billingAddress||!billingAddress.line1||!billingAddress.city||!billingAddress.state||!billingAddress.zip){
+          return send(res,400,{error:'Enter your billing address (this is what your sales tax, if any, is based on).'});
+        }
+        if(stripeConfigured()){
+          if(!b.paymentMethodId) return send(res,400,{error:'Payment method required'});
+          try{
+            const customerId=await ensureStripeCustomer(u);
+            const priceCents=b.plan==='plus'?HOMEOWNER_PLAN_INFO.plus.priceCents:HOMEOWNER_PLAN_INFO.premium.priceCents;
+            const existing=await q1('SELECT stripe_subscription_id FROM users WHERE id=$1',[u.id]);
+            const taxRateId=isTexasBilling(billingAddress)?await ensureTxSaasTaxRateId():null;
+            const sub=await stripeSubscribe(customerId,b.paymentMethodId,existing?.stripe_subscription_id,[{unitAmount:priceCents,name:(b.plan==='plus'?'Plus':'Premium')+' plan',interval:'month',taxRateId}]);
+            const nextBilling=sub.current_period_end?new Date(sub.current_period_end*1000).toISOString().slice(0,10):null;
+            row=await q1('UPDATE users SET subscription=$1, stripe_subscription_id=$2, stripe_customer_id=$3, billing_address=$4::jsonb, subscription_next_billing=$5 WHERE id=$6 RETURNING *',[b.plan,sub.id,customerId,JSON.stringify(billingAddress),nextBilling,u.id]);
+          }catch(e){ return sendStripeError(res,e); }
+        }else{
+          row=await q1('UPDATE users SET subscription=$1, billing_address=$2::jsonb WHERE id=$3 RETURNING *',[b.plan,JSON.stringify(billingAddress),u.id]);
+        }
       }
       await pool.query('INSERT INTO subscriptions (id,user_id,plan,status) VALUES ($1,$2,$3,$4)',[id('sub'),u.id,b.plan,'active']);
+      if(b.plan!==(u.subscription||'free')){
+        const info=HOMEOWNER_PLAN_INFO[normalizeHomeownerPlanKey(b.plan)];
+        sendEmail({to:row.email,type:'subscription_changed',subject:`Your plan is now ${info.label}`,html:planChangedEmailHtml(mapUser(row),info.label,info.priceCents),userId:row.id}).catch(()=>{});
+        if(b.plan==='free' && ADMIN_NOTIFY_EMAIL){
+          const oldInfo=HOMEOWNER_PLAN_INFO[normalizeHomeownerPlanKey(u.subscription)];
+          sendEmail({to:ADMIN_NOTIFY_EMAIL,type:'admin_plan_cancelled',subject:`${row.name} downgraded to Free`,html:adminPlanCancelledEmailHtml(mapUser(row),oldInfo.label)}).catch(()=>{});
+        }
+      }
       return send(res,200,{subscription:b.plan,user:safeUser(mapUser(row))});
     }
+    // Rebuilds the homeowner's Stripe subscription (or cancels it) to exactly match their current
+    // ACTIVE, priced items — called any time the active set or a price changes. In demo mode there's
+    // no equivalent call; care_plan_next_billing is managed directly by the caller instead.
+    async function syncCarePlanStripe(homeownerRow, paymentMethodId){
+      const activeItems=(homeownerRow.care_plan_items||[]).filter(i=>i.status==='active'&&CARE_SERVICE_INFO[i.key]);
+      const existingSubId=homeownerRow.care_plan_stripe_subscription_id;
+      if(!activeItems.length){
+        if(existingSubId) await stripeRequest('DELETE','subscriptions/'+existingSubId).catch(()=>{});
+        return {nextBilling:null,subId:null,customerId:homeownerRow.stripe_customer_id||null};
+      }
+      const customerId=await ensureStripeCustomer(mapUser(homeownerRow));
+      // A fresh card is only collected when accepting a new quote. Resyncing after just dropping a
+      // service (other active items remain) reuses the card already on file instead of demanding one.
+      let pmId=paymentMethodId;
+      if(!pmId){
+        const customer=await stripeRequest('GET','customers/'+customerId);
+        pmId=customer.invoice_settings?.default_payment_method||customer.default_source||null;
+        if(!pmId) throw Object.assign(new Error('Payment method required'),{httpStatus:400});
+      }
+      const items=activeItems.map(i=>({unitAmount:i.priceCents,name:CARE_SERVICE_INFO[i.key].name,interval:CARE_SERVICE_INFO[i.key].billing==='season'?'year':'month'}));
+      const sub=await stripeSubscribe(customerId,pmId,existingSubId,items);
+      return {nextBilling:sub.current_period_end?new Date(sub.current_period_end*1000).toISOString().slice(0,10):null,subId:sub.id,customerId};
+    }
+    // Sets the homeowner's WISHLIST of Care Plan services — no pricing, no payment, no billing
+    // happens here. Newly-added keys land as 'requested' and wait on an admin quote; keys dropped
+    // that were 'active' stop being billed immediately (their Stripe line item / demo cycle amount
+    // drops out). Keys that are already 'requested'/'quoted'/'active' and stay selected are left
+    // untouched — re-selecting something already in flight doesn't reset its progress.
     if(p==='/api/care-plan' && req.method==='POST'){
       if(u.role!=='homeowner')return send(res,403,{error:'Only homeowners can manage a Home Care Plan'});
       const b=await body(req);
-      const services=Array.isArray(b.services)?b.services.filter(s=>CARE_SERVICE_INFO[s]):[];
-      const hadPlan=u.carePlanServices&&u.carePlanServices.length>0;
-      const hasPlan=services.length>0;
-      // Home Care Plan is a Plus/Premium perk — canceling down to zero services is always allowed
-      // (so downgrading Community Plan never leaves someone stuck paying for Home Care Plan).
-      if(hasPlan && u.subscription==='free'){
+      const desiredKeys=Array.isArray(b.services)?[...new Set(b.services.filter(s=>CARE_SERVICE_INFO[s]))]:[];
+      const currentItems=u.carePlanItems||[];
+      const currentKeys=new Set(currentItems.map(i=>i.key));
+      const desiredSet=new Set(desiredKeys);
+      const addedKeys=desiredKeys.filter(k=>!currentKeys.has(k));
+      const removedItems=currentItems.filter(i=>!desiredSet.has(i.key));
+      const removedActiveNames=removedItems.filter(i=>i.status==='active'&&CARE_SERVICE_INFO[i.key]).map(i=>CARE_SERVICE_INFO[i.key].name);
+      // Home Care Plan is a Plus/Premium perk — dropping services back down is always allowed (so
+      // downgrading Community Plan never leaves someone stuck paying for Home Care Plan), but adding
+      // a brand-new one requires Plus/Premium.
+      if(addedKeys.length && u.subscription==='free'){
         return send(res,403,{error:'Home Care Plan is included with the Plus and Premium Community plans. Upgrade to build your plan.',upgradeRequired:true,needsCommunityPlan:true});
       }
+      const newItems=[
+        ...currentItems.filter(i=>desiredSet.has(i.key)),
+        ...addedKeys.map(k=>({key:k,status:'requested',priceCents:null,quotedAt:null,acceptedAt:null})),
+      ];
+      const stillHasActive=newItems.some(i=>i.status==='active');
       let row;
-      if(!hasPlan){
-        // canceled — stop billing
-        if(stripeConfigured()){
-          const existing=await q1('SELECT care_plan_stripe_subscription_id FROM users WHERE id=$1',[u.id]);
-          if(existing?.care_plan_stripe_subscription_id) await stripeRequest('DELETE','subscriptions/'+existing.care_plan_stripe_subscription_id).catch(()=>{});
-        }
-        row=await q1('UPDATE users SET care_plan_services=$1, care_plan_next_billing=NULL, care_plan_reminder_sent_for=NULL, care_plan_stripe_subscription_id=NULL WHERE id=$2 RETURNING *',[services,u.id]);
-      }else if(stripeConfigured()){
-        if(!b.paymentMethodId) return send(res,400,{error:'Payment method required'});
+      if(stripeConfigured() && removedActiveNames.length){
+        // An active (billed) item was dropped — resync Stripe to the new active set immediately.
+        const current=await q1('SELECT * FROM users WHERE id=$1',[u.id]);
         try{
-          const customerId=await ensureStripeCustomer(u);
-          // Stripe has no "seasonal" billing interval — Holiday Lighting's one-time-per-season
-          // charge is approximated here as a yearly recurring line item.
-          const items=services.map(k=>({unitAmount:Math.round(CARE_SERVICE_INFO[k].price*100),name:CARE_SERVICE_INFO[k].name,interval:CARE_SERVICE_INFO[k].billing==='season'?'year':'month'}));
-          const existing=await q1('SELECT care_plan_stripe_subscription_id FROM users WHERE id=$1',[u.id]);
-          const sub=await stripeSubscribe(customerId,b.paymentMethodId,existing?.care_plan_stripe_subscription_id,items);
-          const nextBilling=sub.current_period_end?new Date(sub.current_period_end*1000).toISOString().slice(0,10):null;
-          row=await q1('UPDATE users SET care_plan_services=$1, care_plan_next_billing=$2, care_plan_reminder_sent_for=NULL, care_plan_stripe_subscription_id=$3, stripe_customer_id=$4 WHERE id=$5 RETURNING *',[services,nextBilling,sub.id,customerId,u.id]);
-        }catch(e){ return sendStripeError(res,e); }
-      }else if(!hadPlan){
-        // brand-new subscription (demo mode) — start a 30-day billing cycle from today
-        const next=new Date(); next.setDate(next.getDate()+30);
-        row=await q1('UPDATE users SET care_plan_services=$1, care_plan_next_billing=$2, care_plan_reminder_sent_for=NULL WHERE id=$3 RETURNING *',[services,next.toISOString().slice(0,10),u.id]);
+          const {nextBilling,subId}=await syncCarePlanStripe({...current,care_plan_items:newItems}, null);
+          row=await q1('UPDATE users SET care_plan_items=$1::jsonb, care_plan_next_billing=$2, care_plan_reminder_sent_for=NULL, care_plan_stripe_subscription_id=$3 WHERE id=$4 RETURNING *',[JSON.stringify(newItems),nextBilling,subId,u.id]);
+        }catch(e){ if(e.httpStatus) return send(res,e.httpStatus,{error:e.message}); return sendStripeError(res,e); }
+      }else if(!stillHasActive && removedActiveNames.length){
+        // Dropped down to zero active items — stop billing entirely (demo mode: no Stripe to sync).
+        row=await q1('UPDATE users SET care_plan_items=$1::jsonb, care_plan_next_billing=NULL, care_plan_reminder_sent_for=NULL, care_plan_stripe_subscription_id=NULL WHERE id=$2 RETURNING *',[JSON.stringify(newItems),u.id]);
       }else{
-        // adding/removing services on an existing demo-mode plan — billing date unchanged
-        row=await q1('UPDATE users SET care_plan_services=$1 WHERE id=$2 RETURNING *',[services,u.id]);
+        row=await q1('UPDATE users SET care_plan_items=$1::jsonb WHERE id=$2 RETURNING *',[JSON.stringify(newItems),u.id]);
       }
-      return send(res,200,{carePlanServices:services,user:safeUser(mapUser(row))});
+      if(addedKeys.length){
+        const addedNames=addedKeys.map(k=>CARE_SERVICE_INFO[k].name);
+        sendEmail({to:row.email,type:'care_plan_requested',subject:'We received your Home Care Plan request',html:carePlanRequestedEmailHtml(mapUser(row),addedNames),userId:row.id}).catch(()=>{});
+        if(ADMIN_NOTIFY_EMAIL) sendEmail({to:ADMIN_NOTIFY_EMAIL,type:'admin_care_plan_quote_needed',subject:`Care Plan pricing needed: ${row.name}`,html:adminCarePlanQuoteNeededEmailHtml(mapUser(row),addedNames)}).catch(()=>{});
+      }
+      if(!newItems.length && removedItems.length){
+        sendEmail({to:row.email,type:'care_plan_canceled',subject:'Your Home Care Plan was canceled',html:carePlanCanceledEmailHtml(mapUser(row)),userId:row.id}).catch(()=>{});
+      }else if(removedActiveNames.length){
+        sendEmail({to:row.email,type:'care_plan_service_canceled',subject:'A Home Care Plan service was removed',html:carePlanServiceCanceledEmailHtml(mapUser(row),removedActiveNames),userId:row.id}).catch(()=>{});
+      }
+      return send(res,200,{user:safeUser(mapUser(row))});
+    }
+    // Homeowner accepts an admin-set price — this is the only place billing actually starts (or
+    // grows) for a service.
+    if(p==='/api/care-plan/accept' && req.method==='POST'){
+      if(u.role!=='homeowner')return send(res,403,{error:'Only homeowners can manage a Home Care Plan'});
+      const b=await body(req);
+      const serviceKey=String(b.serviceKey||'');
+      const items=u.carePlanItems||[];
+      const item=items.find(i=>i.key===serviceKey);
+      if(!item||item.status!=='quoted') return send(res,400,{error:'No pending quote for that service'});
+      const newItems=items.map(i=>i.key===serviceKey?{...i,status:'active',acceptedAt:new Date().toISOString()}:i);
+      let row;
+      if(stripeConfigured()){
+        const current=await q1('SELECT * FROM users WHERE id=$1',[u.id]);
+        try{
+          const {nextBilling,subId,customerId}=await syncCarePlanStripe({...current,care_plan_items:newItems}, b.paymentMethodId);
+          row=await q1('UPDATE users SET care_plan_items=$1::jsonb, care_plan_next_billing=$2, care_plan_reminder_sent_for=NULL, care_plan_stripe_subscription_id=$3, stripe_customer_id=$4 WHERE id=$5 RETURNING *',[JSON.stringify(newItems),nextBilling,subId,customerId,u.id]);
+        }catch(e){ if(e.httpStatus) return send(res,e.httpStatus,{error:e.message}); return sendStripeError(res,e); }
+      }else if(!u.carePlanNextBilling){
+        // First-ever active item in demo mode — start a fresh 30-day billing cycle.
+        const next=new Date(); next.setDate(next.getDate()+30);
+        row=await q1('UPDATE users SET care_plan_items=$1::jsonb, care_plan_next_billing=$2, care_plan_reminder_sent_for=NULL WHERE id=$3 RETURNING *',[JSON.stringify(newItems),next.toISOString().slice(0,10),u.id]);
+      }else{
+        // Already mid-cycle — this item just joins the existing recurring charge.
+        row=await q1('UPDATE users SET care_plan_items=$1::jsonb WHERE id=$2 RETURNING *',[JSON.stringify(newItems),u.id]);
+      }
+      const svc=CARE_SERVICE_INFO[serviceKey];
+      sendEmail({to:row.email,type:'care_plan_service_activated',subject:`${svc.name} is now active on your Home Care Plan`,html:carePlanServiceActivatedEmailHtml(mapUser(row),svc.name,item.priceCents,carePlanMonthlyTotal(newItems)),userId:row.id}).catch(()=>{});
+      return send(res,200,{user:safeUser(mapUser(row))});
+    }
+    // Homeowner declines a price they don't want — the service drops off their plan entirely; they
+    // can always re-request it (and get a fresh quote) later.
+    if(p==='/api/care-plan/decline' && req.method==='POST'){
+      if(u.role!=='homeowner')return send(res,403,{error:'Only homeowners can manage a Home Care Plan'});
+      const b=await body(req);
+      const serviceKey=String(b.serviceKey||'');
+      const items=u.carePlanItems||[];
+      const item=items.find(i=>i.key===serviceKey);
+      if(!item||item.status!=='quoted') return send(res,400,{error:'No pending quote for that service'});
+      const newItems=items.filter(i=>i.key!==serviceKey);
+      const row=await q1('UPDATE users SET care_plan_items=$1::jsonb WHERE id=$2 RETURNING *',[JSON.stringify(newItems),u.id]);
+      return send(res,200,{user:safeUser(mapUser(row))});
+    }
+    if(p==='/api/home-profile' && req.method==='GET'){
+      if(u.role!=='homeowner')return send(res,403,{error:'Only homeowners have a Home Profile'});
+      return send(res,200,{homeProfile:u.homeProfile||{},homeDocuments:u.homeDocuments||[],status:computeHomeStatus(u.homeProfile,u.carePlanItems),locked:!isPaidPlan(u)});
+    }
+    if(p==='/api/home-profile' && req.method==='PUT'){
+      if(u.role!=='homeowner')return send(res,403,{error:'Only homeowners have a Home Profile'});
+      if(!isPaidPlan(u)) return send(res,403,{error:'The Home Profile is a Plus & Premium perk — upgrade your Community Plan to build yours.',requiresUpgrade:true});
+      const b=await body(req);
+      const dateOrNull=v=>/^\d{4}-\d{2}-\d{2}$/.test(v||'')?v:null;
+      const clean={
+        hvac:{
+          brand:String(b?.hvac?.brand||'').trim().slice(0,80),
+          installYear:String(b?.hvac?.installYear||'').trim().slice(0,4),
+          filterSize:String(b?.hvac?.filterSize||'').trim().slice(0,20),
+          lastFilterChange:dateOrNull(b?.hvac?.lastFilterChange),
+          lastService:dateOrNull(b?.hvac?.lastService)
+        },
+        waterHeater:{
+          brand:String(b?.waterHeater?.brand||'').trim().slice(0,80),
+          installYear:String(b?.waterHeater?.installYear||'').trim().slice(0,4),
+          type:String(b?.waterHeater?.type||'').trim().slice(0,20)
+        },
+        roof:{
+          installYear:String(b?.roof?.installYear||'').trim().slice(0,4),
+          material:String(b?.roof?.material||'').trim().slice(0,40)
+        },
+        appliances:{
+          fridge:String(b?.appliances?.fridge||'').trim().slice(0,80),
+          washerDryer:String(b?.appliances?.washerDryer||'').trim().slice(0,80),
+          dishwasher:String(b?.appliances?.dishwasher||'').trim().slice(0,80)
+        },
+        pool:!!b?.pool,
+        sprinkler:!!b?.sprinkler,
+        pestFrequency:['none','monthly','quarterly','biannual'].includes(b?.pestFrequency)?b.pestFrequency:'none',
+        reminders:Array.isArray(b?.reminders)?b.reminders.slice(0,15).map(r=>({
+          name:String(r?.name||'').trim().slice(0,60),
+          frequencyDays:Math.max(7,Math.min(730,Number(r?.frequencyDays)||90)),
+          lastDone:dateOrNull(r?.lastDone)
+        })).filter(r=>r.name):[]
+      };
+      const row=await q1('UPDATE users SET home_profile=$1::jsonb WHERE id=$2 RETURNING *',[JSON.stringify(clean),u.id]);
+      const mu=mapUser(row);
+      return send(res,200,{user:safeUser(mu),status:computeHomeStatus(mu.homeProfile,mu.carePlanItems)});
+    }
+    if(p==='/api/home-profile/documents' && req.method==='POST'){
+      if(u.role!=='homeowner')return send(res,403,{error:'Only homeowners have a Home Profile'});
+      if(!isPaidPlan(u)) return send(res,403,{error:'Saving documents is a Plus & Premium perk — upgrade your Community Plan first.',requiresUpgrade:true});
+      const b=await body(req);
+      const name=String(b.name||'Document').trim().slice(0,120);
+      const category=HOME_DOC_CATEGORIES.includes(b.category)?b.category:'other';
+      const dataUrl=String(b.dataUrl||'');
+      if(!VERIFICATION_DOC_RE.test(dataUrl)) return send(res,400,{error:'Documents must be a PNG, JPEG, WEBP, or PDF file.'});
+      if(dataUrl.length>VERIFICATION_MAX_DOC_BYTES) return send(res,400,{error:'That file is too large. Please keep it under 4MB.'});
+      const current=u.homeDocuments||[];
+      if(current.length>=HOME_MAX_DOCS) return send(res,400,{error:`You can keep up to ${HOME_MAX_DOCS} documents. Delete one first.`});
+      const doc={id:id('doc'),name,category,dataUrl,uploadedAt:new Date().toISOString()};
+      const row=await q1('UPDATE users SET home_documents=$1::jsonb WHERE id=$2 RETURNING *',[JSON.stringify([...current,doc]),u.id]);
+      return send(res,201,{document:doc,homeDocuments:mapUser(row).homeDocuments});
+    }
+    if(p.startsWith('/api/home-profile/documents/') && req.method==='DELETE'){
+      if(u.role!=='homeowner')return send(res,403,{error:'Only homeowners have a Home Profile'});
+      const docId=p.split('/')[4];
+      const current=u.homeDocuments||[];
+      const next=current.filter(d=>d.id!==docId);
+      if(next.length===current.length) return send(res,404,{error:'Document not found'});
+      const row=await q1('UPDATE users SET home_documents=$1::jsonb WHERE id=$2 RETURNING *',[JSON.stringify(next),u.id]);
+      return send(res,200,{homeDocuments:mapUser(row).homeDocuments});
     }
     if(p==='/api/provider-plan' && req.method==='POST'){
-      if(u.role!=='provider')return send(res,403,{error:'Only providers have a Pro Provider plan'});
+      if(u.role!=='provider')return send(res,403,{error:'Only providers have a paid provider plan'});
       const b=await body(req);
-      const plan=b.plan==='pro'?'pro':'free';
+      const plan=['pro','elite'].includes(b.plan)?b.plan:'free';
       let row;
       if(plan==='free'){
         if(stripeConfigured()){
           const existing=await q1('SELECT provider_plan_stripe_subscription_id FROM users WHERE id=$1',[u.id]);
           if(existing?.provider_plan_stripe_subscription_id) await stripeRequest('DELETE','subscriptions/'+existing.provider_plan_stripe_subscription_id).catch(()=>{});
         }
-        row=await q1("UPDATE users SET provider_plan='free', provider_plan_stripe_subscription_id=NULL WHERE id=$1 RETURNING *",[u.id]);
-      }else if(stripeConfigured()){
-        if(!b.paymentMethodId) return send(res,400,{error:'Payment method required'});
-        try{
-          const customerId=await ensureStripeCustomer(u);
-          const existing=await q1('SELECT provider_plan_stripe_subscription_id FROM users WHERE id=$1',[u.id]);
-          const sub=await stripeSubscribe(customerId,b.paymentMethodId,existing?.provider_plan_stripe_subscription_id,[{unitAmount:PROVIDER_PLAN_PRICE_CENTS,name:'Pro Provider plan',interval:'month'}]);
-          row=await q1("UPDATE users SET provider_plan='pro', provider_plan_stripe_subscription_id=$1, stripe_customer_id=$2 WHERE id=$3 RETURNING *",[sub.id,customerId,u.id]);
-        }catch(e){ return sendStripeError(res,e); }
+        row=await q1("UPDATE users SET provider_plan='free', provider_plan_stripe_subscription_id=NULL, provider_plan_next_billing=NULL WHERE id=$1 RETURNING *",[u.id]);
       }else{
-        row=await q1("UPDATE users SET provider_plan='pro' WHERE id=$1 RETURNING *",[u.id]);
+        const billingAddress=sanitizeBillingAddress(b.billingAddress);
+        if(!billingAddress||!billingAddress.line1||!billingAddress.city||!billingAddress.state||!billingAddress.zip){
+          return send(res,400,{error:'Enter your billing address (this is what your sales tax, if any, is based on).'});
+        }
+        const planInfo=PROVIDER_PLAN_INFO[plan];
+        if(stripeConfigured()){
+          if(!b.paymentMethodId) return send(res,400,{error:'Payment method required'});
+          try{
+            const customerId=await ensureStripeCustomer(u);
+            const existing=await q1('SELECT provider_plan_stripe_subscription_id FROM users WHERE id=$1',[u.id]);
+            const taxRateId=isTexasBilling(billingAddress)?await ensureTxSaasTaxRateId():null;
+            const sub=await stripeSubscribe(customerId,b.paymentMethodId,existing?.provider_plan_stripe_subscription_id,[{unitAmount:planInfo.priceCents,name:planInfo.label+' plan',interval:'month',taxRateId}]);
+            const nextBilling=sub.current_period_end?new Date(sub.current_period_end*1000).toISOString().slice(0,10):null;
+            row=await q1("UPDATE users SET provider_plan=$1, provider_plan_stripe_subscription_id=$2, stripe_customer_id=$3, billing_address=$4::jsonb, provider_plan_next_billing=$5 WHERE id=$6 RETURNING *",[plan,sub.id,customerId,JSON.stringify(billingAddress),nextBilling,u.id]);
+          }catch(e){ return sendStripeError(res,e); }
+        }else{
+          row=await q1("UPDATE users SET provider_plan=$1, billing_address=$2::jsonb WHERE id=$3 RETURNING *",[plan,JSON.stringify(billingAddress),u.id]);
+        }
+      }
+      if(plan!==(u.providerPlan||'free')){
+        const info=PROVIDER_PLAN_INFO[plan];
+        sendEmail({to:row.email,type:'provider_plan_changed',subject:`Your plan is now ${info.label}`,html:planChangedEmailHtml(mapUser(row),info.label,info.priceCents),userId:row.id}).catch(()=>{});
+        if(plan==='free' && ADMIN_NOTIFY_EMAIL){
+          const oldInfo=PROVIDER_PLAN_INFO[u.providerPlan||'free'];
+          sendEmail({to:ADMIN_NOTIFY_EMAIL,type:'admin_plan_cancelled',subject:`${row.name} downgraded to Free`,html:adminPlanCancelledEmailHtml(mapUser(row),oldInfo.label)}).catch(()=>{});
+        }
       }
       return send(res,200,{user:safeUser(mapUser(row))});
     }
@@ -940,12 +2135,12 @@ const server=http.createServer(async (req,res)=>{
       if(u.role!=='provider')return send(res,403,{error:'Only providers set a service area'});
       const b=await body(req);
       const address=String(b.address||'').trim().slice(0,200);
-      const maxRadiusMi = u.providerPlan==='pro' ? 200 : PROVIDER_FREE_MAX_RADIUS_MI;
+      const maxRadiusMi = providerMaxRadiusMi(u.providerPlan);
       if(!address){
-        if(u.providerPlan!=='pro'){
-          return send(res,403,{error:`Free plan providers keep a service area (up to ${PROVIDER_FREE_MAX_RADIUS_MI} mi). Upgrade to Pro Provider to see every open request, nationwide.`,upgradeRequired:true});
+        if(!isProviderRadiusUnlimited(u.providerPlan)){
+          return send(res,403,{error:`${PROVIDER_PLAN_INFO[u.providerPlan||'free'].label} plan providers keep a service area (up to ${maxRadiusMi} mi). Upgrade to Elite to see every open request, nationwide.`,upgradeRequired:true});
         }
-        // Clearing the field resets to "show every open request" — Pro plan only.
+        // Clearing the field resets to "show every open request" — Elite only.
         const row=await q1('UPDATE users SET address=NULL, lat=NULL, lng=NULL, geocoded_at=NULL, service_radius_mi=NULL WHERE id=$1 RETURNING *',[u.id]);
         return send(res,200,{user:safeUser(mapUser(row))});
       }
@@ -963,6 +2158,10 @@ const server=http.createServer(async (req,res)=>{
       const docsIn=Array.isArray(b.documents)?b.documents:[];
       if(!docsIn.length) return send(res,400,{error:'Upload at least one document.'});
       if(docsIn.length>VERIFICATION_MAX_DOCS) return send(res,400,{error:`You can upload up to ${VERIFICATION_MAX_DOCS} documents.`});
+      const requiredTypes = entityType==='business' ? ['business_license','insurance_cert'] : ['government_id'];
+      const presentTypes = new Set(docsIn.map(d=>String((d&&d.type)||'')));
+      const missingTypes = requiredTypes.filter(t=>!presentTypes.has(t));
+      if(missingTypes.length) return send(res,400,{error:`Upload required: ${missingTypes.join(', ')}.`});
       const documents=[];
       for(const d of docsIn){
         const dataUrl=String((d&&d.dataUrl)||'');
@@ -972,16 +2171,66 @@ const server=http.createServer(async (req,res)=>{
         if(dataUrl.length>VERIFICATION_MAX_DOC_BYTES) return send(res,400,{error:`"${label}" is too large. Please keep each file under 4MB.`});
         documents.push({type:docType,label,dataUrl,uploadedAt:new Date().toISOString()});
       }
-      const wantsBackgroundCheck = entityType==='individual' && !!b.requestBackgroundCheck;
-      const bgStatus = wantsBackgroundCheck ? 'requested' : 'not_requested';
       const row=await q1(
-        `UPDATE users SET provider_entity_type=$1, verification_documents=$2::jsonb, verification_status='pending',
-         verification_notes=NULL, verification_submitted_at=now(), verification_reviewed_at=NULL,
-         background_check_status=$3, background_check_requested_at=$4
-         WHERE id=$5 RETURNING *`,
-        [entityType, JSON.stringify(documents), bgStatus, wantsBackgroundCheck?new Date():null, u.id]
+        `UPDATE users SET provider_entity_type=$1, verification_documents=$2::jsonb, verification_status='unverified',
+         verification_notes=NULL, verification_submitted_at=now(), verification_reviewed_at=NULL
+         WHERE id=$3 RETURNING *`,
+        [entityType, JSON.stringify(documents), u.id]
       );
-      if(wantsBackgroundCheck) initiateBackgroundCheck(mapUser(row)); // stub — see function comment
+      sendEmail({to:row.email,type:'verification_submitted',subject:'Verification submitted',html:verificationSubmittedEmailHtml(mapUser(row)),userId:row.id}).catch(()=>{});
+      if(ADMIN_NOTIFY_EMAIL){
+        sendEmail({to:ADMIN_NOTIFY_EMAIL,type:'admin_new_verification',subject:`New verification pending: ${row.name}`,html:adminNewVerificationEmailHtml(mapUser(row))}).catch(()=>{});
+      }
+      return send(res,200,{user:safeUser(mapUser(row))});
+    }
+    if(p==='/api/profile/skills' && req.method==='POST'){
+      if(u.role!=='provider')return send(res,403,{error:'Only providers have a skills list'});
+      const b=await body(req);
+      const clean=(arr,max)=>Array.from(new Set((Array.isArray(arr)?arr:[]).map(s=>String(s||'').trim().slice(0,SKILL_MAX_LEN)).filter(Boolean))).slice(0,max);
+      const skills=clean(b.skills,SKILLS_MAX_COUNT);
+      const specializations=clean(b.specializations,SPECIALIZATIONS_MAX_COUNT);
+      const row=await q1('UPDATE users SET skills=$1::jsonb, specializations=$2::jsonb WHERE id=$3 RETURNING *',[JSON.stringify(skills),JSON.stringify(specializations),u.id]);
+      return send(res,200,{user:safeUser(mapUser(row))});
+    }
+    // Provider's email notification preferences — whether to email them at all when a new request
+    // is posted, and which service types should trigger one. Providers can opt into any type in the
+    // full catalog, not just the ones they currently list as offered (e.g. a handyman may still want
+    // a heads-up on moving jobs) — see the new-request dispatch in POST /api/requests for where this
+    // is read.
+    if(p==='/api/profile/notifications' && req.method==='POST'){
+      if(u.role!=='provider')return send(res,403,{error:'Only providers have notification preferences'});
+      const b=await body(req);
+      const enabled=b.enabled!==false;
+      const allTypes=new Set(ALL_SERVICE_TYPES);
+      const serviceTypes=Array.from(new Set((Array.isArray(b.serviceTypes)?b.serviceTypes:[]).map(s=>String(s||'').trim()).filter(s=>allTypes.has(s))));
+      const row=await q1('UPDATE users SET notify_email_enabled=$1, notify_service_types=$2::jsonb WHERE id=$3 RETURNING *',[enabled,JSON.stringify(serviceTypes),u.id]);
+      return send(res,200,{user:safeUser(mapUser(row))});
+    }
+    // Provider uploads a work photo. It's stored immediately (so they see it on their own profile
+    // as "Pending review") but stays out of publicProviderView/approvedGalleryPhotos — and therefore
+    // invisible to homeowners — until an admin approves it via /api/admin/gallery/:id/:photoId/decision.
+    if(p==='/api/profile/gallery' && req.method==='POST'){
+      if(u.role!=='provider')return send(res,403,{error:'Only providers have a work gallery'});
+      const b=await body(req);
+      const dataUrl=String(b.dataUrl||'');
+      const caption=String(b.caption||'').trim().slice(0,140);
+      if(!GALLERY_PHOTO_RE.test(dataUrl)) return send(res,400,{error:'Photo must be a PNG, JPEG, or WEBP image.'});
+      if(dataUrl.length>GALLERY_MAX_PHOTO_BYTES) return send(res,400,{error:'Photo is too large. Please keep it under 4MB.'});
+      const existing=u.galleryPhotos||[];
+      if(existing.length>=GALLERY_MAX_PHOTOS) return send(res,400,{error:`You can upload up to ${GALLERY_MAX_PHOTOS} photos.`});
+      const photo={id:id('photo'),dataUrl,caption,status:'pending',reviewNotes:null,uploadedAt:new Date().toISOString(),reviewedAt:null};
+      const updated=[...existing,photo];
+      const row=await q1('UPDATE users SET gallery_photos=$1::jsonb WHERE id=$2 RETURNING *',[JSON.stringify(updated),u.id]);
+      if(ADMIN_NOTIFY_EMAIL){
+        sendEmail({to:ADMIN_NOTIFY_EMAIL,type:'admin_new_gallery_photo',subject:`New gallery photo pending: ${row.name}`,html:`<p>${row.name} uploaded a new work photo for review.</p>`}).catch(()=>{});
+      }
+      return send(res,200,{user:safeUser(mapUser(row))});
+    }
+    if(p.startsWith('/api/profile/gallery/') && req.method==='DELETE'){
+      if(u.role!=='provider')return send(res,403,{error:'Only providers have a work gallery'});
+      const photoId=p.split('/')[4];
+      const remaining=(u.galleryPhotos||[]).filter(ph=>ph.id!==photoId);
+      const row=await q1('UPDATE users SET gallery_photos=$1::jsonb WHERE id=$2 RETURNING *',[JSON.stringify(remaining),u.id]);
       return send(res,200,{user:safeUser(mapUser(row))});
     }
     if(p==='/api/profile/address' && req.method==='POST'){
@@ -992,11 +2241,27 @@ const server=http.createServer(async (req,res)=>{
       const geo=await geocodeAddress(address);
       if(!geo)return send(res,422,{error:"We couldn't locate that address. Try including street, city, and state."});
       const row=await q1('UPDATE users SET address=$1,lat=$2,lng=$3,geocoded_at=now() WHERE id=$4 RETURNING *',[address,geo.lat,geo.lng,u.id]);
-      return send(res,200,{user:safeUser(mapUser(row))});
+      await hoa.onAddressChange(u,address).catch(e=>console.error('hoa address hook:',e.message));
+      return send(res,200,{user:safeUser(mapUser(await q1('SELECT * FROM users WHERE id=$1',[u.id])||row))});
+    }
+    // Self-service account deletion (soft delete): the account is flagged and every session for
+    // it is killed, but all its requests/quotes/jobs/chat history stay in place so admin can still
+    // review it in the Deleted Accounts log. Requires re-entering the current password so a
+    // stolen/left-open session can't be used to delete the account.
+    if(p==='/api/account/delete' && req.method==='POST'){
+      if(u.role==='admin')return send(res,403,{error:'Admin accounts can\'t be self-deleted here.'});
+      const b=await body(req);
+      if(u.passwordHash!==hash(String(b.password||''),u.salt)) return send(res,401,{error:'Incorrect password.'});
+      await hoa.onAccountDeleted(u.id).catch(e=>console.error('hoa delete hook:',e.message));
+      const row=await q1('UPDATE users SET deleted=true,deleted_at=now() WHERE id=$1 RETURNING *',[u.id]);
+      for(const [tok,uid] of sessions){ if(uid===u.id) sessions.delete(tok); }
+      sendEmail({to:row.email,type:'account_deleted',subject:'Your account was deleted',html:accountDeletedEmailHtml(mapUser(row)),userId:row.id}).catch(()=>{});
+      if(ADMIN_NOTIFY_EMAIL) sendEmail({to:ADMIN_NOTIFY_EMAIL,type:'admin_account_deleted',subject:`Account deleted: ${row.name}`,html:adminAccountDeletedEmailHtml(mapUser(row))}).catch(()=>{});
+      return send(res,200,{ok:true});
     }
     if(p==='/api/neighborhood' && req.method==='GET'){
       if(u.role!=='homeowner')return send(res,403,{error:'Neighborhood is for homeowners'});
-      if(!u.carePlanServices||!u.carePlanServices.length)return send(res,403,{error:'Neighborhood is a Home Care Plan perk',needsPlan:true});
+      if(!['plus','premium'].includes(u.subscription))return send(res,403,{error:'Neighborhood is a Plus perk',needsPlan:true});
       if(u.lat==null||u.lng==null)return send(res,200,{needsAddress:true,posts:[]});
       const rows=await q('SELECT np.*, us.name AS author_name, us.avatar_kind AS author_avatar_kind, us.avatar_value AS author_avatar_value FROM neighborhood_posts np JOIN users us ON us.id=np.user_id ORDER BY np.created_at DESC LIMIT 200');
       const posts=rows
@@ -1007,7 +2272,7 @@ const server=http.createServer(async (req,res)=>{
     }
     if(p==='/api/neighborhood' && req.method==='POST'){
       if(u.role!=='homeowner')return send(res,403,{error:'Neighborhood is for homeowners'});
-      if(!u.carePlanServices||!u.carePlanServices.length)return send(res,403,{error:'Neighborhood is a Home Care Plan perk'});
+      if(!['plus','premium'].includes(u.subscription))return send(res,403,{error:'Neighborhood is a Plus perk'});
       if(u.lat==null||u.lng==null)return send(res,400,{error:'Add your home address first.',needsAddress:true});
       const b=await body(req);
       const text=String(b.body||'').trim().slice(0,600);
@@ -1016,15 +2281,98 @@ const server=http.createServer(async (req,res)=>{
       return send(res,201,{post:{id:row.id,userId:u.id,authorName:u.name,body:row.body,createdAt:toISO(row.created_at),distanceMi:0}});
     }
     if(p==='/api/providers' && req.method==='GET'){
-      const rows=await q("SELECT * FROM users WHERE role='provider' ORDER BY rating DESC NULLS LAST");
+      const rows=await q("SELECT * FROM users WHERE role='provider' AND deleted=false ORDER BY rating DESC NULLS LAST");
       return send(res,200,{providers:rows.map(r=>publicProviderView(mapUser(r)))});
+    }
+    if(p.startsWith('/api/admin/') && u.role!=='admin') return send(res,403,{error:'Not authorized'});
+    // Scoped admin gate: every /api/admin/* route needs a section + level. Unmapped routes and the team routes are super-admin only.
+    if(p.startsWith('/api/admin/') && u.role==='admin'){
+      const need=adminRequirement(p,req.method);
+      if(!need){ if(!u.isSuperAdmin) return send(res,403,{error:'Only the main admin can do this.'}); }
+      else if(adminLevel(u,need.section)<need.level){
+        return send(res,403,{error:need.level>=3?`Your admin access to ${need.section} doesn't include this action.`:(adminLevel(u,need.section)===0?`You don't have admin access to ${need.section}.`:`Your admin access to ${need.section} is view only.`),forbiddenSection:need.section});
+      }
+    }
+
+    // ---- Admin team (super admin only; enforced by the gate above) ----
+    if(p==='/api/admin/team' && req.method==='GET'){
+      const rows=await q("SELECT * FROM users WHERE role='admin' ORDER BY created_at ASC");
+      return send(res,200,{team:rows.map(adminTeamView),sections:ADMIN_SECTIONS,levels:ADMIN_LEVEL_NAMES});
+    }
+    if(p==='/api/admin/team/invite' && req.method==='POST'){
+      const b=await body(req);
+      const name=String(b.name||'').trim().slice(0,120);
+      const email=String(b.email||'').trim().toLowerCase().slice(0,200);
+      if(!name) return send(res,400,{error:'Enter a name.'});
+      if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return send(res,400,{error:'Enter a valid email.'});
+      if(await q1('SELECT id FROM users WHERE lower(email)=lower($1)',[email])) return send(res,409,{error:'That email already has an account. Use a different email for the admin login.'});
+      const perms=cleanAdminPermissions(b.permissions);
+      const tok=crypto.randomBytes(32).toString('hex');
+      const salt=newSalt();
+      const row=await q1("INSERT INTO users (id,role,name,email,password_hash,salt,admin_permissions,invite_token_hash,invite_expires_at,invited_by) VALUES ($1,'admin',$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *",
+        [id('usr'),name,email,hash(crypto.randomBytes(24).toString('hex'),salt),salt,JSON.stringify(perms),hashInviteToken(tok),new Date(Date.now()+INVITE_TTL_MS),u.id]);
+      const link=`${appUrl()}/#invite=${tok}`;
+      const em=await sendEmail({to:email,type:'admin_invite',subject:'You have been invited as an admin',html:adminInviteEmailHtml(name,u.name,link),userId:row.id});
+      return send(res,201,{member:adminTeamView(row),inviteLink:link,emailSent:!!(em&&em.ok&&!em.dryRun)});
+    }
+    if(p.startsWith('/api/admin/team/') && p.endsWith('/permissions') && req.method==='POST'){
+      const tid=p.split('/')[4];
+      const t=await q1("SELECT * FROM users WHERE id=$1 AND role='admin'",[tid]);
+      if(!t) return send(res,404,{error:'Admin not found'});
+      if(!t.admin_permissions) return send(res,400,{error:'The main admin always has full access.'});
+      const b=await body(req);
+      const row=await q1('UPDATE users SET admin_permissions=$1 WHERE id=$2 RETURNING *',[JSON.stringify(cleanAdminPermissions(b.permissions)),tid]);
+      return send(res,200,{member:adminTeamView(row)});
+    }
+    if(p.startsWith('/api/admin/team/') && p.endsWith('/resend-invite') && req.method==='POST'){
+      const tid=p.split('/')[4];
+      const t=await q1("SELECT * FROM users WHERE id=$1 AND role='admin' AND invite_token_hash IS NOT NULL",[tid]);
+      if(!t) return send(res,404,{error:'No pending invite for that admin.'});
+      const tok=crypto.randomBytes(32).toString('hex');
+      const row=await q1('UPDATE users SET invite_token_hash=$1,invite_expires_at=$2 WHERE id=$3 RETURNING *',[hashInviteToken(tok),new Date(Date.now()+INVITE_TTL_MS),tid]);
+      const link=`${appUrl()}/#invite=${tok}`;
+      const em=await sendEmail({to:row.email,type:'admin_invite',subject:'You have been invited as an admin',html:adminInviteEmailHtml(row.name,u.name,link),userId:row.id});
+      return send(res,200,{member:adminTeamView(row),inviteLink:link,emailSent:!!(em&&em.ok&&!em.dryRun)});
+    }
+    if(p.startsWith('/api/admin/team/') && p.endsWith('/access') && req.method==='POST'){
+      const tid=p.split('/')[4];
+      const t=await q1("SELECT * FROM users WHERE id=$1 AND role='admin'",[tid]);
+      if(!t) return send(res,404,{error:'Admin not found'});
+      if(!t.admin_permissions||t.id===u.id) return send(res,400,{error:'You can only turn off scoped admins, not the main admin or yourself.'});
+      const b=await body(req);
+      const susp=!!b.suspended;
+      const row=await q1('UPDATE users SET suspended=$1 WHERE id=$2 RETURNING *',[susp,tid]);
+      if(susp){ for(const [tok,uid] of sessions){ if(uid===tid) sessions.delete(tok); } }
+      return send(res,200,{member:adminTeamView(row)});
+    }
+
+    if(await hoa.handleAuthed(req,res,p,url,u)) return;
+
+    if(p==='/api/admin/verifications/counts' && req.method==='GET'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const c=await q1(`SELECT
+        count(*) FILTER (WHERE provider_approved=false AND verification_status<>'rejected')::int AS pending,
+        count(*) FILTER (WHERE provider_approved<>false AND verification_status='unverified' AND jsonb_array_length(COALESCE(verification_documents,'[]'::jsonb))>0)::int AS unverified
+        FROM users WHERE role='provider' AND deleted=false`);
+      return send(res,200,{pending:c.pending,unverified:c.unverified});
     }
     if(p==='/api/admin/verifications' && req.method==='GET'){
       if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
       const status=String(url.searchParams.get('status')||'pending');
+      // pending = new accounts waiting on admin approval. unverified = approved accounts that have
+      // uploaded documents and are waiting on the document review. Approved accounts with no docs yet
+      // are still 'unverified' in the DB but stay out of the tabs until they upload something.
+      const HAS_DOCS="jsonb_array_length(COALESCE(verification_documents,'[]'::jsonb))>0";
+      // pending = new accounts waiting on admin approval (approval lets them respond to requests; they can
+      // upload documents any time). unverified = approved accounts that have uploaded documents awaiting review.
+      // Approved accounts with no docs are 'unverified' in the DB but stay out of the tabs until they upload.
       const rows = status==='all'
-        ? await q("SELECT * FROM users WHERE role='provider' AND verification_status<>'unverified' ORDER BY verification_submitted_at DESC NULLS LAST")
-        : await q("SELECT * FROM users WHERE role='provider' AND verification_status=$1 ORDER BY verification_submitted_at ASC NULLS LAST",[status]);
+        ? await q(`SELECT * FROM users WHERE role='provider' AND deleted=false AND (provider_approved=false OR verification_status<>'unverified' OR ${HAS_DOCS}) ORDER BY verification_submitted_at DESC NULLS LAST, created_at DESC`)
+        : status==='unverified'
+          ? await q(`SELECT * FROM users WHERE role='provider' AND deleted=false AND provider_approved<>false AND verification_status='unverified' AND ${HAS_DOCS} ORDER BY verification_submitted_at ASC NULLS LAST`)
+          : status==='pending'
+            ? await q("SELECT * FROM users WHERE role='provider' AND deleted=false AND provider_approved=false AND verification_status<>'rejected' ORDER BY created_at ASC")
+            : await q("SELECT * FROM users WHERE role='provider' AND deleted=false AND verification_status=$1 ORDER BY verification_submitted_at ASC NULLS LAST",[status]);
       // Admin sees the full record — including uploaded documents — since reviewing them is the point.
       return send(res,200,{providers:rows.map(r=>safeUser(mapUser(r)))});
     }
@@ -1038,12 +2386,563 @@ const server=http.createServer(async (req,res)=>{
       if(decision==='reject' && !notes) return send(res,400,{error:'Add a note explaining why, so the provider knows what to fix.'});
       const target=await q1("SELECT * FROM users WHERE id=$1 AND role='provider'",[pid]);
       if(!target) return send(res,404,{error:'Provider not found'});
-      const verified = decision==='approve';
+      const approving = decision==='approve';
+      // Two separate approvals. Account step (provider_approved=false): approving lets them respond to requests;
+      // rejecting sets status 'rejected' (they can fix and re-upload, which puts them back in Pending).
+      // Doc step (already approved): approving verifies them (badge), rejecting sends them back with notes.
+      const accountStep = target.provider_approved===false;
+      const verified = approving && !accountStep;
+      const nextStatus = approving ? (accountStep?target.verification_status:'verified') : 'rejected';
       const row=await q1(
-        `UPDATE users SET verified=$1, verification_status=$2, verification_notes=$3, verification_reviewed_at=now() WHERE id=$4 RETURNING *`,
-        [verified, verified?'verified':'rejected', notes||null, pid]
+        `UPDATE users SET verified=$1, verification_status=$2, provider_approved=$3, verification_notes=$4, verification_reviewed_at=CASE WHEN $6::boolean AND $7::boolean THEN verification_reviewed_at ELSE now() END WHERE id=$5 RETURNING *`,
+        [verified, nextStatus, approving?true:(accountStep?false:true), notes||null, pid, accountStep, approving]
       );
+      if(approving && accountStep){
+        sendEmail({to:row.email,type:'provider_account_approved',subject:'Your account was approved',html:providerAccountApprovedEmailHtml(mapUser(row)),userId:row.id}).catch(()=>{});
+      }else if(verified){
+        sendEmail({to:row.email,type:'verification_approved',subject:"You're verified",html:verificationApprovedEmailHtml(mapUser(row)),userId:row.id}).catch(()=>{});
+      }else{
+        sendEmail({to:row.email,type:'verification_rejected',subject:'Update needed on your verification',html:verificationRejectedEmailHtml(mapUser(row),notes),userId:row.id}).catch(()=>{});
+      }
       return send(res,200,{provider:safeUser(mapUser(row))});
+    }
+    // Gallery-photo moderation queue: flattened across providers (a provider's gallery is a jsonb
+    // array of photos, each with its own status), mirroring the verification queue above but
+    // per-photo rather than per-provider since one provider can have several photos in different
+    // states at once.
+    if(p==='/api/admin/gallery' && req.method==='GET'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const status=String(url.searchParams.get('status')||'pending');
+      const rows=await q("SELECT id,name,gallery_photos FROM users WHERE role='provider' AND jsonb_array_length(gallery_photos)>0");
+      const photos=[];
+      for(const r of rows){
+        for(const ph of (r.gallery_photos||[])){
+          if(status!=='all' && ph.status!==status) continue;
+          photos.push({providerId:r.id,providerName:r.name,photoId:ph.id,dataUrl:ph.dataUrl,caption:ph.caption||'',status:ph.status,uploadedAt:ph.uploadedAt,reviewedAt:ph.reviewedAt||null,reviewNotes:ph.reviewNotes||null});
+        }
+      }
+      photos.sort((a,b)=>status==='pending' ? new Date(a.uploadedAt)-new Date(b.uploadedAt) : new Date(b.uploadedAt)-new Date(a.uploadedAt));
+      return send(res,200,{photos});
+    }
+    if(p.startsWith('/api/admin/gallery/') && p.endsWith('/decision') && req.method==='POST'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const parts=p.split('/'); // ['','api','admin','gallery',providerId,photoId,'decision']
+      const pid=parts[4], photoId=parts[5];
+      const b=await body(req);
+      const decision=b.decision==='approve'?'approved':(b.decision==='reject'?'rejected':null);
+      if(!decision) return send(res,400,{error:'decision must be "approve" or "reject"'});
+      const notes=String(b.notes||'').trim().slice(0,500);
+      if(decision==='rejected' && !notes) return send(res,400,{error:'Add a note explaining why, so the provider knows what to fix.'});
+      const target=await q1("SELECT * FROM users WHERE id=$1 AND role='provider'",[pid]);
+      if(!target) return send(res,404,{error:'Provider not found'});
+      const photos=target.gallery_photos||[];
+      const idx=photos.findIndex(ph=>ph.id===photoId);
+      if(idx===-1) return send(res,404,{error:'Photo not found'});
+      photos[idx]={...photos[idx],status:decision,reviewNotes:notes||null,reviewedAt:new Date().toISOString()};
+      const row=await q1('UPDATE users SET gallery_photos=$1::jsonb WHERE id=$2 RETURNING *',[JSON.stringify(photos),pid]);
+      return send(res,200,{provider:safeUser(mapUser(row))});
+    }
+
+    // --- Admin: platform-wide monitoring, account controls, and manual dispatch ---
+    if(p==='/api/admin/stats' && req.method==='GET'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const [homeownerPlans,providerPlans,verif,openReqs,staleReqs,carePlanActive,suspendedCount]=await Promise.all([
+        q("SELECT subscription, count(*)::int AS n FROM users WHERE role='homeowner' AND deleted=false GROUP BY subscription"),
+        q("SELECT provider_plan, count(*)::int AS n FROM users WHERE role='provider' AND deleted=false GROUP BY provider_plan"),
+        q("SELECT CASE WHEN provider_approved=false AND verification_status<>'rejected' THEN 'pending' WHEN verification_status='unverified' AND jsonb_array_length(COALESCE(verification_documents,'[]'::jsonb))=0 THEN 'approved_no_docs' ELSE verification_status END AS verification_status, count(*)::int AS n FROM users WHERE role='provider' AND deleted=false GROUP BY 1"),
+        q("SELECT count(*)::int AS n FROM requests WHERE status='open'"),
+        q("SELECT count(*)::int AS n FROM requests r WHERE r.status='open' AND r.created_at < now() - interval '24 hours' AND NOT EXISTS (SELECT 1 FROM quotes qq WHERE qq.request_id=r.id)"),
+        q("SELECT count(*)::int AS n FROM users WHERE role='homeowner' AND deleted=false AND EXISTS (SELECT 1 FROM jsonb_array_elements(care_plan_items) x WHERE x->>'status'='active')"),
+        q("SELECT count(*)::int AS n FROM users WHERE suspended=true AND deleted=false"),
+      ]);
+      const toObj=(rows,key)=>Object.fromEntries(rows.map(r=>[r[key]||'unknown',r.n]));
+      return send(res,200,{
+        totalHomeowners: homeownerPlans.reduce((s,r)=>s+r.n,0),
+        totalProviders: providerPlans.reduce((s,r)=>s+r.n,0),
+        homeownerPlans: toObj(homeownerPlans,'subscription'),
+        providerPlans: toObj(providerPlans,'provider_plan'),
+        verificationStatus: toObj(verif,'verification_status'),
+        openRequests: openReqs[0].n,
+        staleRequests: staleReqs[0].n,
+        activeCarePlans: carePlanActive[0].n,
+        suspendedAccounts: suspendedCount[0].n,
+      });
+    }
+    if(p==='/api/admin/accounts' && req.method==='GET'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const role=String(url.searchParams.get('role')||'all');
+      const status=String(url.searchParams.get('status')||'all'); // all|active|suspended
+      const qstr=String(url.searchParams.get('q')||'').trim().toLowerCase();
+      const rows = ['homeowner','provider'].includes(role)
+        ? await q('SELECT * FROM users WHERE role=$1 AND deleted=false ORDER BY created_at DESC',[role])
+        : await q("SELECT * FROM users WHERE role IN ('homeowner','provider') AND deleted=false ORDER BY created_at DESC");
+      let accounts=rows.map(r=>adminAccountView(mapUser(r)));
+      if(status==='active') accounts=accounts.filter(a=>!a.suspended);
+      if(status==='suspended') accounts=accounts.filter(a=>a.suspended);
+      if(qstr) accounts=accounts.filter(a=>(a.name||'').toLowerCase().includes(qstr)||(a.email||'').toLowerCase().includes(qstr));
+      return send(res,200,{accounts});
+    }
+    if(p.startsWith('/api/admin/accounts/') && p.endsWith('/suspend') && req.method==='POST'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const aid=p.split('/')[4];
+      const target=await q1('SELECT * FROM users WHERE id=$1',[aid]);
+      if(!target) return send(res,404,{error:'Account not found'});
+      if(target.role==='admin') return send(res,403,{error:'Cannot suspend an admin account'});
+      const b=await body(req);
+      const suspended=!!b.suspended;
+      const row=await q1('UPDATE users SET suspended=$1 WHERE id=$2 RETURNING *',[suspended,aid]);
+      if(suspended){
+        sendEmail({to:row.email,type:'account_suspended',subject:'Your account was suspended',html:accountSuspendedEmailHtml(mapUser(row)),userId:row.id}).catch(()=>{});
+      }else{
+        sendEmail({to:row.email,type:'account_reactivated',subject:'Your account is active again',html:accountReactivatedEmailHtml(mapUser(row)),userId:row.id}).catch(()=>{});
+      }
+      return send(res,200,{account:adminAccountView(mapUser(row))});
+    }
+    if(p.startsWith('/api/admin/accounts/') && p.endsWith('/subscription') && req.method==='POST'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const aid=p.split('/')[4];
+      const target=await q1('SELECT * FROM users WHERE id=$1',[aid]);
+      if(!target) return send(res,404,{error:'Account not found'});
+      const b=await body(req);
+      let row, isUpgrade=false, planInfo=null;
+      if(target.role==='homeowner'){
+        const plan=['free','plus','premium'].includes(b.subscription)?b.subscription:null;
+        if(!plan) return send(res,400,{error:'subscription must be free, plus, or premium'});
+        const oldPlan=normalizeHomeownerPlanKey(target.subscription);
+        row=await q1('UPDATE users SET subscription=$1 WHERE id=$2 RETURNING *',[plan,aid]);
+        planInfo=HOMEOWNER_PLAN_INFO[plan];
+        isUpgrade=planInfo.rank>(HOMEOWNER_PLAN_INFO[oldPlan]?.rank??0);
+      } else if(target.role==='provider'){
+        const plan=['free','pro','elite'].includes(b.providerPlan)?b.providerPlan:null;
+        if(!plan) return send(res,400,{error:'providerPlan must be free, pro, or elite'});
+        const oldPlan=target.provider_plan||'free';
+        row=await q1('UPDATE users SET provider_plan=$1 WHERE id=$2 RETURNING *',[plan,aid]);
+        planInfo=PROVIDER_PLAN_INFO[plan];
+        isUpgrade=planInfo.rank>(PROVIDER_PLAN_INFO[oldPlan]?.rank??0);
+      } else {
+        return send(res,400,{error:'This account type has no subscription to change'});
+      }
+      let invoiceNo=null;
+      if(isUpgrade && planInfo.priceCents>0 && row.email){
+        invoiceNo='INV-'+crypto.randomBytes(5).toString('hex').toUpperCase();
+        await pool.query('INSERT INTO announcements (id,user_id,title,body) VALUES ($1,$2,$3,$4)',
+          [id('ann'),row.id,'Plan upgraded',`An admin upgraded your plan to ${planInfo.label} ($${(planInfo.priceCents/100).toFixed(2)}/mo). An invoice was emailed to you.`]);
+        sendEmail({to:row.email,type:'admin_plan_invoice',subject:`Your invoice for the ${planInfo.label} plan (${invoiceNo})`,html:adminPlanInvoiceEmailHtml(mapUser(row),planInfo.label,planInfo.priceCents,invoiceNo),userId:row.id}).catch(()=>{});
+      }
+      return send(res,200,{account:adminAccountView(mapUser(row)),invoiceSent:!!invoiceNo,invoiceNo});
+    }
+    // Admin-initiated account deletion — the same soft delete as self-service (flag + kill
+    // sessions; all requests/quotes/jobs/chat history stay in place for the Deleted Accounts log)
+    // but without requiring the account's own password, since this is for admin cleanup of test/
+    // seed/abusive accounts. Removes the account from the active Accounts list immediately.
+    if(p.startsWith('/api/admin/accounts/') && p.endsWith('/delete') && req.method==='POST'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const aid=p.split('/')[4];
+      const target=await q1('SELECT * FROM users WHERE id=$1',[aid]);
+      if(!target) return send(res,404,{error:'Account not found'});
+      if(target.role==='admin') return send(res,403,{error:'Cannot delete an admin account'});
+      if(target.deleted) return send(res,400,{error:'That account is already deleted'});
+      await hoa.onAccountDeleted(aid).catch(e=>console.error('hoa delete hook:',e.message));
+      const row=await q1('UPDATE users SET deleted=true,deleted_at=now() WHERE id=$1 RETURNING *',[aid]);
+      for(const [tok,uid] of sessions){ if(uid===aid) sessions.delete(tok); }
+      sendEmail({to:row.email,type:'account_deleted',subject:'Your account was deleted',html:accountDeletedEmailHtml(mapUser(row)),userId:row.id}).catch(()=>{});
+      return send(res,200,{ok:true});
+    }
+    // Payment history — logged going forward by the Stripe webhook above (see the payments
+    // table). Filterable by account name/email, plan, status, and a created_at date range.
+    if(p==='/api/admin/payments' && req.method==='GET'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const status=url.searchParams.get('status')||'all';
+      const planKind=url.searchParams.get('plan')||'all';
+      const qstr=(url.searchParams.get('q')||'').trim();
+      const from=url.searchParams.get('from')||'';
+      const to=url.searchParams.get('to')||'';
+      const limit=Math.min(200,Math.max(1,Number(url.searchParams.get('limit'))||50));
+      const offset=Math.max(0,Number(url.searchParams.get('offset'))||0);
+      const conds=[]; const params=[];
+      if(status!=='all'){ params.push(status); conds.push(`p.status=$${params.length}`); }
+      if(planKind!=='all'){ params.push(planKind); conds.push(`p.plan_kind=$${params.length}`); }
+      if(qstr){ params.push('%'+qstr+'%'); conds.push(`(u.name ILIKE $${params.length} OR u.email ILIKE $${params.length})`); }
+      if(from){ params.push(from); conds.push(`p.created_at >= $${params.length}::date`); }
+      if(to){ params.push(to); conds.push(`p.created_at < ($${params.length}::date + interval '1 day')`); }
+      const where=conds.length?'WHERE '+conds.join(' AND '):'';
+      const rows=await q(`SELECT p.*, u.name AS user_name, u.email AS user_email, u.role AS user_role FROM payments p JOIN users u ON u.id=p.user_id ${where} ORDER BY p.created_at DESC LIMIT ${limit} OFFSET ${offset}`,params);
+      const countRow=await q1(`SELECT count(*)::int AS n FROM payments p JOIN users u ON u.id=p.user_id ${where}`,params);
+      const payments=rows.map(r=>({...mapPayment(r),userName:r.user_name,userEmail:r.user_email,userRole:r.user_role}));
+      return send(res,200,{payments,total:countRow?countRow.n:0});
+    }
+    // Refund a logged payment. Stripe only refunds against the underlying charge/PaymentIntent,
+    // not the invoice id we store, so this looks the invoice up first. Invoice shape has moved
+    // around across Stripe API versions (payment_intent/charge directly on the invoice in older
+    // versions, a separate /invoices/:id/payments list in newer ones) — this tries both rather
+    // than assuming one. Marks our own row 'refunded' on success; does NOT touch the account's
+    // plan or access — that's a separate, deliberate admin decision (see Accounts panel).
+    if(p.startsWith('/api/admin/payments/') && p.endsWith('/refund') && req.method==='POST'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const paymentId=p.split('/')[4];
+      const row=await q1('SELECT * FROM payments WHERE id=$1',[paymentId]);
+      if(!row) return send(res,404,{error:'Payment not found'});
+      if(row.status==='refunded') return send(res,400,{error:'This payment was already refunded'});
+      if(row.status!=='succeeded') return send(res,400,{error:'Only a succeeded payment can be refunded'});
+      if(!stripeConfigured()) return send(res,400,{error:'Stripe is not configured on this server yet.'});
+      if(!row.stripe_invoice_id) return send(res,400,{error:"This payment has no Stripe invoice on file — refund it directly in the Stripe Dashboard instead."});
+      try{
+        const inv=await stripeRequest('GET','invoices/'+row.stripe_invoice_id);
+        let target=inv.payment_intent||inv.charge||null;
+        if(!target){
+          const payLog=await stripeRequest('GET','invoices/'+row.stripe_invoice_id+'/payments').catch(()=>null);
+          const paid=payLog?.data?.find(pp=>pp.status==='paid');
+          target=paid?.payment?.payment_intent||paid?.payment?.charge||null;
+        }
+        if(!target) return send(res,400,{error:"Couldn't find the underlying charge for this invoice — refund it directly in the Stripe Dashboard instead."});
+        const isCharge=String(target).startsWith('ch_');
+        await stripeRequest('POST','refunds',isCharge?{charge:target}:{payment_intent:target});
+        const updated=await q1("UPDATE payments SET status='refunded', refunded_at=now() WHERE id=$1 RETURNING *",[row.id]);
+        return send(res,200,{payment:mapPayment(updated)});
+      }catch(e){ return sendStripeError(res,e); }
+    }
+    // Upcoming payments — next billing date + expected amount for every account with an active
+    // paid plan. Homeowner/provider subscription dates only populate once Stripe is configured
+    // (they're set at checkout and refreshed by the webhook); Care Plan dates populate either way.
+    if(p==='/api/admin/payments/upcoming' && req.method==='GET'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const rows=await q(`SELECT * FROM users WHERE deleted=false AND (
+        (subscription<>'free' AND subscription_next_billing IS NOT NULL) OR
+        (provider_plan<>'free' AND provider_plan_next_billing IS NOT NULL) OR
+        (care_plan_next_billing IS NOT NULL)
+      )`);
+      const items=[];
+      for(const r of rows){
+        const mu=mapUser(r);
+        if(mu.subscription && mu.subscription!=='free' && r.subscription_next_billing){
+          const info=HOMEOWNER_PLAN_INFO[normalizeHomeownerPlanKey(mu.subscription)];
+          items.push({userId:r.id,name:r.name,email:r.email,role:r.role,plan:info?info.label:mu.subscription,planKind:'subscription',amount:info?info.priceCents/100:null,nextBilling:new Date(r.subscription_next_billing).toISOString().slice(0,10)});
+        }
+        if(mu.providerPlan && mu.providerPlan!=='free' && r.provider_plan_next_billing){
+          const info=PROVIDER_PLAN_INFO[mu.providerPlan];
+          items.push({userId:r.id,name:r.name,email:r.email,role:r.role,plan:info?info.label:mu.providerPlan,planKind:'provider_plan',amount:info?info.priceCents/100:null,nextBilling:new Date(r.provider_plan_next_billing).toISOString().slice(0,10)});
+        }
+        if(r.care_plan_next_billing){
+          const total=carePlanMonthlyTotal(mu.carePlanItems);
+          if(total>0) items.push({userId:r.id,name:r.name,email:r.email,role:r.role,plan:'Home Care Plan',planKind:'care_plan',amount:total,nextBilling:new Date(r.care_plan_next_billing).toISOString().slice(0,10)});
+        }
+      }
+      items.sort((a,b)=>a.nextBilling<b.nextBilling?-1:(a.nextBilling>b.nextBilling?1:0));
+      return send(res,200,{upcoming:items});
+    }
+    // Every open request (quoted or not, dispatched or not) with its live status, filterable by
+    // minimum age, service type, quote/dispatch status, and a homeowner/title search. Supersedes
+    // the old "stale only" dispatch list — the Dispatch tab now shows the whole open-requests
+    // picture, not just the ones with zero quotes.
+    if(p==='/api/admin/requests/open' && req.method==='GET'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const minHours=Math.max(0,Number(url.searchParams.get('minHours'))||0);
+      const service=url.searchParams.get('service')||'all';
+      const qstr=(url.searchParams.get('q')||'').trim();
+      const conds=[`r.status='open'`]; const params=[];
+      if(minHours>0){ params.push(String(minHours)); conds.push(`r.created_at < now() - ($${params.length} || ' hours')::interval`); }
+      if(service!=='all'){ params.push(service); conds.push(`r.service_type ILIKE $${params.length}`); }
+      if(qstr){ params.push('%'+qstr+'%'); conds.push(`(uh.name ILIKE $${params.length} OR uh.community ILIKE $${params.length} OR r.title ILIKE $${params.length})`); }
+      const where='WHERE '+conds.join(' AND ');
+      const rows=await q(
+        `SELECT r.*, uh.name AS homeowner_name, uh.community AS homeowner_community,
+                (SELECT count(*)::int FROM quotes qq WHERE qq.request_id=r.id) AS quote_count
+         FROM requests r JOIN users uh ON uh.id=r.homeowner_id
+         ${where}
+         ORDER BY r.created_at ASC`,
+        params
+      );
+      let requests=rows.map(r=>({...mapRequest(r),homeownerName:r.homeowner_name,homeownerCommunity:r.homeowner_community,quoteCount:r.quote_count}));
+      const quoteStatus=url.searchParams.get('quoteStatus')||'all';
+      if(quoteStatus==='none') requests=requests.filter(r=>r.quoteCount===0);
+      else if(quoteStatus==='has') requests=requests.filter(r=>r.quoteCount>0);
+      else if(quoteStatus==='dispatched') requests=requests.filter(r=>!!r.dispatchedProviderId);
+      else if(quoteStatus==='notdispatched') requests=requests.filter(r=>!r.dispatchedProviderId);
+      return send(res,200,{requests});
+    }
+    if(p.startsWith('/api/admin/requests/') && p.endsWith('/candidates') && req.method==='GET'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const rid=p.split('/')[4];
+      const r=await q1('SELECT * FROM requests WHERE id=$1',[rid]);
+      if(!r) return send(res,404,{error:'Request not found'});
+      const homeowner=await q1('SELECT * FROM users WHERE id=$1',[r.homeowner_id]);
+      const providerRows=await q("SELECT * FROM users WHERE role='provider' AND deleted=false ORDER BY rating DESC NULLS LAST");
+      const candidates=providerRows.map(pr=>{
+        const mu=mapUser(pr);
+        const matchesService=(mu.serviceTypes||[]).some(s=>s.toLowerCase()===String(r.service_type).toLowerCase());
+        const distanceMi=(homeowner&&homeowner.lat!=null&&homeowner.lng!=null&&mu.lat!=null&&mu.lng!=null)
+          ? Math.round(haversineMiles(homeowner.lat,homeowner.lng,mu.lat,mu.lng)*10)/10 : null;
+        return {id:mu.id,name:mu.name,serviceTypes:mu.serviceTypes,rating:mu.rating,reviewCount:mu.reviewCount,verified:mu.verified,verificationStatus:mu.verificationStatus,providerPlan:mu.providerPlan,suspended:mu.suspended,matchesService,distanceMi};
+      }).filter(c=>!c.suspended).sort((a,b2)=>{
+        if(a.matchesService!==b2.matchesService) return a.matchesService?-1:1;
+        if(a.distanceMi!=null && b2.distanceMi!=null) return a.distanceMi-b2.distanceMi;
+        return (b2.rating||0)-(a.rating||0);
+      });
+      return send(res,200,{candidates,request:mapRequest(r)});
+    }
+    if(p.startsWith('/api/admin/requests/') && p.endsWith('/assign') && req.method==='POST'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const rid=p.split('/')[4];
+      const r=await q1('SELECT * FROM requests WHERE id=$1',[rid]);
+      if(!r) return send(res,404,{error:'Request not found'});
+      const b=await body(req);
+      const providerId=String(b.providerId||'');
+      const provider=await q1("SELECT * FROM users WHERE id=$1 AND role='provider'",[providerId]);
+      if(!provider) return send(res,404,{error:'Provider not found'});
+      const note=String(b.note||'').trim().slice(0,500);
+      const row=await q1('UPDATE requests SET dispatched_provider_id=$1, dispatched_at=now(), dispatched_note=$2 WHERE id=$3 RETURNING *',[providerId,note||null,rid]);
+      const homeowner=await q1('SELECT * FROM users WHERE id=$1',[r.homeowner_id]);
+      const msgToProvider=`An admin connected you with a request: "${r.title}" (${r.service_type}).${note?(' Note: '+note):''} Please review it in your Request Feed and send a quote if you can help.`;
+      await pool.query('INSERT INTO announcements (id,user_id,title,body) VALUES ($1,$2,$3,$4)',
+        [id('ann'),providerId,'A request needs your help',msgToProvider]);
+      if(homeowner){
+        const msgToHomeowner=`We reached out directly to ${provider.name}, a trusted local provider, about your request "${r.title}". They'll be in touch shortly.`;
+        await pool.query('INSERT INTO announcements (id,user_id,title,body) VALUES ($1,$2,$3,$4)',
+          [id('ann'),homeowner.id,'We reached out to a provider for you',msgToHomeowner]);
+      }
+      if(provider.email) sendEmail({to:provider.email,type:'admin_dispatch',subject:`New request for you: "${r.title}"`,html:emailShell('New request',`<h2 style="margin:0 0 10px;color:#17352f">A request needs your help</h2><p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Our team connected you with "${esc_(r.title)}" (${esc_(r.service_type)}). Log in and check your Request Feed to send a quote.</p>`),userId:provider.id}).catch(()=>{});
+      return send(res,200,{request:mapRequest(row)});
+    }
+
+    // Every Home Care Plan homeowner, with the current fulfillment status (provider assigned,
+    // upcoming/scheduled/completed, and a date) for each recurring service on their plan — so an
+    // admin can see at a glance whether the recurring services people are PAYING for are actually
+    // being taken care of, not just whether a one-off request got a quote.
+    if(p==='/api/admin/care-plan-accounts' && req.method==='GET'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      // care_plan_items<>'[]' catches every account with a service in ANY stage — requested/quoted/
+      // active — not just active ones, so the pending-pricing queue below has something to work with.
+      const rows=await q("SELECT * FROM users WHERE role='homeowner' AND care_plan_items<>'[]'::jsonb ORDER BY name ASC");
+      const homeownerIds=rows.map(r=>r.id);
+      const visits = homeownerIds.length ? await q('SELECT * FROM care_plan_visits WHERE homeowner_id = ANY($1::text[])',[homeownerIds]) : [];
+      const providerIds=[...new Set(visits.map(v=>v.provider_id).filter(Boolean))];
+      const providerRows = providerIds.length ? await q('SELECT id,name FROM users WHERE id = ANY($1::text[])',[providerIds]) : [];
+      const providerNameById=Object.fromEntries(providerRows.map(pr=>[pr.id,pr.name]));
+      const visitKey=(hid,sk)=>hid+'|'+sk;
+      const visitMap=Object.fromEntries(visits.map(v=>[visitKey(v.homeowner_id,v.service_key),v]));
+      const accounts=rows.map(r=>{
+        const mu=mapUser(r);
+        const services=(mu.carePlanItems||[]).filter(i=>CARE_SERVICE_INFO[i.key]).map(item=>{
+          const sk=item.key;
+          const v=visitMap[visitKey(r.id,sk)];
+          return {
+            serviceKey:sk,
+            serviceName:CARE_SERVICE_INFO[sk].name,
+            catalogPrice:CARE_SERVICE_INFO[sk].price,
+            pricingStatus:item.status, // 'requested' | 'quoted' | 'active'
+            priceCents:item.priceCents,
+            quotedAt:item.quotedAt,
+            acceptedAt:item.acceptedAt,
+            // Dispatch/fulfillment fields — only meaningful once a service is active and paid for.
+            status: v?v.status:'upcoming',
+            scheduledDate: v?(v.scheduled_date?new Date(v.scheduled_date).toISOString().slice(0,10):null):null,
+            providerId: v?v.provider_id:null,
+            providerName: v&&v.provider_id?(providerNameById[v.provider_id]||null):null,
+            note: v?v.note:null,
+          };
+        });
+        return {id:mu.id,name:mu.name,email:mu.email,community:mu.community,subscription:normalizeHomeownerPlanKey(mu.subscription),services};
+      });
+      return send(res,200,{accounts});
+    }
+    // Admin sets (or revises) the price for a requested/quoted service — this is the only way a
+    // homeowner's Care Plan pricing ever gets set. Doesn't touch already-active items; changing the
+    // price on something already billing is a separate concern we haven't built yet.
+    if(p.startsWith('/api/admin/care-plan-accounts/') && p.endsWith('/quote') && req.method==='POST'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const homeownerId=p.split('/')[4];
+      const b=await body(req);
+      const serviceKey=String(b.serviceKey||'');
+      const priceCents=Math.round(Number(b.priceCents));
+      if(!CARE_SERVICE_INFO[serviceKey]) return send(res,400,{error:'Unknown service'});
+      if(!Number.isFinite(priceCents)||priceCents<=0) return send(res,400,{error:'Enter a valid price.'});
+      const homeowner=await q1("SELECT * FROM users WHERE id=$1 AND role='homeowner'",[homeownerId]);
+      if(!homeowner) return send(res,404,{error:'Homeowner not found'});
+      const items=homeowner.care_plan_items||[];
+      const item=items.find(i=>i.key===serviceKey);
+      if(!item) return send(res,404,{error:'This homeowner has not requested that service.'});
+      if(item.status==='active') return send(res,400,{error:'This service is already active — adjust it directly with the homeowner instead.'});
+      const newItems=items.map(i=>i.key===serviceKey?{...i,status:'quoted',priceCents,quotedAt:new Date().toISOString()}:i);
+      const row=await q1('UPDATE users SET care_plan_items=$1::jsonb WHERE id=$2 RETURNING *',[JSON.stringify(newItems),homeownerId]);
+      sendEmail({to:row.email,type:'care_plan_quote_ready',subject:`Your ${CARE_SERVICE_INFO[serviceKey].name} quote is ready`,html:carePlanQuoteReadyEmailHtml(mapUser(row),CARE_SERVICE_INFO[serviceKey].name,priceCents),userId:row.id}).catch(()=>{});
+      return send(res,200,{ok:true});
+    }
+    if(p==='/api/admin/care-plan-candidates' && req.method==='GET'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const serviceKey=String(url.searchParams.get('serviceKey')||'');
+      const homeownerId=String(url.searchParams.get('homeownerId')||'');
+      const wantType=(CARE_SERVICE_TO_PROVIDER_TYPE[serviceKey]||'').toLowerCase();
+      const homeowner=homeownerId?await q1('SELECT * FROM users WHERE id=$1',[homeownerId]):null;
+      const providerRows=await q("SELECT * FROM users WHERE role='provider' AND deleted=false ORDER BY rating DESC NULLS LAST");
+      const candidates=providerRows.map(pr=>{
+        const mu=mapUser(pr);
+        const matchesService=wantType ? (mu.serviceTypes||[]).some(s=>s.toLowerCase()===wantType) : false;
+        const distanceMi=(homeowner&&homeowner.lat!=null&&homeowner.lng!=null&&mu.lat!=null&&mu.lng!=null)
+          ? Math.round(haversineMiles(homeowner.lat,homeowner.lng,mu.lat,mu.lng)*10)/10 : null;
+        return {id:mu.id,name:mu.name,serviceTypes:mu.serviceTypes,rating:mu.rating,reviewCount:mu.reviewCount,verified:mu.verified,providerPlan:mu.providerPlan,suspended:mu.suspended,matchesService,distanceMi};
+      }).filter(c=>!c.suspended).sort((a,b2)=>{
+        if(a.matchesService!==b2.matchesService) return a.matchesService?-1:1;
+        if(a.distanceMi!=null && b2.distanceMi!=null) return a.distanceMi-b2.distanceMi;
+        return (b2.rating||0)-(a.rating||0);
+      });
+      return send(res,200,{candidates});
+    }
+    if(p==='/api/admin/care-plan-visits' && req.method==='POST'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const b=await body(req);
+      const homeownerId=String(b.homeownerId||'');
+      const serviceKey=String(b.serviceKey||'');
+      if(!CARE_SERVICE_INFO[serviceKey]) return send(res,400,{error:'Unknown service'});
+      const homeowner=await q1("SELECT * FROM users WHERE id=$1 AND role='homeowner'",[homeownerId]);
+      if(!homeowner) return send(res,404,{error:'Homeowner not found'});
+      if(!mapUser(homeowner).carePlanServices.includes(serviceKey)) return send(res,400,{error:'This homeowner does not have that service active on their plan'});
+      const existing=await q1('SELECT * FROM care_plan_visits WHERE homeowner_id=$1 AND service_key=$2',[homeownerId,serviceKey]);
+      const has=k=>Object.prototype.hasOwnProperty.call(b,k);
+      let providerId = existing ? existing.provider_id : null;
+      if(has('providerId')) providerId = b.providerId ? String(b.providerId) : null;
+      let status = existing ? existing.status : 'upcoming';
+      if(has('status') && ['upcoming','scheduled','completed'].includes(b.status)) status = b.status;
+      let scheduledDate = existing ? existing.scheduled_date : null;
+      if(has('scheduledDate')) scheduledDate = b.scheduledDate ? String(b.scheduledDate).slice(0,10) : null;
+      let note = existing ? existing.note : null;
+      if(has('note')) note = String(b.note||'').trim().slice(0,500) || null;
+      if(providerId){
+        const pr=await q1("SELECT id FROM users WHERE id=$1 AND role='provider'",[providerId]);
+        if(!pr) return send(res,400,{error:'Provider not found'});
+      }
+      const providerChanged = !!providerId && providerId !== (existing?existing.provider_id:null);
+      const row=await q1(
+        `INSERT INTO care_plan_visits (id,homeowner_id,service_key,provider_id,status,scheduled_date,note,updated_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,now())
+         ON CONFLICT (homeowner_id,service_key) DO UPDATE SET provider_id=$4,status=$5,scheduled_date=$6,note=$7,updated_at=now()
+         RETURNING *`,
+        [existing?existing.id:id('cpv'), homeownerId, serviceKey, providerId, status, scheduledDate, note]
+      );
+      let providerName=null;
+      if(row.provider_id){
+        const pr=await q1('SELECT id,name,email FROM users WHERE id=$1',[row.provider_id]);
+        if(pr){
+          providerName=pr.name;
+          if(providerChanged){
+            const svcName=CARE_SERVICE_INFO[serviceKey].name;
+            await pool.query('INSERT INTO announcements (id,user_id,title,body) VALUES ($1,$2,$3,$4)',
+              [id('ann'),row.provider_id,'New recurring service assigned',`You were assigned to a recurring Home Care Plan service: ${svcName} for ${homeowner.name}.${note?(' Note: '+note):''}`]);
+            sendEmail({to:pr.email||'',type:'care_plan_visit_assigned',subject:`New recurring service: ${svcName}`,html:carePlanVisitAssignedEmailHtml(pr,homeowner.name,svcName,note)}).catch(()=>{});
+          }
+        }
+      }
+      return send(res,200,{visit:{serviceKey:row.service_key,serviceName:CARE_SERVICE_INFO[row.service_key].name,status:row.status,scheduledDate:row.scheduled_date?new Date(row.scheduled_date).toISOString().slice(0,10):null,providerId:row.provider_id,providerName,note:row.note}});
+    }
+
+    if(p==='/api/support/messages' && req.method==='GET'){
+      if(!isPaidPlan(u)) return send(res,403,{error:'Support chat is available on a paid plan.'});
+      const rows=await q('SELECT * FROM support_messages WHERE user_id=$1 ORDER BY created_at',[u.id]);
+      await pool.query("UPDATE support_messages SET read=true WHERE user_id=$1 AND sender_role='admin' AND read=false",[u.id]);
+      return send(res,200,{messages:rows.map(mapSupportMessage)});
+    }
+    if(p==='/api/support/messages' && req.method==='POST'){
+      if(!isPaidPlan(u)) return send(res,403,{error:'Support chat is available on a paid plan.'});
+      const b=await body(req), text=String(b.body||'').trim().slice(0,2000);
+      if(!text) return send(res,400,{error:'Message cannot be empty'});
+      const row=await q1('INSERT INTO support_messages (id,user_id,sender_role,body) VALUES ($1,$2,$3,$4) RETURNING *',[id('sup'),u.id,'user',text]);
+      if(ADMIN_NOTIFY_EMAIL) sendEmail({to:ADMIN_NOTIFY_EMAIL,type:'admin_support_message',subject:`Support message from ${u.name}`,html:emailShell('Support message',`<h2 style="margin:0 0 10px;color:#17352f">${esc_(u.name)} needs support</h2><p style="color:#3f4f4a;line-height:1.6;font-size:14.5px;background:#eaf4ef;border-radius:10px;padding:12px 14px">${esc_(text).slice(0,300)}</p>${btn('Reply in Admin',appUrl()+'/#admin')}`)}).catch(()=>{});
+      return send(res,201,{message:mapSupportMessage(row)});
+    }
+    if(p==='/api/admin/reported-quotes' && req.method==='GET'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const rows=await q("SELECT q.*, r.title AS request_title, r.service_type FROM quotes q JOIN requests r ON r.id=q.request_id WHERE q.reported=true ORDER BY q.reported_at DESC");
+      const homeownerIds=[...new Set(rows.map(r=>r.homeowner_id).filter(Boolean))];
+      const reqRows=rows.length?await q('SELECT id,homeowner_id FROM requests WHERE id = ANY($1::text[])',[rows.map(r=>r.request_id)]):[];
+      const homeownerByReq=Object.fromEntries(reqRows.map(r=>[r.id,r.homeowner_id]));
+      const allUserIds=[...new Set(rows.map(r=>r.provider_id).concat(Object.values(homeownerByReq)))];
+      const users=allUserIds.length?await q('SELECT id,name,email FROM users WHERE id = ANY($1::text[])',[allUserIds]):[];
+      const userMap=Object.fromEntries(users.map(x=>[x.id,{id:x.id,name:x.name,email:x.email}]));
+      const out=rows.map(r=>({...mapQuote(r),requestTitle:r.request_title,serviceType:r.service_type,reported:true,reportedBy:userMap[r.reported_by]||null,reportedReason:r.reported_reason,reportedAt:toISO(r.reported_at),provider:userMap[r.provider_id]||null,homeowner:userMap[homeownerByReq[r.request_id]]||null}));
+      return send(res,200,{quotes:out});
+    }
+    if(p==='/api/admin/support' && req.method==='GET'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const rows=await q(`SELECT sm.user_id, u.name, u.email, u.role,
+        max(sm.created_at) AS last_at,
+        count(*) FILTER (WHERE sm.sender_role='user' AND sm.read=false)::int AS unread
+        FROM support_messages sm JOIN users u ON u.id=sm.user_id GROUP BY sm.user_id,u.name,u.email,u.role ORDER BY last_at DESC`);
+      return send(res,200,{threads:rows.map(r=>({userId:r.user_id,name:r.name,email:r.email,role:r.role,lastAt:toISO(r.last_at),unread:r.unread}))});
+    }
+    if(p.startsWith('/api/admin/support/') && req.method==='GET'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const userId=p.split('/')[4];
+      await pool.query("UPDATE support_messages SET read=true WHERE user_id=$1 AND sender_role='user'",[userId]);
+      const rows=await q('SELECT * FROM support_messages WHERE user_id=$1 ORDER BY created_at',[userId]);
+      return send(res,200,{messages:rows.map(mapSupportMessage)});
+    }
+    if(p.startsWith('/api/admin/support/') && req.method==='POST'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const userId=p.split('/')[4];
+      const target=await q1('SELECT * FROM users WHERE id=$1',[userId]); if(!target)return send(res,404,{error:'Account not found'});
+      const b=await body(req), text=String(b.body||'').trim().slice(0,2000);
+      if(!text) return send(res,400,{error:'Message cannot be empty'});
+      const row=await q1('INSERT INTO support_messages (id,user_id,sender_role,body) VALUES ($1,$2,$3,$4) RETURNING *',[id('sup'),userId,'admin',text]);
+      if(target.email) sendEmail({to:target.email,type:'admin_support_reply',subject:'Reply from Living Communities support',html:emailShell('Support reply',`<h2 style="margin:0 0 10px;color:#17352f">Support replied</h2><p style="color:#3f4f4a;line-height:1.6;font-size:14.5px;background:#eaf4ef;border-radius:10px;padding:12px 14px">${esc_(text).slice(0,300)}</p>${btn('View Reply',appUrl())}`)}).catch(()=>{});
+      return send(res,201,{message:mapSupportMessage(row)});
+    }
+    if(p==='/api/admin/announcements' && req.method==='POST'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const b=await body(req);
+      const title=String(b.title||'').trim().slice(0,120), text=String(b.body||'').trim().slice(0,2000);
+      if(!title||!text) return send(res,400,{error:'Title and body are required.'});
+      const userId=b.userId?String(b.userId):null;
+      if(userId){ const target=await q1('SELECT id,email,name FROM users WHERE id=$1',[userId]); if(!target)return send(res,404,{error:'Account not found'}); }
+      const row=await q1('INSERT INTO announcements (id,user_id,title,body) VALUES ($1,$2,$3,$4) RETURNING *',[id('ann'),userId,title,text]);
+      return send(res,201,{announcement:mapAnnouncement(row)});
+    }
+    if(p==='/api/admin/deleted-accounts' && req.method==='GET'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const rows=await q("SELECT * FROM users WHERE deleted=true ORDER BY deleted_at DESC");
+      return send(res,200,{accounts:rows.map(r=>({...adminAccountView(mapUser(r))}))});
+    }
+    // Full history for one deleted account: its own requests/quotes/jobs, plus every quote
+    // thread it touched (as homeowner on the request, or as the provider who quoted), so admin
+    // can open any of those chats read-only the same way the Reported panel does.
+    if(p.startsWith('/api/admin/deleted-accounts/') && req.method==='GET'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const aid=p.split('/')[4];
+      const target=await q1('SELECT * FROM users WHERE id=$1 AND deleted=true',[aid]);
+      if(!target)return send(res,404,{error:'Deleted account not found'});
+      let requestsOut=[], quotesOut=[], jobsOut=[];
+      if(target.role==='homeowner'){
+        const reqs=await q('SELECT * FROM requests WHERE homeowner_id=$1 ORDER BY created_at DESC',[aid]);
+        const quoteRows=reqs.length?await q('SELECT q.*, r.title AS request_title FROM quotes q JOIN requests r ON r.id=q.request_id WHERE q.request_id = ANY($1::text[]) ORDER BY q.created_at',[reqs.map(r=>r.id)]):[];
+        const providerIds=[...new Set(quoteRows.map(x=>x.provider_id))];
+        const providers=providerIds.length?await q('SELECT id,name FROM users WHERE id = ANY($1::text[])',[providerIds]):[];
+        const providerNameById=Object.fromEntries(providers.map(p2=>[p2.id,p2.name]));
+        requestsOut=reqs.map(r=>({...mapRequest(r)}));
+        quotesOut=quoteRows.map(r=>({...mapQuote(r),requestTitle:r.request_title,otherPartyName:providerNameById[r.provider_id]||'—'}));
+        const jobs=await q('SELECT * FROM jobs WHERE homeowner_id=$1 ORDER BY created_at DESC',[aid]);
+        jobsOut=jobs.map(mapJob);
+      } else if(target.role==='provider'){
+        const quoteRows=await q('SELECT q.*, r.title AS request_title, r.homeowner_id FROM quotes q JOIN requests r ON r.id=q.request_id WHERE q.provider_id=$1 ORDER BY q.created_at DESC',[aid]);
+        const homeownerIds=[...new Set(quoteRows.map(x=>x.homeowner_id))];
+        const homeowners=homeownerIds.length?await q('SELECT id,name FROM users WHERE id = ANY($1::text[])',[homeownerIds]):[];
+        const homeownerNameById=Object.fromEntries(homeowners.map(h=>[h.id,h.name]));
+        quotesOut=quoteRows.map(r=>({...mapQuote(r),requestTitle:r.request_title,otherPartyName:homeownerNameById[r.homeowner_id]||'—'}));
+        const jobs=await q('SELECT * FROM jobs WHERE provider_id=$1 ORDER BY created_at DESC',[aid]);
+        jobsOut=jobs.map(mapJob);
+      }
+      return send(res,200,{account:adminAccountView(mapUser(target)),requests:requestsOut,quotes:quotesOut,jobs:jobsOut});
+    }
+    // Diagnostic viewer for the "no emails are sending" report: every send attempt is logged
+    // (dry_run = no RESEND_API_KEY configured in this environment; error = Resend rejected it,
+    // see the error column; sent = accepted by Resend) so admin can see what's actually happening
+    // in production without needing server console access.
+    if(p==='/api/admin/email-log' && req.method==='GET'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const status=String(url.searchParams.get('status')||'all');
+      const limit=Math.min(parseInt(url.searchParams.get('limit')||'100',10)||100,500);
+      const rows = ['sent','error','dry_run'].includes(status)
+        ? await q('SELECT * FROM email_log WHERE status=$1 ORDER BY sent_at DESC LIMIT $2',[status,limit])
+        : await q('SELECT * FROM email_log ORDER BY sent_at DESC LIMIT $1',[limit]);
+      const counts=await q1("SELECT count(*) FILTER (WHERE status='sent')::int AS sent, count(*) FILTER (WHERE status='error')::int AS error, count(*) FILTER (WHERE status='dry_run')::int AS dry_run FROM email_log");
+      return send(res,200,{emails:rows.map(r=>({id:r.id,userId:r.user_id,to:r.to_email,type:r.type,subject:r.subject,status:r.status,error:r.error,sentAt:toISO(r.sent_at)})),counts,resendConfigured:!!RESEND_API_KEY,emailFrom:EMAIL_FROM});
     }
     return send(res,404,{error:'Not found'});
   }catch(e){console.error(e);send(res,500,{error:'Server error',detail:e.message});}
@@ -1065,6 +2964,7 @@ async function ensureAdminBootstrap(){
 }
 
 initSchema()
+  .then(()=>hoa.initSchema())
   .then(seedIfEmpty)
   .then(ensureAdminBootstrap)
   .then(()=>{
@@ -1078,5 +2978,8 @@ initSchema()
     }else{
       console.log('Stripe is configured — real subscriptions bill themselves; renewals/reminders come from Stripe webhooks instead of the simulated billing check.');
     }
+    // HOA program upkeep (removals, floors, invoices, reminders). Hourly in-process; also callable via /api/internal/run-hoa-maintenance.
+    hoa.runMaintenance().catch(e=>console.error('hoa maintenance failed:',e.message));
+    setInterval(()=>{ hoa.runMaintenance().catch(e=>console.error('hoa maintenance failed:',e.message)); }, 60*60*1000);
   })
   .catch(e=>{ console.error('Failed to start (check DATABASE_URL):', e); process.exit(1); });

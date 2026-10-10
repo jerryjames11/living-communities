@@ -13,3 +13,5 @@ services:
         sync: false   # set manually in the dashboard once your Neon/Supabase DB exists
       - key: ALLOWED_ORIGIN
         value: "*"    # tighten to your real domain once you have one
+      - key: APP_URL
+        sync: false   # your public site address, e.g. https://yoursite.com. Used in invite and email links
