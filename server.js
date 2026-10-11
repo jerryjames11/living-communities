@@ -107,8 +107,75 @@ function publicProviderView(u){
     galleryPhotos:approvedGalleryPhotos(u)
   };
 }
-function mapRequest(r){ return {id:r.id,homeownerId:r.homeowner_id,serviceType:r.service_type,title:r.title,description:r.description,urgency:r.urgency,preferredDate:r.preferred_date,preferredTime:r.preferred_time,status:r.status,createdAt:toISO(r.created_at),dispatchedProviderId:r.dispatched_provider_id||null,dispatchedAt:toISO(r.dispatched_at)||null,delisted:!!r.delisted,delistedAt:toISO(r.delisted_at),closedBy:r.closed_by||null,closedAt:toISO(r.closed_at)||null}; }
-function mapPayment(r){ return {id:r.id,userId:r.user_id,plan:r.plan,planKind:r.plan_kind,amount:(r.amount_cents||0)/100,currency:r.currency,status:r.status,createdAt:toISO(r.created_at),refundedAt:toISO(r.refunded_at)||null}; }
+function mapRequest(r){ return {id:r.id,homeownerId:r.homeowner_id,serviceType:r.service_type,title:r.title,description:r.description,urgency:r.urgency,preferredDate:r.preferred_date,preferredTime:r.preferred_time,status:r.status,createdAt:toISO(r.created_at),dispatchedProviderId:r.dispatched_provider_id||null,dispatchedAt:toISO(r.dispatched_at)||null,delisted:!!r.delisted,delistedAt:toISO(r.delisted_at),closedBy:r.closed_by||null,closedAt:toISO(r.closed_at)||null,propertyId:r.property_id||null}; }
+function mapPayment(r){ return {id:r.id,userId:r.user_id,plan:r.plan,planKind:r.plan_kind,amount:(r.amount_cents||0)/100,currency:r.currency,status:r.status,createdAt:toISO(r.created_at),refundedAt:toISO(r.refunded_at)||null,propertyId:r.property_id||null}; }
+// ---------------------------------------------------------------------------------------------
+// Properties. Plus members can keep 2 properties, Premium unlimited. Each has its own My Home
+// (profile, documents, status, neighborhood) and its own Home Care Plan + billing. The account's
+// original home ("base") stores those fields on the users row, extras store them on their own
+// properties row under the same column names, so careRow()/saveCare() can treat both alike.
+// ---------------------------------------------------------------------------------------------
+const PROPERTY_TYPES=['primary','second_home','rental','family','other'];
+function propertyLimit(subscription){ const k=normalizeHomeownerPlanKey(subscription); return k==='premium'?Infinity:(k==='plus'?2:1); }
+const PROP_JSON_COLS=new Set(['care_plan_items','home_profile','home_documents']);
+async function liveProperties(userId){ return q('SELECT * FROM properties WHERE user_id=$1 AND removed_at IS NULL ORDER BY created_at ASC, id ASC',[userId]); }
+async function ensureBaseProperty(userRow){
+  let rows=await liveProperties(userRow.id);
+  if(rows.length) return rows;
+  await pool.query("INSERT INTO properties (id,user_id,nickname,property_type,is_base,is_primary) VALUES ($1,$2,'My Home','primary',true,true) ON CONFLICT DO NOTHING",[id('prop'),userRow.id]);
+  return liveProperties(userRow.id);
+}
+// propId omitted -> the primary property. Returns null when the id isn't one of the user's live properties.
+async function resolveProperty(userRow,propId){
+  const rows=await ensureBaseProperty(userRow);
+  if(propId) return rows.find(r=>r.id===String(propId))||null;
+  return rows.find(r=>r.is_primary)||rows[0]||null;
+}
+const CARE_COLS=['care_plan_items','care_plan_next_billing','care_plan_reminder_sent_for','care_plan_stripe_subscription_id','home_profile','home_documents'];
+// A users-row-shaped object whose care/home fields come from the property (the row itself for base).
+function careRow(userRow,prop){
+  if(!prop||prop.is_base) return userRow;
+  const o={...userRow}; for(const c of CARE_COLS) o[c]=prop[c]; return o;
+}
+async function updateRow(table,rowId,fields){
+  const keys=Object.keys(fields); if(!keys.length) return q1(`SELECT * FROM ${table} WHERE id=$1`,[rowId]);
+  const sets=keys.map((k,i)=>`${k}=$${i+1}${PROP_JSON_COLS.has(k)?'::jsonb':''}`);
+  const vals=keys.map(k=>PROP_JSON_COLS.has(k)&&fields[k]!==null&&typeof fields[k]!=='string'?JSON.stringify(fields[k]):fields[k]);
+  return q1(`UPDATE ${table} SET ${sets.join(', ')} WHERE id=$${keys.length+1} RETURNING *`,[...vals,rowId]);
+}
+// fields use the shared column names; userFields are users-only (e.g. stripe_customer_id).
+// Returns the care-shaped row (so callers can mapUser() it exactly as before).
+async function saveCare(userRow,prop,fields,userFields){
+  if(!prop||prop.is_base) return updateRow('users',userRow.id,{...fields,...(userFields||{})});
+  let urow=userRow;
+  if(userFields&&Object.keys(userFields).length) urow=await updateRow('users',userRow.id,userFields);
+  const prow=await updateRow('properties',prop.id,fields);
+  return careRow(urow,prow);
+}
+function propertyView(p,userRow,careShaped){
+  const mu=mapUser(careShaped||careRow(userRow,p));
+  const hasLoc=p.is_base?(userRow.lat!=null&&userRow.lng!=null):(p.lat!=null&&p.lng!=null);
+  return {id:p.id,nickname:p.nickname||'My Home',address:(p.is_base?userRow.address:p.address)||'',type:p.property_type||'other',
+    isPrimary:!!p.is_primary,isBase:!!p.is_base,hasLocation:hasLoc,
+    carePlanItems:mu.carePlanItems||[],carePlanNextBilling:mu.carePlanNextBilling||null,carePlanTotal:carePlanMonthlyTotal(mu.carePlanItems),
+    homeProfileSet:homeProfileHasData(mu.homeProfile)};
+}
+// Response for care-plan endpoints: the user (for legacy callers) plus the updated property view.
+// careRowOrUser is the care-shaped row returned by saveCare().
+function carePayload(careShaped,urow,prop){
+  const userRow=(prop&&!prop.is_base)?urow:careShaped;
+  return {user:safeUser(mapUser(userRow)),property:propertyView(prop,userRow,careShaped)};
+}
+// lat/lng to use for a property (base properties live on the user row).
+function propertyLatLng(userRow,prop){
+  if(!prop||prop.is_base) return {lat:userRow.lat!=null?Number(userRow.lat):null,lng:userRow.lng!=null?Number(userRow.lng):null};
+  return {lat:prop.lat!=null?Number(prop.lat):null,lng:prop.lng!=null?Number(prop.lng):null};
+}
+async function propertiesPayload(userRow){
+  const rows=await ensureBaseProperty(userRow);
+  const limit=propertyLimit(userRow.subscription);
+  return {properties:rows.map(r=>propertyView(r,userRow)),limit:limit===Infinity?null:limit,canAdd:rows.length<limit,plan:normalizeHomeownerPlanKey(userRow.subscription)};
+}
 // Slim account view for the admin accounts list — everything an admin needs to monitor an
 // account and its subscription at a glance, but never the heavy/sensitive stuff (password data,
 // uploaded verification document images) that a bulk list endpoint has no business returning.
@@ -911,7 +978,30 @@ async function runBillingCheck(){
       charges++;
     }
   }
-  return {reminders,charges,checked:rows.length};
+  // Extra properties bill on their own cycle, same demo-mode rules.
+  const propRows=await q("SELECT * FROM properties WHERE removed_at IS NULL AND is_base=false AND care_plan_next_billing IS NOT NULL AND care_plan_stripe_subscription_id IS NULL");
+  for(const pr of propRows){
+    const urow=await q1('SELECT * FROM users WHERE id=$1',[pr.user_id]); if(!urow) continue;
+    const mu=mapUser(careRow(urow,pr));
+    const details=carePlanActiveDetails(mu.carePlanItems);
+    if(!details.length) continue;
+    const nextBilling=new Date(pr.care_plan_next_billing).toISOString().slice(0,10);
+    const amount=carePlanMonthlyTotal(mu.carePlanItems);
+    if(!amount) continue;
+    const reminderSentFor=pr.care_plan_reminder_sent_for?new Date(pr.care_plan_reminder_sent_for).toISOString().slice(0,10):null;
+    if(nextBilling===in7Str && reminderSentFor!==nextBilling){
+      await sendEmail({to:urow.email,type:'care_plan_reminder',subject:`Your Home Care Plan for ${pr.nickname} renews in 7 days`,html:carePlanReminderEmailHtml(mu,details,amount,nextBilling),userId:urow.id});
+      await pool.query('UPDATE properties SET care_plan_reminder_sent_for=$1 WHERE id=$2',[nextBilling,pr.id]);
+      reminders++;
+    }
+    if(nextBilling<=todayStr){
+      await sendEmail({to:urow.email,type:'care_plan_billed',subject:`Your card was charged for your Home Care Plan (${pr.nickname})`,html:carePlanBilledEmailHtml(mu,details,amount,nextBilling),userId:urow.id});
+      const newNext=new Date(nextBilling+'T00:00:00Z'); newNext.setUTCMonth(newNext.getUTCMonth()+1);
+      await pool.query('UPDATE properties SET care_plan_next_billing=$1, care_plan_reminder_sent_for=NULL WHERE id=$2',[newNext.toISOString().slice(0,10),pr.id]);
+      charges++;
+    }
+  }
+  return {reminders,charges,checked:rows.length+propRows.length};
 }
 
 // Admin digest — a single rollup email instead of pinging on every event. Meant to be triggered
@@ -1129,6 +1219,40 @@ async function initSchema(){
   // Homeowner can archive one provider's conversation on a request without touching the others.
   await pool.query(`ALTER TABLE quotes ADD COLUMN IF NOT EXISTS archived boolean DEFAULT false`);
   await pool.query(`ALTER TABLE quotes ADD COLUMN IF NOT EXISTS archived_at timestamptz`);
+  // Multiple properties (Plus: 2, Premium: unlimited). The account's original home is the "base"
+  // property: its home profile, documents and Home Care Plan keep living on the users row so every
+  // existing billing/admin path keeps working. Extra properties keep the same fields on their own
+  // row. is_primary only decides defaults (new requests, emails); it never moves data.
+  await pool.query(`CREATE TABLE IF NOT EXISTS properties (
+    id text PRIMARY KEY,
+    user_id text NOT NULL REFERENCES users(id),
+    nickname text NOT NULL DEFAULT 'My Home',
+    address text,
+    lat double precision,
+    lng double precision,
+    property_type text DEFAULT 'other',
+    is_base boolean NOT NULL DEFAULT false,
+    is_primary boolean NOT NULL DEFAULT false,
+    home_profile jsonb DEFAULT '{}'::jsonb,
+    home_documents jsonb DEFAULT '[]'::jsonb,
+    care_plan_items jsonb DEFAULT '[]'::jsonb,
+    care_plan_next_billing date,
+    care_plan_reminder_sent_for date,
+    care_plan_stripe_subscription_id text,
+    created_at timestamptz DEFAULT now(),
+    removed_at timestamptz
+  )`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_properties_user ON properties(user_id)`);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS uq_properties_base ON properties(user_id) WHERE is_base AND removed_at IS NULL`);
+  await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS property_id text`);
+  await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS lat double precision`);
+  await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS lng double precision`);
+  await pool.query(`ALTER TABLE payments ADD COLUMN IF NOT EXISTS property_id text`);
+  // Every existing homeowner gets their current home as the Primary (base) property; their requests point at it.
+  await pool.query(`INSERT INTO properties (id,user_id,nickname,property_type,is_base,is_primary)
+    SELECT 'prop_'||substr(md5(random()::text||u.id),1,14), u.id, 'My Home','primary',true,true FROM users u
+    WHERE u.role='homeowner' AND NOT EXISTS (SELECT 1 FROM properties p WHERE p.user_id=u.id)`);
+  await pool.query(`UPDATE requests r SET property_id=(SELECT p.id FROM properties p WHERE p.user_id=r.homeowner_id AND p.is_base AND p.removed_at IS NULL LIMIT 1) WHERE r.property_id IS NULL`);
   await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS delisted boolean DEFAULT false`);
   await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS delisted_at timestamptz`);
   await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS closed_by text`);
@@ -1188,6 +1312,10 @@ async function initSchema(){
       updated_at timestamptz DEFAULT now(),
       UNIQUE(homeowner_id, service_key)
     )`);
+  // Per-property visits: NULL property_id means the account's base property (all legacy rows).
+  await pool.query(`ALTER TABLE care_plan_visits ADD COLUMN IF NOT EXISTS property_id text`);
+  await pool.query(`ALTER TABLE care_plan_visits DROP CONSTRAINT IF EXISTS care_plan_visits_homeowner_id_service_key_key`);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS uq_care_plan_visits_prop ON care_plan_visits(homeowner_id, COALESCE(property_id,''), service_key)`);
   await pool.query(`
     CREATE TABLE IF NOT EXISTS email_log (
       id text PRIMARY KEY,
@@ -1513,7 +1641,13 @@ const server=http.createServer(async (req,res)=>{
             const amount=(amountCents/100).toFixed(2);
             const nextBilling=periodEnd?new Date(periodEnd*1000).toISOString().slice(0,10):null;
             let planKind=null, planLabel=null;
-            if(subId && subId===row.care_plan_stripe_subscription_id){
+            const propRow=subId?await q1('SELECT * FROM properties WHERE user_id=$1 AND care_plan_stripe_subscription_id=$2',[row.id,subId]):null;
+            const payPropId=propRow?propRow.id:null;
+            if(propRow){
+              planKind='care_plan'; planLabel='Home Care Plan';
+              await pool.query('UPDATE properties SET care_plan_next_billing=$1, care_plan_reminder_sent_for=NULL WHERE id=$2',[nextBilling,propRow.id]);
+              await sendEmail({to:row.email,type:'care_plan_billed',subject:`Your card was charged for your Home Care Plan (${propRow.nickname})`,html:carePlanBilledEmailHtml(mapUser(careRow(row,propRow)),carePlanActiveDetails(propRow.care_plan_items),amount,nextBilling||new Date()),userId:row.id});
+            } else if(subId && subId===row.care_plan_stripe_subscription_id){
               planKind='care_plan'; planLabel='Home Care Plan';
               await pool.query('UPDATE users SET care_plan_next_billing=$1, care_plan_reminder_sent_for=NULL WHERE id=$2',[nextBilling,row.id]);
               await sendEmail({to:row.email,type:'care_plan_billed',subject:'Your card was charged for your Home Care Plan',html:carePlanBilledEmailHtml(mapUser(row),carePlanActiveDetails(mapUser(row).carePlanItems),amount,nextBilling||new Date()),userId:row.id});
@@ -1529,9 +1663,9 @@ const server=http.createServer(async (req,res)=>{
               await sendEmail({to:row.email,type:'provider_plan_billed',subject:'Your Pro Provider plan was renewed',html:emailShell('Plan renewed',`<h2 style="margin:0 0 10px;color:#17352f">Payment received</h2><p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Your card on file was charged $${amount} for your Pro Provider plan.</p>`),userId:row.id});
             }
             await pool.query(
-              `INSERT INTO payments (id,user_id,plan,plan_kind,amount_cents,currency,status,stripe_invoice_id,stripe_customer_id,stripe_subscription_id)
-               VALUES ($1,$2,$3,$4,$5,$6,'succeeded',$7,$8,$9)`,
-              [id('pay'),row.id,planLabel,planKind,amountCents,inv.currency||'usd',inv.id,inv.customer,subId||null]
+              `INSERT INTO payments (id,user_id,plan,plan_kind,amount_cents,currency,status,stripe_invoice_id,stripe_customer_id,stripe_subscription_id,property_id)
+               VALUES ($1,$2,$3,$4,$5,$6,'succeeded',$7,$8,$9,$10)`,
+              [id('pay'),row.id,planLabel,planKind,amountCents,inv.currency||'usd',inv.id,inv.customer,subId||null,payPropId]
             ).catch(()=>{});
           }
         } else if(event.type==='invoice.payment_failed'){
@@ -1540,13 +1674,15 @@ const server=http.createServer(async (req,res)=>{
           if(row){
             const subId=inv.subscription;
             let planKind=null, planLabel=null;
-            if(subId && subId===row.care_plan_stripe_subscription_id){ planKind='care_plan'; planLabel='Home Care Plan'; }
+            const failProp=subId?await q1('SELECT * FROM properties WHERE user_id=$1 AND care_plan_stripe_subscription_id=$2',[row.id,subId]):null;
+            if(failProp){ planKind='care_plan'; planLabel='Home Care Plan'; }
+            else if(subId && subId===row.care_plan_stripe_subscription_id){ planKind='care_plan'; planLabel='Home Care Plan'; }
             else if(subId && subId===row.stripe_subscription_id){ const info=HOMEOWNER_PLAN_INFO[normalizeHomeownerPlanKey(row.subscription)]; planKind='subscription'; planLabel=info?info.label:row.subscription; }
             else if(subId && subId===row.provider_plan_stripe_subscription_id){ const info=PROVIDER_PLAN_INFO[row.provider_plan]; planKind='provider_plan'; planLabel=info?info.label:row.provider_plan; }
             await pool.query(
-              `INSERT INTO payments (id,user_id,plan,plan_kind,amount_cents,currency,status,stripe_invoice_id,stripe_customer_id,stripe_subscription_id)
-               VALUES ($1,$2,$3,$4,$5,$6,'failed',$7,$8,$9)`,
-              [id('pay'),row.id,planLabel,planKind,inv.amount_due||0,inv.currency||'usd',inv.id,inv.customer,subId||null]
+              `INSERT INTO payments (id,user_id,plan,plan_kind,amount_cents,currency,status,stripe_invoice_id,stripe_customer_id,stripe_subscription_id,property_id)
+               VALUES ($1,$2,$3,$4,$5,$6,'failed',$7,$8,$9,$10)`,
+              [id('pay'),row.id,planLabel,planKind,inv.amount_due||0,inv.currency||'usd',inv.id,inv.customer,subId||null,failProp?failProp.id:null]
             ).catch(()=>{});
             await sendEmail({to:row.email,type:'payment_failed',subject:'Your payment could not be processed',html:emailShell('Payment failed',`<h2 style="margin:0 0 10px;color:#17352f">We couldn't charge your card</h2><p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Please update your payment method from your dashboard to keep your plan active.</p>`),userId:row.id});
             if(ADMIN_NOTIFY_EMAIL) sendEmail({to:ADMIN_NOTIFY_EMAIL,type:'admin_payment_failed',subject:`Payment failed: ${row.name}`,html:adminPaymentFailedEmailHtml(mapUser(row))}).catch(()=>{});
@@ -1555,6 +1691,7 @@ const server=http.createServer(async (req,res)=>{
           const sub=event.data.object;
           const row=await q1('SELECT * FROM users WHERE stripe_customer_id=$1',[sub.customer]);
           if(row){
+            await pool.query("UPDATE properties SET care_plan_items='[]'::jsonb, care_plan_next_billing=NULL, care_plan_stripe_subscription_id=NULL WHERE user_id=$1 AND care_plan_stripe_subscription_id=$2",[row.id,sub.id]);
             if(sub.id===row.care_plan_stripe_subscription_id) await pool.query("UPDATE users SET care_plan_items='[]'::jsonb, care_plan_next_billing=NULL, care_plan_stripe_subscription_id=NULL WHERE id=$1",[row.id]);
             if(sub.id===row.stripe_subscription_id) await pool.query("UPDATE users SET subscription='free', stripe_subscription_id=NULL, subscription_next_billing=NULL WHERE id=$1",[row.id]);
             if(sub.id===row.provider_plan_stripe_subscription_id) await pool.query("UPDATE users SET provider_plan='free', provider_plan_stripe_subscription_id=NULL, provider_plan_next_billing=NULL WHERE id=$1",[row.id]);
@@ -1572,6 +1709,7 @@ const server=http.createServer(async (req,res)=>{
     // user's), for the Payments tab on the homeowner/provider dashboards.
     if(p==='/api/billing/history' && req.method==='GET'){
       const rows=await q('SELECT * FROM payments WHERE user_id=$1 ORDER BY created_at DESC LIMIT 100',[u.id]);
+      // A care-plan payment with no property id (older rows) belongs to the base property.
       const payments=rows.map(mapPayment);
       return send(res,200,{payments});
     }
@@ -1600,7 +1738,7 @@ const server=http.createServer(async (req,res)=>{
         // dealing with, not just "scheduled" with no counterparty shown.
         const jobs=await q('SELECT j.*, up.name AS provider_name FROM jobs j JOIN users up ON up.id=j.provider_id WHERE j.homeowner_id=$1 ORDER BY j.created_at DESC',[u.id]);
         const reviews=await q('SELECT * FROM reviews WHERE homeowner_id=$1',[u.id]);
-        return send(res,200,{user:safeUser(u),sponsor:await hoa.sponsorInfo(u),serviceDemand:await serviceDemand(),requests,announcements:announcements.map(mapAnnouncement),jobs:jobs.map(r=>({...mapJob(r),providerName:r.provider_name})),reviews:reviews.map(mapReview),unreadChatCount,unreadMessagesCount:unreadAnnouncementsCount+unreadSupportCount});
+        return send(res,200,{user:safeUser(u),properties:await propertiesPayload(await q1('SELECT * FROM users WHERE id=$1',[u.id])),sponsor:await hoa.sponsorInfo(u),serviceDemand:await serviceDemand(),requests,announcements:announcements.map(mapAnnouncement),jobs:jobs.map(r=>({...mapJob(r),providerName:r.provider_name})),reviews:reviews.map(mapReview),unreadChatCount,unreadMessagesCount:unreadAnnouncementsCount+unreadSupportCount});
       }
       let providerUsage=null;
       if(u.role==='provider'){ providerUsage=await ensureUsagePeriod(u); u.quotesUsed=providerUsage.quotes; u.convosUsed=providerUsage.convos; }
@@ -1610,7 +1748,7 @@ const server=http.createServer(async (req,res)=>{
       // filtered out, so incomplete address data never silently hides real leads.
       // A request stays in the feed until a provider submits a receipt (it then becomes 'completed')
       // or the homeowner delists it. Accepting a quote alone never removes it for other providers.
-      const openRows=await q(`SELECT r.*, uh.lat AS h_lat, uh.lng AS h_lng FROM requests r JOIN users uh ON uh.id=r.homeowner_id
+      const openRows=await q(`SELECT r.*, COALESCE(r.lat,uh.lat) AS h_lat, COALESCE(r.lng,uh.lng) AS h_lng FROM requests r JOIN users uh ON uh.id=r.homeowner_id
         WHERE r.delisted=false AND r.status='open' ORDER BY r.created_at DESC`);
       const myQuotes=openRows.length?await q('SELECT * FROM quotes WHERE request_id = ANY($1::text[]) AND provider_id=$2',[openRows.map(r=>r.id),u.id]):[];
       const myActivity=await quoteActivity(myQuotes.map(qq=>qq.id),u.id);
@@ -1648,6 +1786,79 @@ const server=http.createServer(async (req,res)=>{
       return send(res,200,{ok:true});
     }
 
+    // ---- Properties ----
+    if(p==='/api/properties' && req.method==='GET'){
+      if(u.role!=='homeowner')return send(res,403,{error:'Only homeowners have properties'});
+      return send(res,200,await propertiesPayload(await q1('SELECT * FROM users WHERE id=$1',[u.id])));
+    }
+    if(p==='/api/properties' && req.method==='POST'){
+      if(u.role!=='homeowner')return send(res,403,{error:'Only homeowners have properties'});
+      const urow=await q1('SELECT * FROM users WHERE id=$1',[u.id]);
+      const existing=await ensureBaseProperty(urow);
+      const limit=propertyLimit(urow.subscription);
+      if(normalizeHomeownerPlanKey(urow.subscription)==='free') return send(res,403,{error:'Adding a property is a Plus & Premium perk. Upgrade your Community Plan to add another home.',upgradeRequired:true});
+      if(existing.length>=limit) return send(res,409,{error:'Plus includes 2 properties. Upgrade to Premium for unlimited properties.',limitReached:true,limit});
+      const b=await body(req);
+      const address=String(b.address||'').trim().slice(0,200);
+      const nickname=String(b.nickname||'').trim().slice(0,40)||'My Other Home';
+      const type=PROPERTY_TYPES.includes(b.type)?b.type:'other';
+      if(!address) return send(res,400,{error:'Enter the property address.'});
+      const geo=await geocodeAddress(address);
+      if(!geo) return send(res,422,{error:"We couldn't locate that address. Try including street, city, and state."});
+      const pid=id('prop');
+      await pool.query('INSERT INTO properties (id,user_id,nickname,address,lat,lng,property_type) VALUES ($1,$2,$3,$4,$5,$6,$7)',[pid,u.id,nickname,address,geo.lat,geo.lng,type]);
+      const row=(await liveProperties(u.id)).find(r=>r.id===pid);
+      return send(res,201,{property:propertyView(row,urow),...(await propertiesPayload(urow))});
+    }
+    if(p.startsWith('/api/properties/') && req.method==='PATCH'){
+      if(u.role!=='homeowner')return send(res,403,{error:'Only homeowners have properties'});
+      const pid=p.split('/')[3];
+      const urow=await q1('SELECT * FROM users WHERE id=$1',[u.id]);
+      const prop=await resolveProperty(urow,pid); if(!prop) return send(res,404,{error:'Property not found'});
+      const b=await body(req);
+      const fields={};
+      if(b.nickname!==undefined){ const n=String(b.nickname||'').trim().slice(0,40); if(!n) return send(res,400,{error:'Give the property a name.'}); fields.nickname=n; }
+      if(b.type!==undefined && PROPERTY_TYPES.includes(b.type)) fields.property_type=b.type;
+      let newUserRow=urow;
+      if(b.address!==undefined){
+        const address=String(b.address||'').trim().slice(0,200);
+        if(!address) return send(res,400,{error:'Enter the property address.'});
+        const current=(prop.is_base?urow.address:prop.address)||'';
+        if(address!==current){
+          const geo=await geocodeAddress(address);
+          if(!geo) return send(res,422,{error:"We couldn't locate that address. Try including street, city, and state."});
+          if(prop.is_base){
+            newUserRow=await q1('UPDATE users SET address=$1,lat=$2,lng=$3,geocoded_at=now() WHERE id=$4 RETURNING *',[address,geo.lat,geo.lng,u.id]);
+            await hoa.onAddressChange(u,address).catch(e=>console.error('hoa address hook:',e.message));
+          } else { fields.address=address; fields.lat=geo.lat; fields.lng=geo.lng; }
+        }
+      }
+      const prow=Object.keys(fields).length?await updateRow('properties',prop.id,fields):prop;
+      return send(res,200,{property:propertyView(prow,newUserRow),...(await propertiesPayload(newUserRow))});
+    }
+    if(p.startsWith('/api/properties/') && p.endsWith('/primary') && req.method==='POST'){
+      if(u.role!=='homeowner')return send(res,403,{error:'Only homeowners have properties'});
+      const pid=p.split('/')[3];
+      const urow=await q1('SELECT * FROM users WHERE id=$1',[u.id]);
+      const prop=await resolveProperty(urow,pid); if(!prop) return send(res,404,{error:'Property not found'});
+      await pool.query('UPDATE properties SET is_primary=(id=$2) WHERE user_id=$1 AND removed_at IS NULL',[u.id,pid]);
+      return send(res,200,await propertiesPayload(urow));
+    }
+    if(p.startsWith('/api/properties/') && req.method==='DELETE'){
+      if(u.role!=='homeowner')return send(res,403,{error:'Only homeowners have properties'});
+      const pid=p.split('/')[3];
+      const urow=await q1('SELECT * FROM users WHERE id=$1',[u.id]);
+      const prop=await resolveProperty(urow,pid); if(!prop) return send(res,404,{error:'Property not found'});
+      if(prop.is_primary) return send(res,409,{error:"The primary property can't be removed. Make another property primary first."});
+      const items=(careRow(urow,prop).care_plan_items)||[];
+      if(items.some(i=>i.status==='active')) return send(res,409,{error:'Cancel this property\'s Home Care Plan services before removing it.'});
+      const openReq=await q1("SELECT 1 AS x FROM requests WHERE property_id=$1 AND status='open'",[pid]);
+      if(openReq) return send(res,409,{error:'This property has an open request. Close it first.'});
+      await pool.query('UPDATE properties SET removed_at=now(), is_primary=false WHERE id=$1',[pid]);
+      if(prop.is_base) await pool.query("UPDATE users SET home_profile='{}'::jsonb, home_documents='[]'::jsonb, care_plan_items='[]'::jsonb, care_plan_next_billing=NULL, care_plan_reminder_sent_for=NULL, care_plan_stripe_subscription_id=NULL WHERE id=$1",[u.id]);
+      else await pool.query("UPDATE properties SET care_plan_items='[]'::jsonb, care_plan_next_billing=NULL, care_plan_stripe_subscription_id=NULL WHERE id=$1",[pid]);
+      return send(res,200,await propertiesPayload(urow));
+    }
     if(p==='/api/requests' && req.method==='GET'){
       // Same feed rule as the dashboard load: stays visible until a receipt closes it or the homeowner delists it.
       const rows=u.role==='homeowner'?await q('SELECT * FROM requests WHERE homeowner_id=$1 ORDER BY created_at DESC',[u.id]):await q(`SELECT * FROM requests r
@@ -1659,18 +1870,26 @@ const server=http.createServer(async (req,res)=>{
       const b=await body(req);
       const address=String(b.address||'').trim().slice(0,200);
       if(!address) return send(res,400,{error:'Enter your ZIP code or city so nearby providers can find your request.'});
-      let lat=u.lat, lng=u.lng;
+      const urow=await q1('SELECT * FROM users WHERE id=$1',[u.id]);
+      const prop=await resolveProperty(urow,b.propertyId);
+      if(!prop) return send(res,404,{error:'Property not found'});
+      const loc=propertyLatLng(urow,prop);
+      let lat=loc.lat, lng=loc.lng;
+      const savedAddress=(prop.is_base?urow.address:prop.address)||'';
       // Only re-geocode when the address is new or changed — keeps this fast/cheap for the common case
-      // where the homeowner is just confirming their saved address on a new request.
-      if(address!==(u.address||'') || lat==null || lng==null){
+      // where the homeowner is just confirming their saved address on a new request. Editing the
+      // address on a request for the base home keeps updating the saved address as before; for extra
+      // properties the new address applies to this request only.
+      if(address!==savedAddress || lat==null || lng==null){
         const geo=await geocodeAddress(address);
         if(!geo) return send(res,422,{error:"We couldn't locate that ZIP or city. Try being more specific (e.g. \"Richardson, TX\" or \"75080\")."});
         lat=geo.lat; lng=geo.lng;
-        await q1('UPDATE users SET address=$1,lat=$2,lng=$3,geocoded_at=now() WHERE id=$4 RETURNING *',[address,lat,lng,u.id]);
+        if(prop.is_base) await q1('UPDATE users SET address=$1,lat=$2,lng=$3,geocoded_at=now() WHERE id=$4 RETURNING *',[address,lat,lng,u.id]);
+        else if(address!==savedAddress && !prop.address) await pool.query('UPDATE properties SET address=$1,lat=$2,lng=$3 WHERE id=$4',[address,lat,lng,prop.id]);
       }
       const serviceType=b.serviceType||'Handyman';
-      const row=await q1('INSERT INTO requests (id,homeowner_id,service_type,title,description,urgency,preferred_date,preferred_time,status) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *',
-        [id('req'),u.id,serviceType,String(b.title||`${serviceType} service request`).slice(0,120),String(b.description||'').slice(0,2000),b.urgency||'Flexible',b.preferredDate||'',b.preferredTime||'Any time','open']);
+      const row=await q1('INSERT INTO requests (id,homeowner_id,service_type,title,description,urgency,preferred_date,preferred_time,status,property_id,lat,lng) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *',
+        [id('req'),u.id,serviceType,String(b.title||`${serviceType} service request`).slice(0,120),String(b.description||'').slice(0,2000),b.urgency||'Flexible',b.preferredDate||'',b.preferredTime||'Any time','open',prop.id,lat,lng]);
       notifyProvidersOfNewRequest(mapRequest(row),{...u,lat,lng}).catch(()=>{});
       return send(res,201,{request:mapRequest(row)});
     }
@@ -1972,8 +2191,11 @@ const server=http.createServer(async (req,res)=>{
     if(p==='/api/care-plan' && req.method==='POST'){
       if(u.role!=='homeowner')return send(res,403,{error:'Only homeowners can manage a Home Care Plan'});
       const b=await body(req);
+      const urow0=await q1('SELECT * FROM users WHERE id=$1',[u.id]);
+      const prop=await resolveProperty(urow0,b.propertyId); if(!prop) return send(res,404,{error:'Property not found'});
+      const crow=careRow(urow0,prop), cu=mapUser(crow);
       const desiredKeys=Array.isArray(b.services)?[...new Set(b.services.filter(s=>CARE_SERVICE_INFO[s]))]:[];
-      const currentItems=u.carePlanItems||[];
+      const currentItems=cu.carePlanItems||[];
       const currentKeys=new Set(currentItems.map(i=>i.key));
       const desiredSet=new Set(desiredKeys);
       const addedKeys=desiredKeys.filter(k=>!currentKeys.has(k));
@@ -1993,28 +2215,27 @@ const server=http.createServer(async (req,res)=>{
       let row;
       if(stripeConfigured() && removedActiveNames.length){
         // An active (billed) item was dropped — resync Stripe to the new active set immediately.
-        const current=await q1('SELECT * FROM users WHERE id=$1',[u.id]);
         try{
-          const {nextBilling,subId}=await syncCarePlanStripe({...current,care_plan_items:newItems}, null);
-          row=await q1('UPDATE users SET care_plan_items=$1::jsonb, care_plan_next_billing=$2, care_plan_reminder_sent_for=NULL, care_plan_stripe_subscription_id=$3 WHERE id=$4 RETURNING *',[JSON.stringify(newItems),nextBilling,subId,u.id]);
+          const {nextBilling,subId}=await syncCarePlanStripe({...crow,care_plan_items:newItems}, null);
+          row=await saveCare(urow0,prop,{care_plan_items:newItems,care_plan_next_billing:nextBilling,care_plan_reminder_sent_for:null,care_plan_stripe_subscription_id:subId});
         }catch(e){ if(e.httpStatus) return send(res,e.httpStatus,{error:e.message}); return sendStripeError(res,e); }
       }else if(!stillHasActive && removedActiveNames.length){
         // Dropped down to zero active items — stop billing entirely (demo mode: no Stripe to sync).
-        row=await q1('UPDATE users SET care_plan_items=$1::jsonb, care_plan_next_billing=NULL, care_plan_reminder_sent_for=NULL, care_plan_stripe_subscription_id=NULL WHERE id=$2 RETURNING *',[JSON.stringify(newItems),u.id]);
+        row=await saveCare(urow0,prop,{care_plan_items:newItems,care_plan_next_billing:null,care_plan_reminder_sent_for:null,care_plan_stripe_subscription_id:null});
       }else{
-        row=await q1('UPDATE users SET care_plan_items=$1::jsonb WHERE id=$2 RETURNING *',[JSON.stringify(newItems),u.id]);
+        row=await saveCare(urow0,prop,{care_plan_items:newItems});
       }
       if(addedKeys.length){
         const addedNames=addedKeys.map(k=>CARE_SERVICE_INFO[k].name);
         sendEmail({to:row.email,type:'care_plan_requested',subject:'We received your Home Care Plan request',html:carePlanRequestedEmailHtml(mapUser(row),addedNames),userId:row.id}).catch(()=>{});
-        if(ADMIN_NOTIFY_EMAIL) sendEmail({to:ADMIN_NOTIFY_EMAIL,type:'admin_care_plan_quote_needed',subject:`Care Plan pricing needed: ${row.name}`,html:adminCarePlanQuoteNeededEmailHtml(mapUser(row),addedNames)}).catch(()=>{});
+        if(ADMIN_NOTIFY_EMAIL) sendEmail({to:ADMIN_NOTIFY_EMAIL,type:'admin_care_plan_quote_needed',subject:`Care Plan pricing needed: ${row.name}${prop.is_base?'':' · '+prop.nickname}`,html:adminCarePlanQuoteNeededEmailHtml(mapUser(row),addedNames)}).catch(()=>{});
       }
       if(!newItems.length && removedItems.length){
         sendEmail({to:row.email,type:'care_plan_canceled',subject:'Your Home Care Plan was canceled',html:carePlanCanceledEmailHtml(mapUser(row)),userId:row.id}).catch(()=>{});
       }else if(removedActiveNames.length){
         sendEmail({to:row.email,type:'care_plan_service_canceled',subject:'A Home Care Plan service was removed',html:carePlanServiceCanceledEmailHtml(mapUser(row),removedActiveNames),userId:row.id}).catch(()=>{});
       }
-      return send(res,200,{user:safeUser(mapUser(row))});
+      return send(res,200,carePayload(row,urow0,prop));
     }
     // Homeowner accepts an admin-set price — this is the only place billing actually starts (or
     // grows) for a service.
@@ -2022,28 +2243,30 @@ const server=http.createServer(async (req,res)=>{
       if(u.role!=='homeowner')return send(res,403,{error:'Only homeowners can manage a Home Care Plan'});
       const b=await body(req);
       const serviceKey=String(b.serviceKey||'');
-      const items=u.carePlanItems||[];
+      const urow0=await q1('SELECT * FROM users WHERE id=$1',[u.id]);
+      const prop=await resolveProperty(urow0,b.propertyId); if(!prop) return send(res,404,{error:'Property not found'});
+      const crow=careRow(urow0,prop), cu=mapUser(crow);
+      const items=cu.carePlanItems||[];
       const item=items.find(i=>i.key===serviceKey);
       if(!item||item.status!=='quoted') return send(res,400,{error:'No pending quote for that service'});
       const newItems=items.map(i=>i.key===serviceKey?{...i,status:'active',acceptedAt:new Date().toISOString()}:i);
       let row;
       if(stripeConfigured()){
-        const current=await q1('SELECT * FROM users WHERE id=$1',[u.id]);
         try{
-          const {nextBilling,subId,customerId}=await syncCarePlanStripe({...current,care_plan_items:newItems}, b.paymentMethodId);
-          row=await q1('UPDATE users SET care_plan_items=$1::jsonb, care_plan_next_billing=$2, care_plan_reminder_sent_for=NULL, care_plan_stripe_subscription_id=$3, stripe_customer_id=$4 WHERE id=$5 RETURNING *',[JSON.stringify(newItems),nextBilling,subId,customerId,u.id]);
+          const {nextBilling,subId,customerId}=await syncCarePlanStripe({...crow,care_plan_items:newItems}, b.paymentMethodId);
+          row=await saveCare(urow0,prop,{care_plan_items:newItems,care_plan_next_billing:nextBilling,care_plan_reminder_sent_for:null,care_plan_stripe_subscription_id:subId},{stripe_customer_id:customerId});
         }catch(e){ if(e.httpStatus) return send(res,e.httpStatus,{error:e.message}); return sendStripeError(res,e); }
-      }else if(!u.carePlanNextBilling){
+      }else if(!cu.carePlanNextBilling){
         // First-ever active item in demo mode — start a fresh 30-day billing cycle.
         const next=new Date(); next.setDate(next.getDate()+30);
-        row=await q1('UPDATE users SET care_plan_items=$1::jsonb, care_plan_next_billing=$2, care_plan_reminder_sent_for=NULL WHERE id=$3 RETURNING *',[JSON.stringify(newItems),next.toISOString().slice(0,10),u.id]);
+        row=await saveCare(urow0,prop,{care_plan_items:newItems,care_plan_next_billing:next.toISOString().slice(0,10),care_plan_reminder_sent_for:null});
       }else{
         // Already mid-cycle — this item just joins the existing recurring charge.
-        row=await q1('UPDATE users SET care_plan_items=$1::jsonb WHERE id=$2 RETURNING *',[JSON.stringify(newItems),u.id]);
+        row=await saveCare(urow0,prop,{care_plan_items:newItems});
       }
       const svc=CARE_SERVICE_INFO[serviceKey];
       sendEmail({to:row.email,type:'care_plan_service_activated',subject:`${svc.name} is now active on your Home Care Plan`,html:carePlanServiceActivatedEmailHtml(mapUser(row),svc.name,item.priceCents,carePlanMonthlyTotal(newItems)),userId:row.id}).catch(()=>{});
-      return send(res,200,{user:safeUser(mapUser(row))});
+      return send(res,200,carePayload(row,urow0,prop));
     }
     // Homeowner declines a price they don't want — the service drops off their plan entirely; they
     // can always re-request it (and get a fresh quote) later.
@@ -2051,21 +2274,28 @@ const server=http.createServer(async (req,res)=>{
       if(u.role!=='homeowner')return send(res,403,{error:'Only homeowners can manage a Home Care Plan'});
       const b=await body(req);
       const serviceKey=String(b.serviceKey||'');
-      const items=u.carePlanItems||[];
+      const urow0=await q1('SELECT * FROM users WHERE id=$1',[u.id]);
+      const prop=await resolveProperty(urow0,b.propertyId); if(!prop) return send(res,404,{error:'Property not found'});
+      const items=(mapUser(careRow(urow0,prop)).carePlanItems)||[];
       const item=items.find(i=>i.key===serviceKey);
       if(!item||item.status!=='quoted') return send(res,400,{error:'No pending quote for that service'});
       const newItems=items.filter(i=>i.key!==serviceKey);
-      const row=await q1('UPDATE users SET care_plan_items=$1::jsonb WHERE id=$2 RETURNING *',[JSON.stringify(newItems),u.id]);
-      return send(res,200,{user:safeUser(mapUser(row))});
+      const row=await saveCare(urow0,prop,{care_plan_items:newItems});
+      return send(res,200,carePayload(row,urow0,prop));
     }
     if(p==='/api/home-profile' && req.method==='GET'){
       if(u.role!=='homeowner')return send(res,403,{error:'Only homeowners have a Home Profile'});
-      return send(res,200,{homeProfile:u.homeProfile||{},homeDocuments:u.homeDocuments||[],status:computeHomeStatus(u.homeProfile,u.carePlanItems),locked:!isPaidPlan(u)});
+      const urow0=await q1('SELECT * FROM users WHERE id=$1',[u.id]);
+      const prop=await resolveProperty(urow0,url.searchParams.get('propertyId')); if(!prop) return send(res,404,{error:'Property not found'});
+      const cu=mapUser(careRow(urow0,prop));
+      return send(res,200,{homeProfile:cu.homeProfile||{},homeDocuments:cu.homeDocuments||[],status:computeHomeStatus(cu.homeProfile,cu.carePlanItems),locked:!isPaidPlan(u),propertyId:prop.id});
     }
     if(p==='/api/home-profile' && req.method==='PUT'){
       if(u.role!=='homeowner')return send(res,403,{error:'Only homeowners have a Home Profile'});
       if(!isPaidPlan(u)) return send(res,403,{error:'The Home Profile is a Plus & Premium perk — upgrade your Community Plan to build yours.',requiresUpgrade:true});
       const b=await body(req);
+      const urow0=await q1('SELECT * FROM users WHERE id=$1',[u.id]);
+      const prop=await resolveProperty(urow0,b.propertyId); if(!prop) return send(res,404,{error:'Property not found'});
       const dateOrNull=v=>/^\d{4}-\d{2}-\d{2}$/.test(v||'')?v:null;
       const clean={
         hvac:{
@@ -2098,9 +2328,9 @@ const server=http.createServer(async (req,res)=>{
           lastDone:dateOrNull(r?.lastDone)
         })).filter(r=>r.name):[]
       };
-      const row=await q1('UPDATE users SET home_profile=$1::jsonb WHERE id=$2 RETURNING *',[JSON.stringify(clean),u.id]);
+      const row=await saveCare(urow0,prop,{home_profile:clean});
       const mu=mapUser(row);
-      return send(res,200,{user:safeUser(mu),status:computeHomeStatus(mu.homeProfile,mu.carePlanItems)});
+      return send(res,200,{user:safeUser(mapUser(prop.is_base?row:urow0)),status:computeHomeStatus(mu.homeProfile,mu.carePlanItems),propertyId:prop.id});
     }
     if(p==='/api/home-profile/documents' && req.method==='POST'){
       if(u.role!=='homeowner')return send(res,403,{error:'Only homeowners have a Home Profile'});
@@ -2111,19 +2341,23 @@ const server=http.createServer(async (req,res)=>{
       const dataUrl=String(b.dataUrl||'');
       if(!VERIFICATION_DOC_RE.test(dataUrl)) return send(res,400,{error:'Documents must be a PNG, JPEG, WEBP, or PDF file.'});
       if(dataUrl.length>VERIFICATION_MAX_DOC_BYTES) return send(res,400,{error:'That file is too large. Please keep it under 4MB.'});
-      const current=u.homeDocuments||[];
+      const urow0=await q1('SELECT * FROM users WHERE id=$1',[u.id]);
+      const prop=await resolveProperty(urow0,b.propertyId); if(!prop) return send(res,404,{error:'Property not found'});
+      const current=mapUser(careRow(urow0,prop)).homeDocuments||[];
       if(current.length>=HOME_MAX_DOCS) return send(res,400,{error:`You can keep up to ${HOME_MAX_DOCS} documents. Delete one first.`});
       const doc={id:id('doc'),name,category,dataUrl,uploadedAt:new Date().toISOString()};
-      const row=await q1('UPDATE users SET home_documents=$1::jsonb WHERE id=$2 RETURNING *',[JSON.stringify([...current,doc]),u.id]);
+      const row=await saveCare(urow0,prop,{home_documents:[...current,doc]});
       return send(res,201,{document:doc,homeDocuments:mapUser(row).homeDocuments});
     }
     if(p.startsWith('/api/home-profile/documents/') && req.method==='DELETE'){
       if(u.role!=='homeowner')return send(res,403,{error:'Only homeowners have a Home Profile'});
       const docId=p.split('/')[4];
-      const current=u.homeDocuments||[];
+      const urow0=await q1('SELECT * FROM users WHERE id=$1',[u.id]);
+      const prop=await resolveProperty(urow0,url.searchParams.get('propertyId')); if(!prop) return send(res,404,{error:'Property not found'});
+      const current=mapUser(careRow(urow0,prop)).homeDocuments||[];
       const next=current.filter(d=>d.id!==docId);
       if(next.length===current.length) return send(res,404,{error:'Document not found'});
-      const row=await q1('UPDATE users SET home_documents=$1::jsonb WHERE id=$2 RETURNING *',[JSON.stringify(next),u.id]);
+      const row=await saveCare(urow0,prop,{home_documents:next});
       return send(res,200,{homeDocuments:mapUser(row).homeDocuments});
     }
     if(p==='/api/provider-plan' && req.method==='POST'){
@@ -2318,10 +2552,13 @@ const server=http.createServer(async (req,res)=>{
     if(p==='/api/neighborhood' && req.method==='GET'){
       if(u.role!=='homeowner')return send(res,403,{error:'Neighborhood is for homeowners'});
       if(!['plus','premium'].includes(u.subscription))return send(res,403,{error:'Neighborhood is a Plus perk',needsPlan:true});
-      if(u.lat==null||u.lng==null)return send(res,200,{needsAddress:true,posts:[]});
+      const urow0=await q1('SELECT * FROM users WHERE id=$1',[u.id]);
+      const prop=await resolveProperty(urow0,url.searchParams.get('propertyId')); if(!prop) return send(res,404,{error:'Property not found'});
+      const loc=propertyLatLng(urow0,prop);
+      if(loc.lat==null||loc.lng==null)return send(res,200,{needsAddress:true,posts:[]});
       const rows=await q('SELECT np.*, us.name AS author_name, us.avatar_kind AS author_avatar_kind, us.avatar_value AS author_avatar_value FROM neighborhood_posts np JOIN users us ON us.id=np.user_id ORDER BY np.created_at DESC LIMIT 200');
       const posts=rows
-        .map(r=>({id:r.id,userId:r.user_id,authorName:r.author_name,authorAvatarKind:r.author_avatar_kind||null,authorAvatarValue:r.author_avatar_value||null,body:r.body,createdAt:toISO(r.created_at),distanceMi:haversineMiles(u.lat,u.lng,Number(r.lat),Number(r.lng))}))
+        .map(r=>({id:r.id,userId:r.user_id,authorName:r.author_name,authorAvatarKind:r.author_avatar_kind||null,authorAvatarValue:r.author_avatar_value||null,body:r.body,createdAt:toISO(r.created_at),distanceMi:haversineMiles(loc.lat,loc.lng,Number(r.lat),Number(r.lng))}))
         .filter(post=>post.distanceMi<=0.25)
         .sort((a,b2)=>new Date(b2.createdAt)-new Date(a.createdAt));
       return send(res,200,{posts,needsAddress:false});
@@ -2329,11 +2566,14 @@ const server=http.createServer(async (req,res)=>{
     if(p==='/api/neighborhood' && req.method==='POST'){
       if(u.role!=='homeowner')return send(res,403,{error:'Neighborhood is for homeowners'});
       if(!['plus','premium'].includes(u.subscription))return send(res,403,{error:'Neighborhood is a Plus perk'});
-      if(u.lat==null||u.lng==null)return send(res,400,{error:'Add your home address first.',needsAddress:true});
       const b=await body(req);
+      const urow0=await q1('SELECT * FROM users WHERE id=$1',[u.id]);
+      const prop=await resolveProperty(urow0,b.propertyId); if(!prop) return send(res,404,{error:'Property not found'});
+      const loc=propertyLatLng(urow0,prop);
+      if(loc.lat==null||loc.lng==null)return send(res,400,{error:'Add this property\'s address first.',needsAddress:true});
       const text=String(b.body||'').trim().slice(0,600);
       if(!text)return send(res,400,{error:'Write something to post.'});
-      const row=await q1('INSERT INTO neighborhood_posts (id,user_id,body,lat,lng) VALUES ($1,$2,$3,$4,$5) RETURNING *',[id('npost'),u.id,text,u.lat,u.lng]);
+      const row=await q1('INSERT INTO neighborhood_posts (id,user_id,body,lat,lng) VALUES ($1,$2,$3,$4,$5) RETURNING *',[id('npost'),u.id,text,loc.lat,loc.lng]);
       return send(res,201,{post:{id:row.id,userId:u.id,authorName:u.name,body:row.body,createdAt:toISO(row.created_at),distanceMi:0}});
     }
     if(p==='/api/providers' && req.method==='GET'){
@@ -2508,7 +2748,7 @@ const server=http.createServer(async (req,res)=>{
         q("SELECT CASE WHEN provider_approved=false AND verification_status<>'rejected' THEN 'pending' WHEN verification_status='unverified' AND jsonb_array_length(COALESCE(verification_documents,'[]'::jsonb))=0 THEN 'approved_no_docs' ELSE verification_status END AS verification_status, count(*)::int AS n FROM users WHERE role='provider' AND deleted=false GROUP BY 1"),
         q("SELECT count(*)::int AS n FROM requests WHERE status='open'"),
         q("SELECT count(*)::int AS n FROM requests r WHERE r.status='open' AND r.created_at < now() - interval '24 hours' AND NOT EXISTS (SELECT 1 FROM quotes qq WHERE qq.request_id=r.id)"),
-        q("SELECT count(*)::int AS n FROM users WHERE role='homeowner' AND deleted=false AND EXISTS (SELECT 1 FROM jsonb_array_elements(care_plan_items) x WHERE x->>'status'='active')"),
+        q("SELECT ((SELECT count(*) FROM users WHERE role='homeowner' AND deleted=false AND EXISTS (SELECT 1 FROM jsonb_array_elements(care_plan_items) x WHERE x->>'status'='active')) + (SELECT count(*) FROM properties pr JOIN users uu ON uu.id=pr.user_id WHERE pr.removed_at IS NULL AND pr.is_base=false AND uu.deleted=false AND EXISTS (SELECT 1 FROM jsonb_array_elements(pr.care_plan_items) x WHERE x->>'status'='active')))::int AS n"),
         q("SELECT count(*)::int AS n FROM users WHERE suspended=true AND deleted=false"),
       ]);
       const toObj=(rows,key)=>Object.fromEntries(rows.map(r=>[r[key]||'unknown',r.n]));
@@ -2683,6 +2923,11 @@ const server=http.createServer(async (req,res)=>{
           if(total>0) items.push({userId:r.id,name:r.name,email:r.email,role:r.role,plan:'Home Care Plan',planKind:'care_plan',amount:total,nextBilling:new Date(r.care_plan_next_billing).toISOString().slice(0,10)});
         }
       }
+      const propBill=await q(`SELECT pr.*, uu.name AS u_name, uu.email AS u_email, uu.role AS u_role FROM properties pr JOIN users uu ON uu.id=pr.user_id WHERE pr.removed_at IS NULL AND pr.is_base=false AND uu.deleted=false AND pr.care_plan_next_billing IS NOT NULL`);
+      for(const pr of propBill){
+        const total=carePlanMonthlyTotal(pr.care_plan_items);
+        if(total>0) items.push({userId:pr.user_id,name:pr.u_name,email:pr.u_email,role:pr.u_role,plan:'Home Care Plan · '+pr.nickname,planKind:'care_plan',amount:total,nextBilling:new Date(pr.care_plan_next_billing).toISOString().slice(0,10)});
+      }
       items.sort((a,b)=>a.nextBilling<b.nextBilling?-1:(a.nextBilling>b.nextBilling?1:0));
       return send(res,200,{upcoming:items});
     }
@@ -2768,19 +3013,32 @@ const server=http.createServer(async (req,res)=>{
       if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
       // care_plan_items<>'[]' catches every account with a service in ANY stage — requested/quoted/
       // active — not just active ones, so the pending-pricing queue below has something to work with.
-      const rows=await q("SELECT * FROM users WHERE role='homeowner' AND care_plan_items<>'[]'::jsonb ORDER BY name ASC");
-      const homeownerIds=rows.map(r=>r.id);
+      const baseRows=await q("SELECT * FROM users WHERE role='homeowner' AND care_plan_items<>'[]'::jsonb ORDER BY name ASC");
+      const extraProps=await q("SELECT pr.* FROM properties pr JOIN users uu ON uu.id=pr.user_id WHERE pr.removed_at IS NULL AND pr.is_base=false AND pr.care_plan_items<>'[]'::jsonb AND uu.deleted=false");
+      const extraOwnerRows=extraProps.length?await q('SELECT * FROM users WHERE id = ANY($1::text[])',[[...new Set(extraProps.map(p2=>p2.user_id))]]):[];
+      const ownerById=Object.fromEntries(extraOwnerRows.map(r=>[r.id,r]));
+      // One entry per care-bearing property: the base home (stored on the user row) and any extras.
+      const entries=[];
+      for(const r of baseRows){
+        const base=(await liveProperties(r.id)).find(p2=>p2.is_base)||null;
+        entries.push({urow:r,crow:r,prop:base,propKey:'',propertyId:base?base.id:null,propertyName:base?base.nickname:null});
+      }
+      for(const pr of extraProps){
+        const urow=ownerById[pr.user_id]; if(!urow) continue;
+        entries.push({urow,crow:careRow(urow,pr),prop:pr,propKey:pr.id,propertyId:pr.id,propertyName:pr.nickname});
+      }
+      const homeownerIds=[...new Set(entries.map(e=>e.urow.id))];
       const visits = homeownerIds.length ? await q('SELECT * FROM care_plan_visits WHERE homeowner_id = ANY($1::text[])',[homeownerIds]) : [];
       const providerIds=[...new Set(visits.map(v=>v.provider_id).filter(Boolean))];
       const providerRows = providerIds.length ? await q('SELECT id,name FROM users WHERE id = ANY($1::text[])',[providerIds]) : [];
       const providerNameById=Object.fromEntries(providerRows.map(pr=>[pr.id,pr.name]));
-      const visitKey=(hid,sk)=>hid+'|'+sk;
-      const visitMap=Object.fromEntries(visits.map(v=>[visitKey(v.homeowner_id,v.service_key),v]));
-      const accounts=rows.map(r=>{
-        const mu=mapUser(r);
+      const visitKey=(hid,pk,sk)=>hid+'|'+pk+'|'+sk;
+      const visitMap=Object.fromEntries(visits.map(v=>[visitKey(v.homeowner_id,v.property_id||'',v.service_key),v]));
+      const accounts=entries.map(e=>{
+        const mu=mapUser(e.crow);
         const services=(mu.carePlanItems||[]).filter(i=>CARE_SERVICE_INFO[i.key]).map(item=>{
           const sk=item.key;
-          const v=visitMap[visitKey(r.id,sk)];
+          const v=visitMap[visitKey(e.urow.id,e.propKey,sk)];
           return {
             serviceKey:sk,
             serviceName:CARE_SERVICE_INFO[sk].name,
@@ -2797,7 +3055,7 @@ const server=http.createServer(async (req,res)=>{
             note: v?v.note:null,
           };
         });
-        return {id:mu.id,name:mu.name,email:mu.email,community:mu.community,subscription:normalizeHomeownerPlanKey(mu.subscription),services};
+        return {id:e.urow.id,propertyId:e.propertyId,propertyName:e.propertyName,isExtraProperty:!!(e.prop&&!e.prop.is_base),name:e.urow.name,email:e.urow.email,community:e.urow.community,subscription:normalizeHomeownerPlanKey(e.urow.subscription),services};
       });
       return send(res,200,{accounts});
     }
@@ -2812,14 +3070,19 @@ const server=http.createServer(async (req,res)=>{
       const priceCents=Math.round(Number(b.priceCents));
       if(!CARE_SERVICE_INFO[serviceKey]) return send(res,400,{error:'Unknown service'});
       if(!Number.isFinite(priceCents)||priceCents<=0) return send(res,400,{error:'Enter a valid price.'});
-      const homeowner=await q1("SELECT * FROM users WHERE id=$1 AND role='homeowner'",[homeownerId]);
-      if(!homeowner) return send(res,404,{error:'Homeowner not found'});
+      const homeownerRow=await q1("SELECT * FROM users WHERE id=$1 AND role='homeowner'",[homeownerId]);
+      if(!homeownerRow) return send(res,404,{error:'Homeowner not found'});
+      const qprop=await resolveProperty(homeownerRow,b.propertyId||null);
+      if(!qprop) return send(res,404,{error:'Property not found'});
+      // No propertyId means the legacy single-home behaviour: the base property.
+      const qBase=b.propertyId?qprop:((await liveProperties(homeownerId)).find(p2=>p2.is_base)||qprop);
+      const homeowner=careRow(homeownerRow,qBase);
       const items=homeowner.care_plan_items||[];
       const item=items.find(i=>i.key===serviceKey);
       if(!item) return send(res,404,{error:'This homeowner has not requested that service.'});
       if(item.status==='active') return send(res,400,{error:'This service is already active — adjust it directly with the homeowner instead.'});
       const newItems=items.map(i=>i.key===serviceKey?{...i,status:'quoted',priceCents,quotedAt:new Date().toISOString()}:i);
-      const row=await q1('UPDATE users SET care_plan_items=$1::jsonb WHERE id=$2 RETURNING *',[JSON.stringify(newItems),homeownerId]);
+      const row=await saveCare(homeownerRow,qBase,{care_plan_items:newItems});
       sendEmail({to:row.email,type:'care_plan_quote_ready',subject:`Your ${CARE_SERVICE_INFO[serviceKey].name} quote is ready`,html:carePlanQuoteReadyEmailHtml(mapUser(row),CARE_SERVICE_INFO[serviceKey].name,priceCents),userId:row.id}).catch(()=>{});
       return send(res,200,{ok:true});
     }
@@ -2828,7 +3091,12 @@ const server=http.createServer(async (req,res)=>{
       const serviceKey=String(url.searchParams.get('serviceKey')||'');
       const homeownerId=String(url.searchParams.get('homeownerId')||'');
       const wantType=(CARE_SERVICE_TO_PROVIDER_TYPE[serviceKey]||'').toLowerCase();
-      const homeowner=homeownerId?await q1('SELECT * FROM users WHERE id=$1',[homeownerId]):null;
+      let homeowner=homeownerId?await q1('SELECT * FROM users WHERE id=$1',[homeownerId]):null;
+      const candPropId=String(url.searchParams.get('propertyId')||'');
+      if(homeowner&&candPropId){
+        const cp=(await liveProperties(homeownerId)).find(p2=>p2.id===candPropId);
+        if(cp&&!cp.is_base) homeowner={...homeowner,lat:cp.lat,lng:cp.lng};
+      }
       const providerRows=await q("SELECT * FROM users WHERE role='provider' AND deleted=false ORDER BY rating DESC NULLS LAST");
       const candidates=providerRows.map(pr=>{
         const mu=mapUser(pr);
@@ -2851,8 +3119,12 @@ const server=http.createServer(async (req,res)=>{
       if(!CARE_SERVICE_INFO[serviceKey]) return send(res,400,{error:'Unknown service'});
       const homeowner=await q1("SELECT * FROM users WHERE id=$1 AND role='homeowner'",[homeownerId]);
       if(!homeowner) return send(res,404,{error:'Homeowner not found'});
-      if(!mapUser(homeowner).carePlanServices.includes(serviceKey)) return send(res,400,{error:'This homeowner does not have that service active on their plan'});
-      const existing=await q1('SELECT * FROM care_plan_visits WHERE homeowner_id=$1 AND service_key=$2',[homeownerId,serviceKey]);
+      const vprop=b.propertyId?await resolveProperty(homeowner,String(b.propertyId)):null;
+      if(b.propertyId&&!vprop) return send(res,404,{error:'Property not found'});
+      const visitPropId=(vprop&&!vprop.is_base)?vprop.id:null; // NULL = base property
+      const vcare=mapUser(careRow(homeowner,vprop&&!vprop.is_base?vprop:null));
+      if(!vcare.carePlanServices.includes(serviceKey)) return send(res,400,{error:'This homeowner does not have that service active on their plan'});
+      const existing=await q1("SELECT * FROM care_plan_visits WHERE homeowner_id=$1 AND service_key=$2 AND COALESCE(property_id,'')=$3",[homeownerId,serviceKey,visitPropId||'']);
       const has=k=>Object.prototype.hasOwnProperty.call(b,k);
       let providerId = existing ? existing.provider_id : null;
       if(has('providerId')) providerId = b.providerId ? String(b.providerId) : null;
@@ -2868,11 +3140,11 @@ const server=http.createServer(async (req,res)=>{
       }
       const providerChanged = !!providerId && providerId !== (existing?existing.provider_id:null);
       const row=await q1(
-        `INSERT INTO care_plan_visits (id,homeowner_id,service_key,provider_id,status,scheduled_date,note,updated_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,now())
-         ON CONFLICT (homeowner_id,service_key) DO UPDATE SET provider_id=$4,status=$5,scheduled_date=$6,note=$7,updated_at=now()
+        `INSERT INTO care_plan_visits (id,homeowner_id,service_key,provider_id,status,scheduled_date,note,updated_at,property_id)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,now(),$8)
+         ON CONFLICT (homeowner_id,COALESCE(property_id,''),service_key) DO UPDATE SET provider_id=$4,status=$5,scheduled_date=$6,note=$7,updated_at=now()
          RETURNING *`,
-        [existing?existing.id:id('cpv'), homeownerId, serviceKey, providerId, status, scheduledDate, note]
+        [existing?existing.id:id('cpv'), homeownerId, serviceKey, providerId, status, scheduledDate, note, visitPropId]
       );
       let providerName=null;
       if(row.provider_id){
@@ -2882,7 +3154,7 @@ const server=http.createServer(async (req,res)=>{
           if(providerChanged){
             const svcName=CARE_SERVICE_INFO[serviceKey].name;
             await pool.query('INSERT INTO announcements (id,user_id,title,body) VALUES ($1,$2,$3,$4)',
-              [id('ann'),row.provider_id,'New recurring service assigned',`You were assigned to a recurring Home Care Plan service: ${svcName} for ${homeowner.name}.${note?(' Note: '+note):''}`]);
+              [id('ann'),row.provider_id,'New recurring service assigned',`You were assigned to a recurring Home Care Plan service: ${svcName} for ${homeowner.name}${vprop&&!vprop.is_base?' ('+vprop.nickname+', '+(vprop.address||'')+')':''}.${note?(' Note: '+note):''}`]);
             sendEmail({to:pr.email||'',type:'care_plan_visit_assigned',subject:`New recurring service: ${svcName}`,html:carePlanVisitAssignedEmailHtml(pr,homeowner.name,svcName,note)}).catch(()=>{});
           }
         }

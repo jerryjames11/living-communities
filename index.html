@@ -164,6 +164,25 @@ button{font:inherit;cursor:pointer}
 .sideitem.active{background:var(--mint);color:var(--green);font-weight:700}
 .sideitem.active svg{opacity:1}
 .sideitem{position:relative}
+.sidechev{margin-left:auto;font-size:11px;opacity:.7;transition:transform .15s}
+.sideitem.menu-open .sidechev{transform:rotate(180deg)}
+.home-menu{margin:2px 0 6px 14px;padding-left:8px;border-left:2px solid var(--mint)}
+.hm-item{padding:8px 10px;border-radius:9px;font-size:13px;font-weight:600;color:var(--ink);cursor:pointer;display:flex;align-items:center;gap:8px}
+.hm-item:hover{background:#f4f7f5}
+.hm-item.sel{background:var(--mint)}
+.hm-item small{display:block;font-weight:500;color:var(--muted);font-size:11.5px;max-width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hm-item .ck{margin-left:auto;color:var(--green);font-weight:800}
+.hm-add{padding:8px 10px;font-size:12.5px;font-weight:700;color:var(--green);cursor:pointer;border-top:1px solid var(--line);margin-top:4px}
+.prop-header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.prop-header h2{margin:0;font-size:20px}
+.prop-header .paddr{color:var(--muted);font-size:13px;margin-top:2px}
+.prop-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.prop-actions button{padding:8px 12px;font-size:13px}
+.prop-switch{display:none;margin-top:8px}
+.prop-switch select{width:100%}
+.prop-row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 0;border-bottom:1px solid var(--line)}
+.prop-row:last-child{border-bottom:0}
+@media(max-width:900px){.home-menu{display:none!important}.sidechev{display:none!important}.prop-switch{display:block}}
 .navbadge{background:#c0392b;color:#fff;font-size:10.5px;font-weight:800;border-radius:999px;padding:1.5px 6px;margin-left:auto;line-height:1.4}
 .icn-dot{position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:#c0392b;border:1.5px solid #fff}
 .card-unread-badge{background:#c0392b;color:#fff;font-size:10.5px;font-weight:800;border-radius:999px;padding:2px 8px;letter-spacing:.2px}
@@ -495,12 +514,13 @@ button:disabled{opacity:.45;cursor:not-allowed}
 <div class="dash-titlebar"><div><h1>My Dashboard</h1><p class="subtle" id="ho-welcome-sub">Welcome back!</p></div></div>
 <div class="grid"><aside class="sidebar">
 <div class="sideitem active" data-panel="dashboard" onclick="switchPanel('homeowner','dashboard')"><svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor"><rect x="2" y="2" width="7" height="7" rx="1.5"/><rect x="11" y="2" width="7" height="7" rx="1.5"/><rect x="2" y="11" width="7" height="7" rx="1.5"/><rect x="11" y="11" width="7" height="7" rx="1.5"/></svg>Dashboard</div>
+<div class="sideitem" data-panel="maintenance" onclick="homeNavClick()" id="ho-home-nav"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l7-6 7 6"/><path d="M5 8v9h10V8"/></svg>My Home<span class="sidechev hidden" id="ho-home-chev">▾</span></div>
+<div class="home-menu hidden" id="ho-home-menu"></div>
 <div class="sideitem" data-panel="requests" onclick="switchPanel('homeowner','requests')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="12" height="15" rx="2"/><path d="M7.5 3h5v2h-5z"/><path d="M7 9h6M7 12h6M7 15h3.5"/></svg>My Requests</div>
 <div class="sideitem" data-panel="quotes" onclick="switchPanel('homeowner','quotes')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h9l3 3v9H4z"/><path d="M7.5 9.5h5M7.5 12.5h3"/></svg>My Quotes</div>
 <div class="sideitem" data-panel="jobs" onclick="switchPanel('homeowner','jobs')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8h14M7 2v4M13 2v4"/></svg>Appointments</div>
 <div class="sideitem" data-panel="payments" onclick="switchPanel('homeowner','payments')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="16" height="11" rx="2"/><path d="M2 9h16"/></svg>Payments</div>
 <div class="sideitem" data-panel="messages" onclick="switchPanel('homeowner','messages')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h14v10H8l-4 3v-3H3z"/></svg>Messages</div>
-<div class="sideitem" data-panel="maintenance" onclick="switchPanel('homeowner','maintenance')"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l7-6 7 6"/><path d="M5 8v9h10V8"/></svg>My Home</div>
 </aside>
 <section class="content">
 <div class="panel" data-panel="dashboard">
@@ -524,6 +544,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 <div class="panel hidden" data-panel="payments"><div id="ho-payments-view"></div></div>
 <div class="panel hidden" data-panel="messages"><div id="ho-messages-view"></div></div>
 <div class="panel hidden" data-panel="maintenance">
+  <div id="hometab-property-header"></div>
   <div class="hometab-bar">
     <button type="button" class="hometab active" id="hometab-btn-maintenance" onclick="switchHomeTab('maintenance')">Maintenance</button>
     <button type="button" class="hometab" id="hometab-btn-neighborhood" onclick="switchHomeTab('neighborhood')"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7.2" stroke-dasharray="2 2.4"/><path d="M10 6.3a2.5 2.5 0 0 1 2.5 2.5c0 1.9-2.5 4.7-2.5 4.7S7.5 10.7 7.5 8.8A2.5 2.5 0 0 1 10 6.3Z"/><circle cx="10" cy="8.8" r="0.75" fill="currentColor" stroke="none"/></svg>Neighborhood</button>
@@ -940,6 +961,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 </div>
 <div class="app">
 <div class="dash-titlebar"><div><h1>Build Your Home Care Plan</h1><p class="subtle">Pick the recurring services you want. We line up trusted local pros and bill you once a month.</p></div></div>
+<div id="care-property-bar"></div>
 <div class="care-gate hidden" id="careGate">
   <div style="width:52px;height:52px;border-radius:50%;background:var(--mint);display:grid;place-items:center;margin:0 auto 16px">
     <svg width="24" height="24" viewBox="0 0 20 20" fill="none" stroke="var(--green)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3l1.4 3.4L15 7l-2.6 2.4.7 3.6L10 11.2 6.9 13l.7-3.6L5 7l3.6-.6L10 3z"/></svg>
@@ -1053,6 +1075,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
   <div class="field"><label>SERVICE</label><select id="serviceType" onchange="populateCommonRequests()"><option>Lawn & Landscaping</option><option>House Cleaning</option><option>Pool Service</option><option>Handyman</option><option>Plumbing</option><option>Electrical</option><option>HVAC</option><option>Pest Control</option><option>Mobile Mechanic</option><option>Power Washing</option><option>Bulk Trash Pickup</option><option>Moving Services</option><option>Pet Waste Cleanup</option></select></div>
   <div class="field"><label>URGENCY</label><select id="requestUrgency"><option>Flexible</option><option>This week</option><option>ASAP</option><option>Emergency</option></select></div>
   <div class="field full"><label>COMMON REQUESTS <span class="subtle" style="font-weight:400;text-transform:none">(optional — pick any that apply)</span></label><select id="commonRequestPicker" onchange="insertCommonRequest()"></select></div>
+  <div class="field full hidden" id="requestPropertyField"><label>WHICH PROPERTY?</label><select id="requestProperty" onchange="requestPropertyChanged()"></select></div>
   <div class="field full"><label>YOUR ZIP CODE OR CITY</label><input id="requestZip" placeholder="e.g. 75080 or Richardson, TX" required></div>
   <div class="field full"><label>WHAT DO YOU NEED?</label><textarea id="requestDescription" placeholder="Describe the work you need done..."></textarea></div>
   <div class="field"><label>PREFERRED DATE</label><input type="date" id="requestPreferredDate"></div>
@@ -1108,6 +1131,25 @@ button:disabled{opacity:.45;cursor:not-allowed}
  <div class="mini-actions"><button class="secondary" onclick="closeModal()">Cancel</button><button class="primary" onclick="submitReceipt()">Close Out Job</button></div>
 </div></div>
 
+<div id="propertyModal" class="modal"><div class="modalbox" style="max-width:520px">
+ <div class="modalhead"><div><div class="eyebrow" id="propertyModalEyebrow">Add property</div><h2 id="propertyModalTitle">Add a property</h2></div><button class="close" onclick="closeModal()">×</button></div>
+ <p class="subtle" id="propertyModalSub" style="font-size:13px;margin:0 0 6px"></p>
+ <div class="field"><label>NICKNAME</label><input id="propNickname" placeholder="e.g. Lake House" maxlength="40"></div>
+ <div class="field"><label>FULL ADDRESS</label><input id="propAddress" placeholder="88 Shoreline Dr, Rockwall, TX 75087"></div>
+ <div class="field"><label>TYPE</label><select id="propType"><option value="second_home">Second home / vacation</option><option value="rental">Rental / investment</option><option value="family">Family member's home</option><option value="primary">Main residence</option><option value="other">Other</option></select></div>
+ <div id="propertyError" class="notice hidden"></div>
+ <div class="mini-actions"><button class="secondary" onclick="closeModal()">Cancel</button><button class="primary" id="propertySaveBtn" onclick="saveProperty()">Add Property</button></div>
+</div></div>
+<div id="primaryModal" class="modal"><div class="modalbox" style="max-width:480px">
+ <div class="modalhead"><div><div class="eyebrow">Primary property</div><h2 id="primaryModalTitle">Make this your primary?</h2></div><button class="close" onclick="closeModal()">×</button></div>
+ <p class="subtle" id="primaryModalBody" style="font-size:13.5px;line-height:1.6"></p>
+ <div class="mini-actions"><button class="secondary" onclick="closeModal()">Cancel</button><button class="primary" onclick="confirmMakePrimary()">Make Primary</button></div>
+</div></div>
+<div id="propertyLimitModal" class="modal"><div class="modalbox" style="max-width:480px">
+ <div class="modalhead"><div><div class="eyebrow">Properties</div><h2 id="propertyLimitTitle">Property limit reached</h2></div><button class="close" onclick="closeModal()">×</button></div>
+ <div id="propertyLimitBody" class="subtle" style="font-size:13.5px;line-height:1.6"></div>
+ <div class="mini-actions"><button class="secondary" onclick="closeModal()">Not now</button><button class="primary" id="propertyLimitBtn" onclick="closeModal();openPlansPage('homeowner')">Upgrade</button></div>
+</div></div>
 <div id="homeProfileModal" class="modal"><div class="modalbox" style="max-width:640px">
  <div class="modalhead"><div><div class="eyebrow">Plus perk</div><h2>Build Your Home Profile</h2></div><button class="close" onclick="closeModal()">×</button></div>
  <p class="subtle" style="font-size:13px;line-height:1.6;margin:0 0 16px">Tell us what's in your home once — we'll turn it into a maintenance schedule and reminders automatically.</p>
@@ -1558,8 +1600,8 @@ async function submitCheckout(){
       paymentMethodId=result.setupIntent.payment_method;
     }
     if(checkoutMode==='careplan-accept'){
-      const d=await api('/care-plan/accept',{method:'POST',body:JSON.stringify({serviceKey:pendingAcceptServiceKey,paymentMethodId,billingAddress})});
-      currentUser=d.user;
+      const d=await api('/care-plan/accept',{method:'POST',body:carePropBody({serviceKey:pendingAcceptServiceKey,paymentMethodId,billingAddress})});
+      applyCareResponse(d);
       closeCheckout();
       toast('Service is now active!');
       renderCareBuilder();
@@ -1593,24 +1635,42 @@ const CARE_PLAN_SERVICES=[
 ];
 function careServiceByKey(key){return CARE_PLAN_SERVICES.find(s=>s.key===key)}
 function carePriceRangeText(key){const s=careServiceByKey(key); const lo=s.priceLo!=null?s.priceLo:Math.max(1,s.price-30), hi=s.priceHi!=null?s.priceHi:s.price+30; return `$${lo}–$${hi}${s.billing==='season'?' seasonal':'/mo'}`}
-function careItemFor(key){return currentUser&&currentUser.carePlanItems?currentUser.carePlanItems.find(i=>i.key===key):null}
-function careActiveMonthlyTotal(){return ((currentUser&&currentUser.carePlanItems)||[]).filter(i=>i.status==='active').reduce((sum,i)=>{const s=careServiceByKey(i.key); return s&&s.billing==='mo'?sum+(i.priceCents||0)/100:sum},0)}
+// The property whose Home Care Plan is being worked on (each property has its own plan and billing).
+function careProp(){ return propById(carePropertyId)||activeProperty(); }
+function careItems(){ const p=careProp(); return p?(p.carePlanItems||[]):((currentUser&&currentUser.carePlanItems)||[]); }
+function careItemFor(key){return careItems().find(i=>i.key===key)||null}
+function careItemsTotal(items){return (items||[]).filter(i=>i.status==='active').reduce((sum,i)=>{const s=careServiceByKey(i.key); return s&&s.billing==='mo'?sum+(i.priceCents||0)/100:sum},0)}
+function careActiveMonthlyTotal(){return careItemsTotal(careItems())}
+function carePropBody(extra){ const p=careProp(); return JSON.stringify({...(extra||{}),...(p?{propertyId:p.id}:{})}); }
+// Applies a /care-plan response: updates the signed-in user and the touched property in place.
+function applyCareResponse(d){
+  if(d.user) currentUser=d.user;
+  if(d.property){ const i=propsState.list.findIndex(p=>p.id===d.property.id); if(i>=0) propsState.list[i]=d.property; }
+}
 let carePlanOrigin='homeowner';
 let pendingCareServiceKey=null;
-function openCarePlanPage(role){
+function openCarePlanPage(role,propertyId){
   carePlanOrigin=role||'homeowner';
+  carePropertyId=propertyId||(activeProperty()?activeProperty().id:null);
   show('carebuilder');
   renderCareBuilder();
+}
+function changeCareProperty(id){ carePropertyId=id; renderCareBuilder(); }
+function renderCarePropertyBar(){
+  const el=document.getElementById('care-property-bar'); if(!el) return;
+  if(!(authToken&&currentUser&&currentUser.role==='homeowner'&&multiProps())){ el.innerHTML=''; return; }
+  const cur=careProp();
+  el.innerHTML=`<div class="request" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:14px"><div style="flex:1;min-width:200px"><b style="font-size:14px">Home Care Plan for</b><div class="statusline">Each property has its own plan and its own billing.</div></div><select style="min-width:220px" onchange="changeCareProperty(this.value)">${propsState.list.map(p=>`<option value="${esc(p.id)}"${cur&&cur.id===p.id?' selected':''}>${esc(p.nickname)}${p.isPrimary?' (primary)':''}</option>`).join('')}</select></div>`;
 }
 function backFromCarePlan(){ if(authToken&&currentUser){ show(carePlanOrigin); } else { show('home'); } }
 // Requesting a service is instant and free — it just puts it on an admin's radar for pricing.
 // No selection state, no submit button: each card acts for itself.
 async function requestCareService(key){
   if(!authToken||!currentUser){ pendingCareServiceKey=key; openSignup('homeowner'); return; }
-  const desired=[...new Set([...(currentUser.carePlanItems||[]).map(i=>i.key),key])];
+  const desired=[...new Set([...careItems().map(i=>i.key),key])];
   try{
-    const d=await api('/care-plan',{method:'POST',body:JSON.stringify({services:desired})});
-    currentUser=d.user;
+    const d=await api('/care-plan',{method:'POST',body:carePropBody({services:desired})});
+    applyCareResponse(d);
     toast("Request sent. We'll follow up with pricing after a visit.");
     renderCareBuilder(); updateCarePlanSideitem();
   }catch(e){
@@ -1619,29 +1679,30 @@ async function requestCareService(key){
   }
 }
 async function withdrawCareService(key){
-  const desired=(currentUser.carePlanItems||[]).map(i=>i.key).filter(k=>k!==key);
-  try{ const d=await api('/care-plan',{method:'POST',body:JSON.stringify({services:desired})}); currentUser=d.user; toast('Request withdrawn.'); renderCareBuilder(); updateCarePlanSideitem(); }
+  const desired=careItems().map(i=>i.key).filter(k=>k!==key);
+  try{ const d=await api('/care-plan',{method:'POST',body:carePropBody({services:desired})}); applyCareResponse(d); toast('Request withdrawn.'); renderCareBuilder(); updateCarePlanSideitem(); }
   catch(e){ toast(e.message); }
 }
 async function cancelActiveCareService(key){
   const s=careServiceByKey(key);
   if(!confirm(`Cancel ${s.name}? Billing for it stops immediately.`))return;
-  const desired=(currentUser.carePlanItems||[]).map(i=>i.key).filter(k=>k!==key);
-  try{ const d=await api('/care-plan',{method:'POST',body:JSON.stringify({services:desired})}); currentUser=d.user; toast('Service canceled.'); renderCareBuilder(); updateCarePlanSideitem(); }
+  const desired=careItems().map(i=>i.key).filter(k=>k!==key);
+  try{ const d=await api('/care-plan',{method:'POST',body:carePropBody({services:desired})}); applyCareResponse(d); toast('Service canceled.'); renderCareBuilder(); updateCarePlanSideitem(); }
   catch(e){ toast(e.message); }
 }
 async function acceptCareQuote(key){
   if(STRIPE_ENABLED){ openCareAcceptCheckout(key); return; }
-  try{ const d=await api('/care-plan/accept',{method:'POST',body:JSON.stringify({serviceKey:key})}); currentUser=d.user; toast('Service is now active!'); renderCareBuilder(); updateCarePlanSideitem(); }
+  try{ const d=await api('/care-plan/accept',{method:'POST',body:carePropBody({serviceKey:key})}); applyCareResponse(d); toast('Service is now active!'); renderCareBuilder(); updateCarePlanSideitem(); }
   catch(e){ toast(e.message); }
 }
 async function declineCareQuote(key){
   if(!confirm('Decline this quote? You can always request it again later.'))return;
-  try{ const d=await api('/care-plan/decline',{method:'POST',body:JSON.stringify({serviceKey:key})}); currentUser=d.user; toast('Quote declined.'); renderCareBuilder(); updateCarePlanSideitem(); }
+  try{ const d=await api('/care-plan/decline',{method:'POST',body:carePropBody({serviceKey:key})}); applyCareResponse(d); toast('Quote declined.'); renderCareBuilder(); updateCarePlanSideitem(); }
   catch(e){ toast(e.message); }
 }
 function renderCareBuilder(){
-  const hasExistingNow=!!(currentUser&&currentUser.carePlanItems&&currentUser.carePlanItems.length);
+  renderCarePropertyBar();
+  const hasExistingNow=propsState.list.length?propsState.list.some(p=>(p.carePlanItems||[]).length):!!(currentUser&&currentUser.carePlanItems&&currentUser.carePlanItems.length);
   const gated=!!(authToken&&currentUser&&currentUser.role==='homeowner'&&currentUser.subscription==='free'&&!hasExistingNow);
   const gateEl=document.getElementById('careGate'), layoutEl=document.getElementById('careLayout');
   if(gateEl) gateEl.classList.toggle('hidden',!gated);
@@ -1672,8 +1733,9 @@ function renderCareBuilder(){
   const monthlyEl=document.getElementById('care-monthly-total'); if(monthlyEl) monthlyEl.textContent='$'+monthly.toFixed(2)+'/mo';
   const nextBillingRow=document.getElementById('care-next-billing-row');
   if(nextBillingRow){
-    const nb=currentUser&&currentUser.carePlanNextBilling;
-    if(nb&&currentUser.carePlanServices&&currentUser.carePlanServices.length){
+    const cp=careProp();
+    const nb=cp?cp.carePlanNextBilling:(currentUser&&currentUser.carePlanNextBilling);
+    if(nb&&careItems().some(i=>i.status==='active')){
       const d=new Date(nb+'T00:00:00Z');
       nextBillingRow.textContent='Next billed '+d.toLocaleDateString('en-US',{month:'long',day:'numeric'});
       nextBillingRow.classList.remove('hidden');
@@ -1683,26 +1745,178 @@ function renderCareBuilder(){
 // Home Care Plan lives inside the Home Health box on My Home. This builds that section and
 // refreshes it in place whenever the plan changes.
 function carePlanBoxHTML(){
-  const items=(currentUser&&currentUser.carePlanItems)||[];
-  const active=items.filter(i=>i.status==='active'), waiting=items.filter(i=>i.status!=='active');
+  const prop=activeProperty();
+  const items=prop?(prop.carePlanItems||[]):((currentUser&&currentUser.carePlanItems)||[]);
+  const active=items.filter(i=>i.status==='active');
   const tag = active.length ? '<span class="tag status-scheduled">Active</span>' : (items.length ? '<span class="tag status-open">Pending</span>' : '<span class="tag">Not active</span>');
-  const total=careActiveMonthlyTotal();
+  const total=careItemsTotal(items);
+  const next=prop?prop.carePlanNextBilling:(currentUser&&currentUser.carePlanNextBilling);
   let line;
-  if(active.length) line=`${active.length} service${active.length===1?'':'s'} active${total>0?' · $'+total.toFixed(2)+'/mo':''}${currentUser.carePlanNextBilling?' · Next charge '+esc(currentUser.carePlanNextBilling):''}`;
+  if(active.length) line=`${active.length} service${active.length===1?'':'s'} active${total>0?' · $'+total.toFixed(2)+'/mo':''}${next?' · Next charge '+esc(next):''}`;
   else if(items.length) line=`${items.length} service${items.length===1?'':'s'} requested. We'll follow up with pricing after a visit.`;
   else line='One flat monthly bill for lawn, pest, pool and more.';
   const lab={requested:'Requested',quoted:'Quoted',active:'Active'};
   const rows=items.map(i=>{const s=careServiceByKey(i.key);return `<div class="svc-row"><span class="svc-dot${i.status==='active'?' on':''}"></span>${esc(s?s.name:i.key)}<span class="svc-row-r">${lab[i.status]||''}</span></div>`}).join('');
+  const sep=multiProps()&&prop?`<div class="statusline" style="margin-top:6px">Billed separately from your other properties.</div>`:'';
+  const label=items.length?'Manage Home Care Plan':(multiProps()&&prop?'Build Plan for '+esc(prop.nickname):'Build Your Plan');
   return `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><b style="font-size:13px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)">Home Care Plan</b>${tag}</div>
-    <div class="statusline" style="margin-top:6px">${line}</div>${rows}
-    <button class="${items.length?'secondary':'primary'}" style="width:100%;margin-top:12px" onclick="openCarePlanPage('homeowner')">${items.length?'Manage Home Care Plan':'Build Your Plan'}</button>`;
+    <div class="statusline" style="margin-top:6px">${line}</div>${sep}${rows}
+    <button class="${items.length?'secondary':'primary'}" style="width:100%;margin-top:12px" onclick="openCarePlanPage('homeowner','${prop?esc(prop.id):''}')">${label}</button>`;
 }
 function updateCarePlanSideitem(){
   const el=document.getElementById('ho-careplan-box'); if(el) el.innerHTML=carePlanBoxHTML();
 }
 
+// ---------------------------------------------------------------------------------------------
+// Properties: Plus members can keep 2 homes, Premium unlimited. Each has its own My Home page
+// (profile, documents, status, neighborhood) and its own Home Care Plan with separate billing.
+// ---------------------------------------------------------------------------------------------
+const PROP_TYPE_LABELS={primary:'Main residence',second_home:'Second home',rental:'Rental',family:"Family member's home",other:'Other'};
+let propsState={list:[],limit:1,canAdd:false,plan:'free'};
+let selectedPropertyId=null, homeMenuOpen=false, carePropertyId=null, currentHomeTab='maintenance';
+let primaryTargetId=null, editingPropertyId=null;
+function propById(id){ return propsState.list.find(p=>p.id===id)||null; }
+function primaryProperty(){ return propsState.list.find(p=>p.isPrimary)||propsState.list[0]||null; }
+function activeProperty(){ return propById(selectedPropertyId)||primaryProperty(); }
+function multiProps(){ return propsState.list.length>1; }
+function propQS(){ const p=activeProperty(); return p?'?propertyId='+encodeURIComponent(p.id):''; }
+function applyProperties(d){
+  if(!d||!d.properties) return;
+  propsState={list:d.properties,limit:d.limit==null?null:d.limit,canAdd:!!d.canAdd,plan:d.plan||'free'};
+  if(!propById(selectedPropertyId)){
+    let saved=null; try{ saved=localStorage.getItem('lc_prop'); }catch(e){}
+    selectedPropertyId=(propById(saved)||primaryProperty()||{}).id||null;
+  }
+  if(carePropertyId&&!propById(carePropertyId)) carePropertyId=null;
+  if(!multiProps()) homeMenuOpen=false;
+  renderHomeNav();
+}
+async function refreshProperties(){ try{ applyProperties(await api('/properties')); }catch(e){} }
+function homeNavClick(){
+  if(activePanel.homeowner==='maintenance'&&multiProps()){ homeMenuOpen=!homeMenuOpen; renderHomeNav(); return; }
+  homeMenuOpen=multiProps();
+  switchPanel('homeowner','maintenance');
+}
+function renderHomeNav(){
+  const chev=document.getElementById('ho-home-chev'), menu=document.getElementById('ho-home-menu'), nav=document.getElementById('ho-home-nav');
+  const multi=multiProps();
+  if(chev) chev.classList.toggle('hidden',!multi);
+  if(nav) nav.classList.toggle('menu-open',multi&&homeMenuOpen&&activePanel.homeowner==='maintenance');
+  if(menu){
+    const show=multi&&homeMenuOpen&&activePanel.homeowner==='maintenance';
+    menu.classList.toggle('hidden',!show);
+    if(show){
+      const sel=activeProperty();
+      menu.innerHTML=propsState.list.map(p=>`<div class="hm-item${sel&&sel.id===p.id?' sel':''}" onclick="selectProperty('${esc(p.id)}')"><div>${esc(p.nickname)}<small>${p.isPrimary?'★ Primary · ':''}${esc(p.address||'No address yet')}</small></div>${sel&&sel.id===p.id?'<span class="ck">✓</span>':''}</div>`).join('')+`<div class="hm-add" onclick="openAddProperty()">+ Add property</div>`;
+    }
+  }
+  renderPropertyHeader();
+}
+function selectProperty(id){
+  if(!propById(id)) return;
+  selectedPropertyId=id;
+  try{ localStorage.setItem('lc_prop',id); }catch(e){}
+  homeMenuOpen=multiProps();
+  if(activePanel.homeowner!=='maintenance') switchPanel('homeowner','maintenance');
+  else { renderHomeNav(); switchHomeTab(currentHomeTab); }
+}
+function renderPropertyHeader(){
+  const el=document.getElementById('hometab-property-header'); if(!el) return;
+  const p=activeProperty();
+  if(!p){ el.innerHTML=''; return; }
+  const multi=multiProps();
+  const tags=(p.isPrimary?'<span class="tag">★ Primary</span> ':'')+`<span class="tag">${esc(PROP_TYPE_LABELS[p.type]||'Home')}</span>`;
+  const acts=[];
+  if(!p.isPrimary) acts.push(`<button class="secondary" onclick="openMakePrimary('${esc(p.id)}')">☆ Make primary</button>`);
+  acts.push(`<button class="secondary" onclick="openEditProperty('${esc(p.id)}')">Edit</button>`);
+  if(!p.isPrimary) acts.push(`<button class="secondary" onclick="removeProperty('${esc(p.id)}')">Remove</button>`);
+  if(!multi) acts.push(`<button class="primary" onclick="openAddProperty()">+ Add property</button>`);
+  const sw=multi?`<div class="prop-switch"><select onchange="selectProperty(this.value)">${propsState.list.map(x=>`<option value="${esc(x.id)}"${x.id===p.id?' selected':''}>${esc(x.nickname)}${x.isPrimary?' (primary)':''}</option>`).join('')}</select> <button class="secondary" style="margin-top:8px" onclick="openAddProperty()">+ Add property</button></div>`:'';
+  el.innerHTML=`<div class="prop-header"><div><h2>${esc(p.nickname)}</h2><div class="paddr">${esc(p.address||'No address yet')}</div><div style="margin-top:6px">${tags}</div>${sw}</div><div class="prop-actions">${acts.join('')}</div></div>`;
+}
+function openAddProperty(){
+  const sub=document.getElementById('propertyModalSub');
+  if(propsState.plan==='free'){
+    document.getElementById('propertyLimitTitle').textContent='Add another property';
+    document.getElementById('propertyLimitBody').innerHTML='Tracking more than one home is a Plus &amp; Premium perk. Plus includes 2 properties. Premium is unlimited. Each property gets its own My Home, Home Care Plan and billing.';
+    document.getElementById('propertyLimitBtn').textContent='See Plans';
+    document.getElementById('propertyLimitModal').classList.add('show'); return;
+  }
+  if(!propsState.canAdd){
+    document.getElementById('propertyLimitTitle').textContent='Property limit reached';
+    document.getElementById('propertyLimitBody').innerHTML=`<div style="background:#fbf1dc;color:#6b4d10;border-radius:12px;padding:10px 14px;margin-bottom:12px">Plus includes 2 properties. You're using ${propsState.list.length} of ${propsState.limit}.</div>Upgrade to Premium for unlimited properties, plus the annual home check-up and priority support.`;
+    document.getElementById('propertyLimitBtn').textContent='Upgrade to Premium';
+    document.getElementById('propertyLimitModal').classList.add('show'); return;
+  }
+  editingPropertyId=null;
+  document.getElementById('propertyModalEyebrow').textContent='Add property';
+  document.getElementById('propertyModalTitle').textContent='Add a property';
+  sub.textContent=propsState.limit==null?'Premium plan · unlimited properties':`${propsState.plan==='plus'?'Plus':'Your'} plan · ${propsState.list.length} of ${propsState.limit} properties used`;
+  document.getElementById('propNickname').value=''; document.getElementById('propAddress').value=''; document.getElementById('propType').value='second_home';
+  document.getElementById('propertyError').classList.add('hidden');
+  document.getElementById('propertySaveBtn').textContent='Add Property';
+  document.getElementById('propertyModal').classList.add('show');
+}
+function openEditProperty(id){
+  const p=propById(id); if(!p) return;
+  editingPropertyId=id;
+  document.getElementById('propertyModalEyebrow').textContent='Edit property';
+  document.getElementById('propertyModalTitle').textContent='Edit '+p.nickname;
+  document.getElementById('propertyModalSub').textContent='';
+  document.getElementById('propNickname').value=p.nickname; document.getElementById('propAddress').value=p.address||''; document.getElementById('propType').value=p.type||'other';
+  document.getElementById('propertyError').classList.add('hidden');
+  document.getElementById('propertySaveBtn').textContent='Save';
+  document.getElementById('propertyModal').classList.add('show');
+}
+async function saveProperty(){
+  const err=document.getElementById('propertyError'); err.classList.add('hidden');
+  const body={nickname:document.getElementById('propNickname').value.trim(),address:document.getElementById('propAddress').value.trim(),type:document.getElementById('propType').value};
+  if(!body.address){ err.textContent='Enter the property address.'; err.classList.remove('hidden'); return; }
+  const btn=document.getElementById('propertySaveBtn'); btn.disabled=true;
+  try{
+    const adding=!editingPropertyId;
+    const d=await api(adding?'/properties':'/properties/'+editingPropertyId,{method:adding?'POST':'PATCH',body:JSON.stringify(body)});
+    closeModal();
+    applyProperties(d);
+    if(adding&&d.property){ selectedPropertyId=d.property.id; homeMenuOpen=true; try{localStorage.setItem('lc_prop',d.property.id)}catch(e){} toast('Property added.'); switchPanel('homeowner','maintenance'); }
+    else { toast('Property saved.'); if(activePanel.homeowner==='maintenance') switchHomeTab(currentHomeTab); else renderPanel('homeowner',activePanel.homeowner); }
+    if(editingPropertyId&&d.property&&d.property.isBase) loadDashboard();
+  }catch(e){
+    if(e.data&&(e.data.limitReached||e.data.upgradeRequired)){ closeModal(); await refreshProperties(); openAddProperty(); }
+    else { err.textContent=e.message; err.classList.remove('hidden'); }
+  }finally{ btn.disabled=false; }
+}
+function openMakePrimary(id){
+  const p=propById(id); if(!p) return; primaryTargetId=id;
+  const old=primaryProperty();
+  document.getElementById('primaryModalTitle').textContent=`Make ${p.nickname} your primary?`;
+  document.getElementById('primaryModalBody').textContent=`${p.nickname} becomes the default property for new requests, reminders and emails. ${old&&old.id!==id?old.nickname+' stays on your account as a regular property. ':''}Nothing else changes: each property keeps its own Home Care Plan and billing.`;
+  document.getElementById('primaryModal').classList.add('show');
+}
+async function confirmMakePrimary(){
+  if(!primaryTargetId) return;
+  try{ const d=await api('/properties/'+primaryTargetId+'/primary',{method:'POST'}); closeModal(); applyProperties(d); toast('Primary property updated.'); if(activePanel.homeowner!=='maintenance') renderPanel('homeowner',activePanel.homeowner); }
+  catch(e){ toast(e.message); }
+}
+async function removeProperty(id){
+  const p=propById(id); if(!p) return;
+  if(!confirm(`Remove ${p.nickname}? Its profile and documents are removed from your account.`)) return;
+  try{
+    const d=await api('/properties/'+id,{method:'DELETE'});
+    if(selectedPropertyId===id) selectedPropertyId=null;
+    applyProperties(d); toast('Property removed.');
+    if(activePanel.homeowner==='maintenance') switchHomeTab(currentHomeTab); else renderPanel('homeowner',activePanel.homeowner);
+  }catch(e){ toast(e.message); }
+}
+function propertiesCardHTML(){
+  const rows=propsState.list.map(p=>`<div class="prop-row"><div><b style="font-size:14px">${esc(p.nickname)}</b> ${p.isPrimary?'<span class="tag">★ Primary</span>':''}<div class="statusline">${esc(p.address||'No address yet')} · ${esc(PROP_TYPE_LABELS[p.type]||'Home')}</div></div><div class="prop-actions">${p.isPrimary?'':`<button class="secondary" onclick="openMakePrimary('${esc(p.id)}')">Make primary</button>`}<button class="secondary" onclick="openEditProperty('${esc(p.id)}')">Edit</button>${p.isPrimary?'':`<button class="secondary" onclick="removeProperty('${esc(p.id)}')">Remove</button>`}</div></div>`).join('');
+  const used=propsState.limit==null?`${propsState.list.length} properties · unlimited`:`${propsState.list.length} of ${propsState.limit} used`;
+  return `<div class="request" style="display:block;grid-column:1/-1"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px"><div><b style="font-size:14.5px">Properties</b><div class="statusline">${used}</div></div><button class="primary" onclick="openAddProperty()">+ Add property</button></div>${rows}</div>`;
+}
+
 // --- My Home: Maintenance / Neighborhood tabs ---
 function switchHomeTab(tab){
+  currentHomeTab=tab;
   const btnM=document.getElementById('hometab-btn-maintenance'), btnN=document.getElementById('hometab-btn-neighborhood');
   const paneM=document.getElementById('hometab-maintenance'), paneN=document.getElementById('hometab-neighborhood');
   if(btnM)btnM.classList.toggle('active',tab==='maintenance');
@@ -1722,13 +1936,12 @@ async function loadNeighborhood(){
       <h3 style="margin:0 0 8px;font-size:17px">See what's happening near you</h3>
       <p class="subtle" style="margin:0 0 22px;font-size:13.5px;line-height:1.6">Neighborhood connects you with homes within 0.25 mi to swap recommendations, share alerts, and get to know your street. It's included with Plus.</p>
       <button class="primary" onclick="openPlansPage('homeowner')">Upgrade to Plus →</button>
-    </div>
-    <div class="request" style="display:flex;flex-direction:column;align-items:stretch;margin-top:14px"><div id="ho-careplan-box">${carePlanBoxHTML()}</div></div>`;
+    </div>`;
     return;
   }
   el.innerHTML='<div class="notice">Loading nearby posts…</div>';
   try{
-    const d=await api('/neighborhood');
+    const d=await api('/neighborhood'+propQS());
     if(d.needsAddress){
       el.innerHTML=`<div class="nb-upsell">
         <h3 style="margin:0 0 8px;font-size:17px">Add your home address</h3>
@@ -1771,7 +1984,7 @@ function nbPostHTML(p){
 }
 async function submitNeighborhoodPost(){
   const ta=document.getElementById('nbComposerInput'); const text=(ta?.value||'').trim(); if(!text)return;
-  try{ await api('/neighborhood',{method:'POST',body:JSON.stringify({body:text})}); loadNeighborhood(); }catch(e){ toast(e.message); }
+  try{ await api('/neighborhood',{method:'POST',body:JSON.stringify({body:text,...(activeProperty()?{propertyId:activeProperty().id}:{})})}); loadNeighborhood(); }catch(e){ toast(e.message); }
 }
 async function saveNeighborhoodAddress(btn){
   const input=document.getElementById('nbAddressInput'); const address=(input?.value||'').trim();
@@ -1779,8 +1992,14 @@ async function saveNeighborhoodAddress(btn){
   if(!address){ if(err){err.textContent='Enter an address.';err.classList.remove('hidden')} return; }
   if(btn){btn.disabled=true;btn.textContent='Saving…'}
   try{
-    const d=await api('/profile/address',{method:'POST',body:JSON.stringify({address})});
-    currentUser=d.user;
+    const ap=activeProperty();
+    if(ap&&!ap.isBase){
+      applyProperties(await api('/properties/'+ap.id,{method:'PATCH',body:JSON.stringify({address})}));
+    } else {
+      const d=await api('/profile/address',{method:'POST',body:JSON.stringify({address})});
+      currentUser=d.user;
+      await refreshProperties();
+    }
     toast('Address saved!');
     loadNeighborhood();
   }catch(e){ if(err){err.textContent=e.message;err.classList.remove('hidden')} }
@@ -1852,9 +2071,20 @@ function openRequest(service){
   document.getElementById('serviceType').value=service;
   populateCommonRequests();
   const ta=document.getElementById('requestDescription'); if(ta) ta.value='';
-  const zipEl=document.getElementById('requestZip'); if(zipEl) zipEl.value=(currentUser&&currentUser.address)||'';
+  const pf=document.getElementById('requestPropertyField'), ps=document.getElementById('requestProperty');
+  if(pf&&ps){
+    pf.classList.toggle('hidden',!multiProps());
+    const pp=primaryProperty();
+    ps.innerHTML=propsState.list.map(p=>`<option value="${esc(p.id)}"${pp&&pp.id===p.id?' selected':''}>${esc(p.nickname)} · ${esc(p.address||'no address')}</option>`).join('');
+  }
+  const zipEl=document.getElementById('requestZip');
+  if(zipEl){ const pp=propsState.list.length?primaryProperty():null; zipEl.value=(pp?pp.address:(currentUser&&currentUser.address))||''; }
   const zipErr=document.getElementById('requestZipError'); if(zipErr) zipErr.classList.add('hidden');
   document.getElementById('requestModal').classList.add('show');
+}
+function requestPropertyChanged(){
+  const p=propById(document.getElementById('requestProperty').value), z=document.getElementById('requestZip');
+  if(p&&z) z.value=p.address||'';
 }
 function openQuotes(){document.getElementById('quotesModal').classList.add('show');const first=lastDashboard.homeowner&&lastDashboard.homeowner.requests[0];if(first)loadQuotes(first.id)}
 function openQuote(){document.getElementById('quotesModal').classList.remove('show');document.getElementById('quoteModal').classList.add('show')}
@@ -1866,7 +2096,7 @@ async function submitRequest(){
   if(zipErr) zipErr.classList.add('hidden');
   try{
     const svc=document.getElementById('serviceType').value;
-    const d=await api('/requests',{method:'POST',body:JSON.stringify({serviceType:svc,title:svc+' request',address:zip,description:document.getElementById('requestDescription').value,urgency:document.getElementById('requestUrgency').value,preferredDate:document.getElementById('requestPreferredDate').value,preferredTime:document.getElementById('requestPreferredTime').value||'Any time'})});
+    const d=await api('/requests',{method:'POST',body:JSON.stringify({serviceType:svc,title:svc+' request',address:zip,...(propsState.list.length?{propertyId:(document.getElementById('requestProperty')||{}).value||primaryProperty().id}:{}),description:document.getElementById('requestDescription').value,urgency:document.getElementById('requestUrgency').value,preferredDate:document.getElementById('requestPreferredDate').value,preferredTime:document.getElementById('requestPreferredTime').value||'Any time'})});
     closeModal();toast('Request published successfully');await loadDashboard();
   }catch(e){ if(zipErr && e.status===422){zipErr.textContent=e.message;zipErr.classList.remove('hidden')} else {toast(e.message)} }
 }
@@ -1968,6 +2198,7 @@ async function loadDashboard(){
     if(page==='homeowner'){
       const sub=document.getElementById('ho-welcome-sub'); if(sub)sub.textContent=`What does your home need, ${currentUser.name.split(' ')[0]}?`;
       const pill=document.getElementById('ho-location-pill'); if(pill)pill.innerHTML='<svg class="icn" width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 18s6-5.6 6-10.2A6 6 0 104 7.8C4 12.4 10 18 10 18z"/><circle cx="10" cy="7.6" r="2"/></svg> '+esc(currentUser.community||'My Community');
+      applyProperties(d.properties);
       updatePlanButtonLabel();
       renderServiceBubbles(d.serviceDemand);
       renderSponsorBanner(d.sponsor);
@@ -2079,6 +2310,7 @@ function toggleAllServices(role){
 
 function switchPanel(role,panelName){
   activePanel[role]=panelName;
+  if(role==='homeowner'){ if(panelName!=='maintenance') homeMenuOpen=false; renderHomeNav(); }
   document.querySelectorAll('#'+role+' .sidebar .sideitem[data-panel]').forEach(el=>el.classList.toggle('active',el.dataset.panel===panelName));
   document.querySelectorAll('#'+role+' .content .panel').forEach(el=>el.classList.toggle('hidden',el.dataset.panel!==panelName));
   renderPanel(role,panelName);
@@ -2120,7 +2352,7 @@ function requestCardHTML(r){
       + `<button class="secondary" onclick="closeRequest('${esc(r.id)}',true)">Mark complete</button><button class="secondary" onclick="closeRequest('${esc(r.id)}',false)">Close &amp; delist</button>`
     : (hoClosed ? `<button class="secondary" onclick="reopenRequest('${esc(r.id)}')">Reopen</button>` : '');
   const n=activeQuotesOf(r).length;
-  return `<div class="request">${photoSlotHTML(serviceImage(r.serviceType),null,'req-thumb')}<div class="requestrow"><div><span class="tag">${esc(r.serviceType.toUpperCase())}</span>${tag}${accTag}<h3>${esc(r.title)}</h3><p>${esc(r.description||'')}</p><div class="statusline"><span class="dot"></span> ${n} provider${n===1?'':'s'} responded${(!done&&acc&&acc.provider)?' · '+esc(acc.provider.name)+' accepted':''}${r.delisted?' · Hidden from new providers':''}${done?' · Closed: provider submitted a receipt':''}</div></div><div class="mini-actions">${delistBtn}<button class="primary" onclick="document.getElementById('quotesModal').classList.add('show');loadQuotes('${esc(r.id)}')">View ${n} Response${n===1?'':'s'}</button></div></div></div>`;
+  return `<div class="request">${photoSlotHTML(serviceImage(r.serviceType),null,'req-thumb')}<div class="requestrow"><div><span class="tag">${esc(r.serviceType.toUpperCase())}</span>${tag}${accTag}${(multiProps()&&r.propertyId&&propById(r.propertyId))?`<span class="tag">${esc(propById(r.propertyId).nickname)}</span>`:''}<h3>${esc(r.title)}</h3><p>${esc(r.description||'')}</p><div class="statusline"><span class="dot"></span> ${n} provider${n===1?'':'s'} responded${(!done&&acc&&acc.provider)?' · '+esc(acc.provider.name)+' accepted':''}${r.delisted?' · Hidden from new providers':''}${done?' · Closed: provider submitted a receipt':''}</div></div><div class="mini-actions">${delistBtn}<button class="primary" onclick="document.getElementById('quotesModal').classList.add('show');loadQuotes('${esc(r.id)}')">View ${n} Response${n===1?'':'s'}</button></div></div></div>`;
 }
 let hoRequestsFilter='open';
 function setHoRequestsFilter(f){
@@ -2213,12 +2445,24 @@ async function cancelAppointment(jobId){
   if(!confirm('Cancel this appointment? Your request stays open and every quote, including this provider\'s chat, stays available. You can pick a provider again any time.')) return;
   try{ await api('/jobs/'+jobId,{method:'PATCH',body:JSON.stringify({status:'cancelled'})}); toast('Appointment cancelled. Your request is still open.'); await loadDashboard(); }catch(e){ toast(e.message); }
 }
+function paymentRowHTML(p){
+  const pill = p.status==='succeeded' ? statusPillHTML('Succeeded','ok') : p.status==='refunded' ? statusPillHTML('Refunded','neutral') : statusPillHTML('Failed','bad');
+  return `<div class="admin-row"><div class="admin-row-main"><div class="name">${esc(p.plan||'Payment')} ${pill}</div><div class="meta">$${Number(p.amount).toFixed(2)} · ${new Date(p.createdAt).toLocaleDateString()}</div></div></div>`;
+}
 function paymentHistoryRowsHTML(payments){
   if(!payments.length) return '<div class="notice">No payments yet.</div>';
-  return payments.map(p=>{
-    const pill = p.status==='succeeded' ? statusPillHTML('Succeeded','ok') : p.status==='refunded' ? statusPillHTML('Refunded','neutral') : statusPillHTML('Failed','bad');
-    return `<div class="admin-row"><div class="admin-row-main"><div class="name">${esc(p.plan||'Payment')} ${pill}</div><div class="meta">$${Number(p.amount).toFixed(2)} · ${new Date(p.createdAt).toLocaleDateString()}</div></div></div>`;
-  }).join('');
+  // Homeowners with several properties see Home Care Plan payments grouped under each property.
+  if(currentUser&&currentUser.role==='homeowner'&&multiProps()){
+    const base=propsState.list.find(p=>p.isBase)||primaryProperty();
+    const groups=new Map();
+    const add=(k,label,p)=>{ if(!groups.has(k)) groups.set(k,{label,rows:[]}); groups.get(k).rows.push(p); };
+    payments.forEach(p=>{
+      if(p.planKind==='care_plan'){ const prop=propById(p.propertyId)||base; add('p:'+(prop?prop.id:''),prop?prop.nickname:'Home Care Plan',p); }
+      else add('acct','Account',p);
+    });
+    return [...groups.values()].map(g=>`<div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--green);margin:12px 0 2px">${esc(g.label)}</div>${g.rows.map(paymentRowHTML).join('')}`).join('');
+  }
+  return payments.map(paymentRowHTML).join('');
 }
 async function loadBillingHistoryInto(elId){
   const el=document.getElementById(elId); if(!el)return;
@@ -2228,12 +2472,22 @@ async function loadBillingHistoryInto(elId){
     el.innerHTML=paymentHistoryRowsHTML(d.payments||[]);
   }catch(e){ el.innerHTML=`<div class="notice">${esc(e.message)}</div>`; }
 }
+// One Home Care Plan card per property: each has its own services, total and next charge.
+function carePlanPaymentCardsHTML(){
+  const list=propsState.list.length?propsState.list:[{id:'',nickname:'',carePlanItems:(currentUser&&currentUser.carePlanItems)||[],carePlanNextBilling:currentUser&&currentUser.carePlanNextBilling,isPrimary:true}];
+  const multi=list.length>1;
+  return list.map(p=>{
+    const total=careItemsTotal(p.carePlanItems);
+    const items=p.carePlanItems||[];
+    const status=total>0?'$'+total.toFixed(2)+'/mo':(items.length?items.length+' service'+(items.length===1?'':'s')+' requested':'Not active');
+    return `<div class="request"><div class="requestrow" style="flex-direction:column;align-items:flex-start;gap:6px;width:100%"><div style="display:flex;justify-content:space-between;width:100%;gap:8px;align-items:center"><b style="font-size:14.5px">Home Care Plan${multi?' · '+esc(p.nickname):''}</b>${multi&&p.isPrimary?'<span class="tag">★ Primary</span>':''}</div><div class="statusline">${status}${p.carePlanNextBilling?' · Next charge '+esc(p.carePlanNextBilling):''}</div><button class="secondary" onclick="openCarePlanPage('homeowner','${esc(p.id)}')">Manage Home Care Plan</button></div></div>`;
+  }).join('');
+}
 function renderHoPayments(d){
   const el=document.getElementById('ho-payments-view'); if(!el)return;
   const u=d.user;
   const planLabel = u.subscription==='premium'?'Premium':u.subscription==='plus'?'Plus':'Free';
   const planPrice = u.subscription==='premium'?'$29.99/mo':u.subscription==='plus'?'$9.99/mo':'Free';
-  const carePlanTotal=careActiveMonthlyTotal();
   el.innerHTML=`
   <div class="boxgrid">
     <div class="request">
@@ -2243,13 +2497,7 @@ function renderHoPayments(d){
         <button class="secondary" onclick="openPlansPage('homeowner')">Manage Plan</button>
       </div>
     </div>
-    <div class="request">
-      <div class="requestrow" style="flex-direction:column;align-items:flex-start;gap:6px;width:100%">
-        <b style="font-size:14.5px">Home Care Plan</b>
-        <div class="statusline">${carePlanTotal>0?'$'+carePlanTotal.toFixed(2)+'/mo':'Not active'}${u.carePlanNextBilling?' · Next charge '+esc(u.carePlanNextBilling):''}</div>
-        <button class="secondary" onclick="openCarePlanPage('homeowner')">Manage Home Care Plan</button>
-      </div>
-    </div>
+    ${carePlanPaymentCardsHTML()}
   </div>
   <div class="request" style="margin-top:14px">
     <b style="font-size:14.5px">Payment history</b>
@@ -2266,7 +2514,7 @@ async function loadHomeMaintenance(){
   if(!currentUser||currentUser.role!=='homeowner')return;
   el.innerHTML='<div class="notice">Loading…</div>';
   try{
-    const d=await api('/home-profile');
+    const d=await api('/home-profile'+propQS());
     homeMaintenanceData=d;
     renderHomeMaintenance(d);
   }catch(e){ el.innerHTML=`<div class="notice">${esc(e.message)}</div>`; }
@@ -2329,7 +2577,8 @@ function renderHomeMaintenance(d){
       <h3 style="margin:0 0 8px;font-size:19px;text-align:center">Home Profile is a Plus &amp; Premium perk</h3>
       <p class="subtle" style="margin:0 0 22px;font-size:14px;line-height:1.6;text-align:center;max-width:440px">Upgrade your Community Plan to Plus or Premium to track your home's HVAC, water heater, roof and more — with automatic maintenance reminders and a document repository for warranties and receipts.</p>
       <button class="primary" onclick="openPlansPage('homeowner')">Upgrade to Plus →</button>
-    </div>`;
+    </div>
+    <div class="request" style="display:flex;flex-direction:column;align-items:stretch;margin-top:14px"><div id="ho-careplan-box">${carePlanBoxHTML()}</div></div>`;
     return;
   }
   if(!d.status.hasProfile){
@@ -2441,7 +2690,7 @@ function addHomeReminderRow(name,frequencyDays,lastDone){
   list.appendChild(row);
 }
 function openHomeProfileEditor(){
-  const hp=(currentUser&&currentUser.homeProfile)||{};
+  const hp=(homeMaintenanceData&&homeMaintenanceData.homeProfile)||{};
   document.getElementById('hp-hvac-brand').value=hp.hvac?.brand||'';
   document.getElementById('hp-hvac-year').value=hp.hvac?.installYear||'';
   document.getElementById('hp-hvac-filter').value=hp.hvac?.filterSize||'';
@@ -2479,7 +2728,7 @@ async function saveHomeProfile(){
     reminders
   };
   try{
-    const d=await api('/home-profile',{method:'PUT',body:JSON.stringify(payload)});
+    const d=await api('/home-profile',{method:'PUT',body:JSON.stringify({...payload,...(activeProperty()?{propertyId:activeProperty().id}:{})})});
     currentUser=d.user;
     closeModal(); toast('Home Profile saved');
     loadHomeMaintenance();
@@ -2501,14 +2750,14 @@ async function submitHomeDocument(){
   const category=document.getElementById('homeDocCategory').value;
   try{
     const dataUrl=await fileToDataUrl(file);
-    await api('/home-profile/documents',{method:'POST',body:JSON.stringify({name,category,dataUrl})});
+    await api('/home-profile/documents',{method:'POST',body:JSON.stringify({name,category,dataUrl,...(activeProperty()?{propertyId:activeProperty().id}:{})})});
     closeModal(); toast('Document saved');
     loadHomeMaintenance();
   }catch(e){ toast(e.message); }
 }
 async function deleteHomeDocument(docId){
   try{
-    await api('/home-profile/documents/'+docId,{method:'DELETE'});
+    await api('/home-profile/documents/'+docId+propQS(),{method:'DELETE'});
     toast('Document removed');
     loadHomeMaintenance();
   }catch(e){ toast(e.message); }
@@ -2519,6 +2768,7 @@ function renderHoProfile(d){
   const geoStatus = u.address ? (u.lat!=null ? '<span style="color:var(--green)">✓ located</span>' : '<span style="color:#b3432e">could not locate. Try a more complete address</span>') : '';
   el.innerHTML=`<div class="request"><div class="avatar-slot" style="width:56px;height:56px;overflow:hidden">${avatarInnerHTML(u,56)}</div><div class="requestrow" style="flex-direction:column;align-items:flex-start;gap:6px"><div><b style="font-size:16px">${esc(u.name)}</b><div class="statusline">${esc(u.community||'')} · Plan: ${esc(u.subscription)}</div></div><p style="margin:6px 0 0">Email: ${esc(u.email)}<br>Phone: ${esc(u.phone||'N/A')}</p></div></div>
   <div class="boxgrid">
+    ${propertiesCardHTML()}
     <div class="request">
       <div class="requestrow" style="flex-direction:column;align-items:flex-start;gap:8px;width:100%">
         <b style="font-size:14.5px">Home Address</b>
@@ -3519,14 +3769,14 @@ function renderAdminCarePlanAccounts(accounts){
   el.innerHTML=banner+accounts.map(a=>`
     <div class="careplan-account">
       <div class="careplan-account-head">
-        <div class="name">${esc(a.name)} ${statusPillHTML(a.subscription==='premium'?'Premium':'Plus','neutral')}</div>
+        <div class="name">${esc(a.name)} ${statusPillHTML(a.subscription==='premium'?'Premium':'Plus','neutral')}${a.isExtraProperty||a.propertyName&&accounts.filter(x=>x.id===a.id).length>1?' '+statusPillHTML(a.propertyName||'Property','warn'):''}</div>
         <div class="meta">${esc(a.email)}${a.community?' · '+esc(a.community):''}</div>
       </div>
-      ${(a.services||[]).map(s=>carePlanServiceRowHTML(a.id,s)).join('')}
+      ${(a.services||[]).map(s=>carePlanServiceRowHTML(a.id,a.propertyId||'',s)).join('')}
     </div>`).join('');
 }
-function carePlanServiceRowHTML(homeownerId,s){
-  const rowId=homeownerId+'__'+s.serviceKey;
+function carePlanServiceRowHTML(homeownerId,propertyId,s){
+  const rowId=homeownerId+'__'+propertyId+'__'+s.serviceKey;
   if(s.pricingStatus!=='active'){
     const isQuoted=s.pricingStatus==='quoted';
     const prefill=s.priceCents?(s.priceCents/100):(s.catalogPrice||'');
@@ -3537,7 +3787,7 @@ function carePlanServiceRowHTML(homeownerId,s){
       </div>
       <div class="careplan-service-actions">
         <input type="number" min="1" step="1" placeholder="$/mo" id="cpv-price-${rowId}" value="${prefill}" style="width:90px">
-        <button class="primary" onclick="setCarePlanQuote('${homeownerId}','${s.serviceKey}')">${isQuoted?'Update Quote':'Send Quote'}</button>
+        <button class="primary" onclick="setCarePlanQuote('${homeownerId}','${propertyId}','${s.serviceKey}')">${isQuoted?'Update Quote':'Send Quote'}</button>
       </div>
     </div>`;
   }
@@ -3553,34 +3803,34 @@ function carePlanServiceRowHTML(homeownerId,s){
         <option value="completed" ${s.status==='completed'?'selected':''}>Completed</option>
       </select>
       <input type="date" id="cpv-date-${rowId}" value="${s.scheduledDate||''}">
-      <button class="secondary" onclick="saveCarePlanVisit('${homeownerId}','${s.serviceKey}')">Save</button>
-      <button class="secondary" onclick="openCarePlanAssignPicker('${homeownerId}','${s.serviceKey}','${jsAttr(s.serviceName)}')">${s.providerName?'Change provider':'Assign provider'}</button>
+      <button class="secondary" onclick="saveCarePlanVisit('${homeownerId}','${propertyId}','${s.serviceKey}')">Save</button>
+      <button class="secondary" onclick="openCarePlanAssignPicker('${homeownerId}','${propertyId}','${s.serviceKey}','${jsAttr(s.serviceName)}')">${s.providerName?'Change provider':'Assign provider'}</button>
     </div>
   </div>`;
 }
-async function setCarePlanQuote(homeownerId,serviceKey){
-  const rowId=homeownerId+'__'+serviceKey;
+async function setCarePlanQuote(homeownerId,propertyId,serviceKey){
+  const rowId=homeownerId+'__'+propertyId+'__'+serviceKey;
   const val=parseFloat(document.getElementById('cpv-price-'+rowId).value);
   if(!val||val<=0){ toast('Enter a valid monthly price.'); return; }
   try{
-    await api(`/admin/care-plan-accounts/${homeownerId}/quote`,{method:'POST',body:JSON.stringify({serviceKey,priceCents:Math.round(val*100)})});
+    await api(`/admin/care-plan-accounts/${homeownerId}/quote`,{method:'POST',body:JSON.stringify({serviceKey,propertyId:propertyId||undefined,priceCents:Math.round(val*100)})});
     toast('Quote sent.');
     await loadAdminCarePlanAccounts();
   }catch(e){ toast(e.message); }
 }
-async function saveCarePlanVisit(homeownerId,serviceKey){
-  const rowId=homeownerId+'__'+serviceKey;
+async function saveCarePlanVisit(homeownerId,propertyId,serviceKey){
+  const rowId=homeownerId+'__'+propertyId+'__'+serviceKey;
   const status=document.getElementById('cpv-status-'+rowId).value;
   const scheduledDate=document.getElementById('cpv-date-'+rowId).value||null;
   try{
-    await api('/admin/care-plan-visits',{method:'POST',body:JSON.stringify({homeownerId,serviceKey,status,scheduledDate})});
+    await api('/admin/care-plan-visits',{method:'POST',body:JSON.stringify({homeownerId,propertyId:propertyId||undefined,serviceKey,status,scheduledDate})});
     toast('Saved.');
     await loadAdminCarePlanAccounts();
   }catch(e){ toast(e.message); }
 }
 let adminAssignRequestId=null;
 let adminAssignMode='request'; // 'request' | 'careplan'
-let adminAssignCarePlan=null; // {homeownerId, serviceKey}
+let adminAssignCarePlan=null; // {homeownerId, propertyId, serviceKey}
 async function openAdminAssignModal(requestId,title){
   adminAssignMode='request';
   adminAssignCarePlan=null;
@@ -3596,10 +3846,10 @@ async function openAdminAssignModal(requestId,title){
     renderAdminAssignCandidates(d.candidates||[]);
   }catch(e){ list.innerHTML=`<div class="notice">${esc(e.message)}</div>`; }
 }
-async function openCarePlanAssignPicker(homeownerId,serviceKey,serviceName){
+async function openCarePlanAssignPicker(homeownerId,propertyId,serviceKey,serviceName){
   adminAssignMode='careplan';
   adminAssignRequestId=null;
-  adminAssignCarePlan={homeownerId,serviceKey};
+  adminAssignCarePlan={homeownerId,propertyId,serviceKey};
   document.getElementById('adminAssignTitle').textContent='Assign: '+serviceName;
   document.getElementById('adminAssignNote').value='';
   const err=document.getElementById('adminAssignError'); if(err)err.classList.add('hidden');
@@ -3607,7 +3857,7 @@ async function openCarePlanAssignPicker(homeownerId,serviceKey,serviceName){
   list.innerHTML='<div class="notice">Loading candidates…</div>';
   document.getElementById('adminAssignModal').classList.add('show');
   try{
-    const params=new URLSearchParams({serviceKey,homeownerId});
+    const params=new URLSearchParams({serviceKey,homeownerId,propertyId:propertyId||''});
     const d=await api('/admin/care-plan-candidates?'+params.toString());
     renderAdminAssignCandidates(d.candidates||[]);
   }catch(e){ list.innerHTML=`<div class="notice">${esc(e.message)}</div>`; }
@@ -3631,7 +3881,7 @@ async function submitAdminAssign(providerId){
   try{
     if(adminAssignMode==='careplan'){
       if(!adminAssignCarePlan)return;
-      await api('/admin/care-plan-visits',{method:'POST',body:JSON.stringify({homeownerId:adminAssignCarePlan.homeownerId,serviceKey:adminAssignCarePlan.serviceKey,providerId,note})});
+      await api('/admin/care-plan-visits',{method:'POST',body:JSON.stringify({homeownerId:adminAssignCarePlan.homeownerId,propertyId:adminAssignCarePlan.propertyId||undefined,serviceKey:adminAssignCarePlan.serviceKey,providerId,note})});
       closeAdminAssignModal();
       toast('Provider assigned.');
       await loadAdminCarePlanAccounts();
