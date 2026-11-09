@@ -21,7 +21,23 @@ const { Pool } = require('pg');
 const PORT = process.env.PORT || 3000;
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || '*';
 const ROOT = __dirname;
-const sessions = new Map(); // token -> userId  (in-memory; sessions reset on restart, fine for MVP)
+// Sessions: kept in memory for speed AND saved to the database (token stored only as a SHA-256 hash),
+// so a redeploy or restart does not sign people out. Seniors especially should stay signed in.
+const SESSION_TTL_DAYS = 120;
+function tokHash(t){ return crypto.createHash('sha256').update(String(t)).digest('hex'); }
+class SessionStore extends Map {
+  set(tok,uid){
+    super.set(tok,uid);
+    pool.query("INSERT INTO sessions (token_hash,user_id,expires_at) VALUES ($1,$2,now()+make_interval(days=>$3)) ON CONFLICT (token_hash) DO NOTHING",[tokHash(tok),uid,SESSION_TTL_DAYS]).catch(()=>{});
+    return this;
+  }
+  delete(tok){
+    const r=super.delete(tok);
+    pool.query('DELETE FROM sessions WHERE token_hash=$1',[tokHash(tok)]).catch(()=>{});
+    return r;
+  }
+}
+const sessions = new SessionStore(); // token -> userId
 const loginAttempts = new Map(); // ip -> {count, resetAt}
 
 if (!process.env.DATABASE_URL) {
@@ -55,6 +71,7 @@ function mapUser(r){
   const carePlanItems=r.care_plan_items||[];
   const u={id:r.id,role:r.role,name:r.name,email:r.email,passwordHash:r.password_hash,salt:r.salt,phone:r.phone,createdAt:toISO(r.created_at),subscription:r.subscription,carePlanItems,carePlanServices:carePlanItems.filter(i=>i.status==='active').map(i=>i.key),avatarKind:r.avatar_kind||null,avatarValue:r.avatar_value||null,address:r.address,lat:r.lat!=null?Number(r.lat):null,lng:r.lng!=null?Number(r.lng):null,billingAddress:r.billing_address||null,suspended:!!r.suspended,deleted:!!r.deleted,deletedAt:toISO(r.deleted_at),lastAnnouncementsViewAt:toISO(r.last_announcements_view_at)};
   u.sponsoredOrgId=r.sponsored_org_id||null;
+  u.uiPrefs=r.ui_prefs||{};
   if(r.role==='hoa'){ u.hoaOrgId=r.hoa_org_id||null; u.invitePending=!!r.invite_token_hash; }
   if(r.role==='admin'){ u.adminPermissions=r.admin_permissions||null; u.isSuperAdmin=!r.admin_permissions; u.invitePending=!!r.invite_token_hash; }
   if(r.role==='homeowner'){ u.community=r.community; u.carePlanNextBilling=r.care_plan_next_billing?new Date(r.care_plan_next_billing).toISOString().slice(0,10):null; u.subscriptionNextBilling=r.subscription_next_billing?new Date(r.subscription_next_billing).toISOString().slice(0,10):null; u.homeProfile=r.home_profile||{}; u.homeDocuments=r.home_documents||[]; }
@@ -107,7 +124,7 @@ function publicProviderView(u){
     galleryPhotos:approvedGalleryPhotos(u)
   };
 }
-function mapRequest(r){ return {id:r.id,homeownerId:r.homeowner_id,serviceType:r.service_type,title:r.title,description:r.description,urgency:r.urgency,preferredDate:r.preferred_date,preferredTime:r.preferred_time,status:r.status,createdAt:toISO(r.created_at),dispatchedProviderId:r.dispatched_provider_id||null,dispatchedAt:toISO(r.dispatched_at)||null,delisted:!!r.delisted,delistedAt:toISO(r.delisted_at),closedBy:r.closed_by||null,closedAt:toISO(r.closed_at)||null,propertyId:r.property_id||null}; }
+function mapRequest(r){ return {id:r.id,homeownerId:r.homeowner_id,serviceType:r.service_type,title:r.title,description:r.description,urgency:r.urgency,preferredDate:r.preferred_date,preferredTime:r.preferred_time,status:r.status,createdAt:toISO(r.created_at),dispatchedProviderId:r.dispatched_provider_id||null,dispatchedAt:toISO(r.dispatched_at)||null,delisted:!!r.delisted,delistedAt:toISO(r.delisted_at),closedBy:r.closed_by||null,closedAt:toISO(r.closed_at)||null,propertyId:r.property_id||null,photoCount:Number(r.photo_count)||0}; }
 function mapPayment(r){ return {id:r.id,userId:r.user_id,plan:r.plan,planKind:r.plan_kind,amount:(r.amount_cents||0)/100,currency:r.currency,status:r.status,createdAt:toISO(r.created_at),refundedAt:toISO(r.refunded_at)||null,propertyId:r.property_id||null}; }
 // ---------------------------------------------------------------------------------------------
 // Properties. Plus members can keep 2 properties, Premium unlimited. Each has its own My Home
@@ -516,7 +533,19 @@ function emailShell(preheader, bodyHtml){
 function esc_(s){ return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function btn(label, href){ return `<a href="${href}" style="display:inline-block;background:#286b58;color:#fff;text-decoration:none;font-weight:700;font-size:14px;padding:12px 22px;border-radius:10px;margin-top:8px">${esc_(label)}</a>`; }
 
-async function sendEmail({to,type,subject,html,userId}){
+// Family helpers who were invited with "copy my emails" get a copy of the emails below that go to the person they help.
+const HELPER_COPY_TYPES=new Set(['new_quote','new_message','job_cancelled','job_completed']);
+async function sendEmail(opts){
+  const r=await sendEmailOne(opts);
+  if(opts.userId&&HELPER_COPY_TYPES.has(opts.type)){
+    try{
+      const hs=await pool.query("SELECT u.email,u.id FROM helpers h JOIN users u ON u.id=h.helper_user_id WHERE h.owner_id=$1 AND h.status='active' AND h.copy_emails AND u.email<>$2",[opts.userId,opts.to]);
+      for(const h of hs.rows) await sendEmailOne({...opts,to:h.email,userId:h.id,type:opts.type+'_helper_copy',subject:'Copy for your family member: '+opts.subject});
+    }catch(e){}
+  }
+  return r;
+}
+async function sendEmailOne({to,type,subject,html,userId}){
   const logId=id('email');
   if(!RESEND_API_KEY){
     console.log(`[email:DRY RUN — no RESEND_API_KEY set] to=${to} type=${type} subject="${subject}"`);
@@ -557,6 +586,9 @@ const VERIFICATION_MAX_DOCS=6;
 const GALLERY_PHOTO_RE=/^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=]+$/;
 const GALLERY_MAX_PHOTO_BYTES=5_500_000; // ~4MB file once base64-encoded
 const GALLERY_MAX_PHOTOS=12;
+const REQUEST_PHOTO_RE=/^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=]+$/;
+const REQUEST_MAX_PHOTO_CHARS=900_000; // the page shrinks photos first; this is the hard ceiling (request bodies cap at 1MB)
+const REQUEST_MAX_PHOTOS=4;
 const SKILL_MAX_LEN=40;
 const SKILLS_MAX_COUNT=20;
 const SPECIALIZATIONS_MAX_COUNT=20;
@@ -673,6 +705,29 @@ function computeHomeStatus(hp,carePlanItems){
     homeHealth,
     hasProfile:homeProfileHasData(hp)
   };
+}
+
+// ---- one-time email links (password reset, sign-in link) ----
+const AUTH_LINK_TTL_MIN = {reset:60, magic:20};
+async function sendAuthLink(u,kind){
+  const raw=crypto.randomBytes(32).toString('base64url');
+  await pool.query('UPDATE auth_tokens SET used_at=now() WHERE user_id=$1 AND kind=$2 AND used_at IS NULL',[u.id,kind]);
+  await pool.query("INSERT INTO auth_tokens (id,user_id,kind,token_hash,expires_at) VALUES ($1,$2,$3,$4,now()+make_interval(mins=>$5))",[id('atk'),u.id,kind,tokHash(raw),AUTH_LINK_TTL_MIN[kind]]);
+  // The token rides in the URL fragment (#), which browsers never send to the server or put in logs.
+  const link=appUrl()+'/#'+(kind==='reset'?'reset':'signin')+'='+raw;
+  if(process.env.AUTH_DEBUG_LINKS==='1') console.log('[auth-link] '+kind+' '+u.email+' '+link);
+  const first=esc_(String(u.name||'').split(' ')[0]||'there');
+  const big='style="color:#17352f;font-size:18px;line-height:1.6"';
+  const html = kind==='reset'
+    ? emailShell('Reset your password',`<h2 style="margin:0 0 10px;color:#17352f;font-size:24px">Hi ${first}, let's get you back in</h2><p ${big}>Click the button to choose a new password. This link works for 1 hour.</p>${btn('Choose a new password',link)}<p ${big}>If you did not ask for this, you can ignore this email. Your password will not change.</p>`)
+    : emailShell('Your sign in link',`<h2 style="margin:0 0 10px;color:#17352f;font-size:24px">Hi ${first}, here is your sign in link</h2><p ${big}>Click the button to sign in. No password needed. This link works for 20 minutes and only once.</p>${btn('Sign in',link)}<p ${big}>If you did not ask for this, you can ignore this email.</p>`);
+  await sendEmail({to:u.email,type:kind==='reset'?'password_reset':'signin_link',subject:kind==='reset'?'Reset your Living Communities password':'Your Living Communities sign in link',html,userId:u.id}).catch(()=>{});
+}
+// Marks a link used and returns its row, or null when it is wrong, expired or already used.
+async function takeAuthToken(raw,kind){
+  const t=String(raw||'');
+  if(t.length<20||t.length>200) return null;
+  return await q1("UPDATE auth_tokens SET used_at=now() WHERE token_hash=$1 AND kind=$2 AND used_at IS NULL AND expires_at>now() RETURNING *",[tokHash(t),kind]);
 }
 
 function welcomeEmailHtml(u){
@@ -820,6 +875,17 @@ function carePlanCanceledEmailHtml(u){
     `<h2 style="margin:0 0 10px;color:#17352f">Your Home Care Plan was canceled</h2>
      <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">All recurring services on your Home Care Plan were removed and billing for them has stopped.</p>
      ${btn('View My Dashboard',appUrl())}`);
+}
+const REWARD_KINDS={free_month:'A free month',gift_card:'A gift card',other:'A reward'};
+function providerRewardEmailHtml(u,kind,details,message){
+  const head=REWARD_KINDS[kind]||REWARD_KINDS.other;
+  return emailShell('You earned a reward',
+    `<h2 style="margin:0 0 10px;color:#17352f">${esc_(head)} for being a top provider</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Hi ${esc_(u.name||'there')}, thank you for the great work on Living Communities. We picked you for a reward.</p>
+     ${details?`<p style="background:#fbf1dc;border-radius:10px;padding:12px 14px;color:#17352f;font-weight:700;font-size:15px">${esc_(details)}</p>`:''}
+     ${message?`<p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">${esc_(message).replace(/\n/g,'<br>')}</p>`:''}
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Questions? Reply to this email.</p>
+     ${btn('Open Living Communities',appUrl())}`);
 }
 function accountSuspendedEmailHtml(u){
   return emailShell('Your account was suspended',
@@ -1115,6 +1181,7 @@ async function initSchema(){
   // Migration-safe: adds columns/tables for databases whose schema predates these features.
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS care_plan_services text[] DEFAULT '{}'`); // legacy — superseded by care_plan_items below, kept only so old rows aren't lost
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS care_plan_items jsonb DEFAULT '[]'::jsonb`); // [{key,status:'requested'|'quoted'|'active',priceCents,quotedAt,acceptedAt}]
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS ui_prefs jsonb DEFAULT '{}'::jsonb`); // Easy view, text size, contrast
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS lat double precision`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS lng double precision`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS geocoded_at timestamptz`);
@@ -1272,6 +1339,12 @@ async function initSchema(){
   await pool.query(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS receipt_data_url text`);
   await pool.query(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS receipt_note text`);
   await pool.query(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS receipt_uploaded_at timestamptz`);
+  // Photos a homeowner attaches to a request (up to REQUEST_MAX_PHOTOS). Stored as data URLs like the
+  // work gallery; the request row only carries photo_count so lists stay light.
+  await pool.query(`CREATE TABLE IF NOT EXISTS provider_rewards (id text PRIMARY KEY, provider_id text NOT NULL REFERENCES users(id), kind text NOT NULL, details text NOT NULL DEFAULT '', message text NOT NULL DEFAULT '', sent_by text, created_at timestamptz DEFAULT now())`);
+  await pool.query(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS photo_count integer NOT NULL DEFAULT 0`);
+  await pool.query(`CREATE TABLE IF NOT EXISTS request_photos (id text PRIMARY KEY, request_id text NOT NULL REFERENCES requests(id) ON DELETE CASCADE, data_url text NOT NULL, created_at timestamptz DEFAULT now())`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS request_photos_req_idx ON request_photos(request_id)`);
   // Accepting a quote no longer closes a request or declines the other quotes. Move older data to
   // the new rules: a request is 'open' until a receipt closes it ('completed'), and quotes that were
   // auto-declined by an acceptance go back to pending.
@@ -1329,6 +1402,51 @@ async function initSchema(){
     );
     CREATE INDEX IF NOT EXISTS idx_email_log_user ON email_log(user_id);
   `);
+  // Saved sign-in sessions and one-time email links (password reset, sign-in link). Only hashes are stored.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS sessions (
+      token_hash text PRIMARY KEY,
+      user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at timestamptz DEFAULT now(),
+      expires_at timestamptz NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+    CREATE TABLE IF NOT EXISTS auth_tokens (
+      id text PRIMARY KEY,
+      user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      kind text NOT NULL,
+      token_hash text NOT NULL UNIQUE,
+      expires_at timestamptz NOT NULL,
+      used_at timestamptz,
+      created_at timestamptz DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS idx_auth_tokens_user ON auth_tokens(user_id);
+    CREATE TABLE IF NOT EXISTS helpers (
+      id text PRIMARY KEY,
+      owner_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      helper_name text,
+      helper_email text NOT NULL,
+      helper_user_id text REFERENCES users(id) ON DELETE CASCADE,
+      token_hash text UNIQUE,
+      status text NOT NULL DEFAULT 'invited',
+      copy_emails boolean NOT NULL DEFAULT true,
+      created_at timestamptz DEFAULT now(),
+      accepted_at timestamptz
+    );
+    CREATE INDEX IF NOT EXISTS idx_helpers_owner ON helpers(owner_id);
+    CREATE INDEX IF NOT EXISTS idx_helpers_helper ON helpers(helper_user_id);
+    CREATE TABLE IF NOT EXISTS helper_activity (
+      id text PRIMARY KEY,
+      owner_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      helper_user_id text NOT NULL,
+      helper_name text,
+      action text NOT NULL,
+      created_at timestamptz DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS idx_helper_activity_owner ON helper_activity(owner_id,created_at DESC);
+  `);
+  await pool.query("DELETE FROM sessions WHERE expires_at<now()").catch(()=>{});
+  await pool.query("DELETE FROM auth_tokens WHERE expires_at<now()-interval '7 days'").catch(()=>{});
   await pool.query(`
     CREATE TABLE IF NOT EXISTS neighborhood_posts (
       id text PRIMARY KEY,
@@ -1381,11 +1499,25 @@ function body(req){return new Promise((resolve,reject)=>{let s='';req.on('data',
 // bytes Stripe sent, not a re-serialized JSON.parse/stringify round-trip of them.
 function rawBody(req){return new Promise((resolve,reject)=>{const chunks=[];let len=0;req.on('data',c=>{chunks.push(c);len+=c.length; if(len>2e6){reject(new Error('Payload too large'));req.destroy();}});req.on('end',()=>resolve(Buffer.concat(chunks)))})}
 function authToken(req){ return (req.headers.authorization||'').replace('Bearer ',''); }
+// In-memory first, then the sessions table (this is what survives a restart).
+async function sessionUserId(token){
+  if(!token) return null;
+  const uid=sessions.get(token); if(uid) return uid;
+  const r=await q1('SELECT user_id FROM sessions WHERE token_hash=$1 AND expires_at>now()',[tokHash(token)]);
+  if(!r) return null;
+  Map.prototype.set.call(sessions,token,r.user_id); // cache without re-writing the row
+  return r.user_id;
+}
+// Sign a user out everywhere (password reset).
+async function dropUserSessions(uid){
+  for(const [tok,u] of Array.from(sessions)){ if(u===uid) Map.prototype.delete.call(sessions,tok); }
+  await pool.query('DELETE FROM sessions WHERE user_id=$1',[uid]).catch(()=>{});
+}
 // requireAuth resolves the full user record from Postgres (not just the session id) so every
 // downstream u.id / u.role reference below is safe to use.
 async function requireAuth(req,res,roles){
   const token=authToken(req);
-  const uid=sessions.get(token);
+  const uid=await sessionUserId(token);
   if(!uid){send(res,401,{error:'Authentication required'});return null}
   const row=await q1('SELECT * FROM users WHERE id=$1',[uid]);
   if(!row){sessions.delete(token);send(res,401,{error:'Session invalid'});return null}
@@ -1394,7 +1526,43 @@ async function requireAuth(req,res,roles){
   if(u.suspended){sessions.delete(token);send(res,403,{error:'This account has been suspended. Contact support if you think this is a mistake.',suspended:true});return null}
   if(roles&&!roles.includes(u.role)){send(res,403,{error:'Not authorized'});return null}
   if(u.role==='admin'||u.role==='hoa') learnOrigin(req);
+  const acting=req.headers['x-acting-as'];
+  if(acting){
+    // A family helper may act for one person who invited them, and only for the short list of everyday actions below.
+    if(u.role!=='homeowner'){send(res,403,{error:'Not authorized'});return null}
+    const link=await q1("SELECT id FROM helpers WHERE owner_id=$1 AND helper_user_id=$2 AND status='active'",[String(acting),u.id]);
+    if(!link){send(res,403,{error:'You are not set up to help this person.'});return null}
+    const rule=helperAllowed(req.method,new URL(req.url,'http://x').pathname);
+    if(!rule){send(res,403,{error:'A family helper cannot do this. Ask the account owner.'});return null}
+    const orow=await q1('SELECT * FROM users WHERE id=$1',[String(acting)]);
+    if(!orow||orow.deleted||orow.suspended){send(res,403,{error:'That account is not available.'});return null}
+    const o=mapUser(orow); o.actingHelper={id:u.id,name:u.name};
+    if(rule.label){
+      res.on('finish',()=>{ if(res.statusCode>=400) return;
+        pool.query('INSERT INTO helper_activity (id,owner_id,helper_user_id,helper_name,action) VALUES ($1,$2,$3,$4,$5)',[id('hact'),o.id,u.id,u.name,rule.label]).catch(()=>{});
+        if(rule.notify) sendEmail({to:o.email,type:'helper_action',subject:`${u.name} helped on your account`,html:emailShell('Family helper',`<h2 style="margin:0 0 10px;color:#17352f">${esc_(u.name)} ${esc_(rule.label.toLowerCase())}</h2><p style="color:#3f4f4a;line-height:1.6;font-size:15px">Your family helper made a change for you. You can see everything in your account, and remove a helper any time from Family helper.</p>${btn('Open my account',appUrl())}`)}).catch(()=>{});
+      });
+    }
+    return o;
+  }
   return u;
+}
+// The only things a family helper may do for the person they help. Everything else (password, email,
+// plan and billing, deleting the account, managing helpers) is refused.
+function helperAllowed(method,path){
+  const t=[
+    ['GET',/^\/api\/dashboard$/],
+    ['GET',/^\/api\/auth\/me$/],
+    ['POST',/^\/api\/requests$/,'Sent a new request',true],
+    ['GET',/^\/api\/requests\/[^/]+\/quotes$/],
+    ['POST',/^\/api\/requests\/[^/]+\/photos$/,'Added a photo to a request',false],
+    ['GET',/^\/api\/requests\/[^/]+\/photos$/],
+    ['POST',/^\/api\/quotes\/[^/]+\/accept$/,'Booked a provider',true],
+    ['GET',/^\/api\/quotes\/[^/]+\/messages$/],
+    ['POST',/^\/api\/quotes\/[^/]+\/messages$/,'Sent a message to a provider',false],
+    ['PATCH',/^\/api\/jobs\/[^/]+$/,'Cancelled a visit',true]
+  ];
+  const r=t.find(x=>x[0]===method&&x[1].test(path)); return r?{label:r[2]||null,notify:!!r[3]}:null;
 }
 
 // Requests per service over the last 30 days, site-wide. Counts only, no personal data. Cached 5 minutes.
@@ -1588,7 +1756,66 @@ const server=http.createServer(async (req,res)=>{
     if(p==='/api/auth/me' && req.method==='GET'){
       const u=await requireAuth(req,res); if(!u)return; return send(res,200,{user:safeUser(u)});
     }
-    if(p==='/api/auth/logout' && req.method==='POST'){sessions.delete(authToken(req));return send(res,200,{ok:true});}
+    if(p==='/api/auth/logout' && req.method==='POST'){const t=authToken(req);sessions.delete(t);if(t) await pool.query('DELETE FROM sessions WHERE token_hash=$1',[tokHash(t)]).catch(()=>{});return send(res,200,{ok:true});}
+
+    // Public settings the sign-in screen needs (no secrets).
+    if(p==='/api/config' && req.method==='GET'){
+      return send(res,200,{emailEnabled:!!RESEND_API_KEY,supportPhone:String(process.env.SUPPORT_PHONE||'').trim(),supportHours:String(process.env.SUPPORT_HOURS||'').trim()});
+    }
+    // Forgot password: always answers the same way so nobody can test which emails have accounts.
+    if(p==='/api/auth/forgot' && req.method==='POST'){
+      const ip=req.socket.remoteAddress||'unknown';
+      if(tooManyAttempts(ip+':forgot')) return send(res,429,{error:'Too many attempts. Try again later.'});
+      const b=await body(req);
+      const email=String(b.email||'').trim().toLowerCase().slice(0,200);
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return send(res,400,{error:'Please enter a valid email address.'});
+      if(tooManyAttempts(email+':forgot')) return send(res,200,{ok:true,emailEnabled:!!RESEND_API_KEY});
+      const row=await q1('SELECT * FROM users WHERE lower(email)=lower($1)',[email]);
+      const u=mapUser(row);
+      if(u && !u.deleted && !u.suspended) await sendAuthLink(u,'reset');
+      return send(res,200,{ok:true,emailEnabled:!!RESEND_API_KEY});
+    }
+    if(p==='/api/auth/reset' && req.method==='POST'){
+      const ip=req.socket.remoteAddress||'unknown';
+      if(tooManyAttempts(ip+':reset')) return send(res,429,{error:'Too many attempts. Try again later.'});
+      const b=await body(req);
+      const password=String(b.password||'');
+      if(password.length<8) return send(res,400,{error:'Password must be at least 8 characters'});
+      const t=await takeAuthToken(b.token,'reset');
+      if(!t) return send(res,400,{error:'This link has expired or was already used. Request a new one.',expired:true});
+      const row=await q1('SELECT * FROM users WHERE id=$1',[t.user_id]);
+      const u=mapUser(row);
+      if(!u || u.deleted || u.suspended) return send(res,400,{error:'This link has expired or was already used. Request a new one.',expired:true});
+      const salt=newSalt();
+      await pool.query('UPDATE users SET password_hash=$1,salt=$2 WHERE id=$3',[hash(password,salt),salt,u.id]);
+      await dropUserSessions(u.id);
+      const token=crypto.randomBytes(24).toString('hex'); sessions.set(token,u.id);
+      return send(res,200,{token,user:safeUser(mapUser(await q1('SELECT * FROM users WHERE id=$1',[u.id])))});
+    }
+    // Email sign-in link: no password needed. Homeowners and providers only (admin and HOA accounts keep passwords).
+    if(p==='/api/auth/magic' && req.method==='POST'){
+      const ip=req.socket.remoteAddress||'unknown';
+      if(tooManyAttempts(ip+':magic')) return send(res,429,{error:'Too many attempts. Try again later.'});
+      const b=await body(req);
+      const email=String(b.email||'').trim().toLowerCase().slice(0,200);
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return send(res,400,{error:'Please enter a valid email address.'});
+      if(tooManyAttempts(email+':magic')) return send(res,200,{ok:true,emailEnabled:!!RESEND_API_KEY});
+      const row=await q1('SELECT * FROM users WHERE lower(email)=lower($1)',[email]);
+      const u=mapUser(row);
+      if(u && !u.deleted && !u.suspended && (u.role==='homeowner'||u.role==='provider')) await sendAuthLink(u,'magic');
+      return send(res,200,{ok:true,emailEnabled:!!RESEND_API_KEY});
+    }
+    if(p==='/api/auth/magic/verify' && req.method==='POST'){
+      const ip=req.socket.remoteAddress||'unknown';
+      if(tooManyAttempts(ip+':magicv')) return send(res,429,{error:'Too many attempts. Try again later.'});
+      const b=await body(req);
+      const t=await takeAuthToken(b.token,'magic');
+      if(!t) return send(res,400,{error:'This sign in link has expired or was already used. Request a new one.',expired:true});
+      const u=mapUser(await q1('SELECT * FROM users WHERE id=$1',[t.user_id]));
+      if(!u || u.deleted || u.suspended || !(u.role==='homeowner'||u.role==='provider')) return send(res,400,{error:'This sign in link has expired or was already used. Request a new one.',expired:true});
+      const token=crypto.randomBytes(24).toString('hex'); sessions.set(token,u.id);
+      return send(res,200,{token,user:safeUser(u)});
+    }
 
     // Internal, non-session-authenticated endpoint for an external cron/pinger to trigger the
     // Home Care Plan billing check (reminders + mock charges). Protected by a shared secret, not a login.
@@ -1893,6 +2120,45 @@ const server=http.createServer(async (req,res)=>{
       notifyProvidersOfNewRequest(mapRequest(row),{...u,lat,lng}).catch(()=>{});
       return send(res,201,{request:mapRequest(row)});
     }
+    // ---- Request photos ----
+    // Owner adds up to 4 photos to their own open request (one call per photo, already shrunk by the
+    // page). The owner and any provider who can see the request (open and listed, or one they quoted)
+    // can read them. Admins use /api/admin/requests/:id/photos.
+    if(p.startsWith('/api/requests/') && /^\/api\/requests\/[^/]+\/photos(\/[^/]+)?$/.test(p)){
+      const parts=p.split('/'), rid=parts[3], pid=parts[5]||null;
+      const rq=await q1('SELECT * FROM requests WHERE id=$1',[rid]);
+      if(!rq) return send(res,404,{error:'Request not found'});
+      const owner=u.role==='homeowner'&&rq.homeowner_id===u.id;
+      if(req.method==='GET' && !pid){
+        let ok=owner;
+        if(!ok && u.role==='provider'){
+          if(rq.status==='open'&&!rq.delisted) ok=true;
+          else ok=!!(await q1('SELECT 1 AS x FROM quotes WHERE request_id=$1 AND provider_id=$2 LIMIT 1',[rid,u.id]));
+        }
+        if(!ok) return send(res,403,{error:'You cannot see photos for this request.'});
+        const rows=await q('SELECT id,data_url FROM request_photos WHERE request_id=$1 ORDER BY created_at, id',[rid]);
+        return send(res,200,{photos:rows.map(r=>({id:r.id,dataUrl:r.data_url}))});
+      }
+      if(!owner) return send(res,403,{error:'Only the homeowner who posted this request can change its photos.'});
+      if(rq.status!=='open') return send(res,409,{error:'This request is closed, so photos cannot be changed.'});
+      if(req.method==='POST' && !pid){
+        const b=await body(req);
+        const dataUrl=String(b.dataUrl||'');
+        if(!REQUEST_PHOTO_RE.test(dataUrl)) return send(res,400,{error:'Photo must be a PNG, JPEG, or WEBP image.'});
+        if(dataUrl.length>REQUEST_MAX_PHOTO_CHARS) return send(res,400,{error:'That photo is too large. Try a smaller one.'});
+        const n=Number((await q1('SELECT count(*)::int AS c FROM request_photos WHERE request_id=$1',[rid])).c);
+        if(n>=REQUEST_MAX_PHOTOS) return send(res,400,{error:`You can add up to ${REQUEST_MAX_PHOTOS} photos to a request.`});
+        const photoId=id('rph');
+        await pool.query('INSERT INTO request_photos (id,request_id,data_url) VALUES ($1,$2,$3)',[photoId,rid,dataUrl]);
+        await pool.query('UPDATE requests SET photo_count=(SELECT count(*) FROM request_photos WHERE request_id=$1) WHERE id=$1',[rid]);
+        return send(res,201,{photo:{id:photoId},photoCount:n+1});
+      }
+      if(req.method==='DELETE' && pid){
+        await pool.query('DELETE FROM request_photos WHERE id=$1 AND request_id=$2',[pid,rid]);
+        const c=await q1('UPDATE requests SET photo_count=(SELECT count(*) FROM request_photos WHERE request_id=$1) WHERE id=$1 RETURNING photo_count',[rid]);
+        return send(res,200,{photoCount:Number(c.photo_count)||0});
+      }
+    }
     // Delist/relist: the homeowner's own on/off switch for whether their still-open request is
     // visible to providers. Doesn't touch the request, any quotes already sent, or their chats —
     // only whether NEW providers can see and quote it.
@@ -2033,7 +2299,8 @@ const server=http.createServer(async (req,res)=>{
       if(t.quote.archived) return send(res,409,{error:isHomeowner?'This conversation is archived. Unarchive it to send a message.':'The homeowner archived this conversation.'});
       if(isProvider && !u.approved) return send(res,403,{error:'Your account is waiting on admin approval before you can message about a request.',verificationRequired:true,accountPending:true});
       const b=await body(req);
-      const text=String(b.body||'').trim().slice(0,2000); if(!text)return send(res,400,{error:'Message cannot be empty'});
+      const rawText=String(b.body||'').trim().slice(0,u.actingHelper?1900:2000); if(!rawText)return send(res,400,{error:'Message cannot be empty'});
+      const text=rawText+(u.actingHelper?`\n(Sent by ${u.actingHelper.name}, helping ${String(u.name).split(' ')[0]})`:'');
       const recipientId=isHomeowner?t.quote.provider_id:t.request.homeowner_id;
       const recipientRow=await q1('SELECT * FROM users WHERE id=$1',[recipientId]);
       let isNewConversation=false;
@@ -2289,6 +2556,73 @@ const server=http.createServer(async (req,res)=>{
       const prop=await resolveProperty(urow0,url.searchParams.get('propertyId')); if(!prop) return send(res,404,{error:'Property not found'});
       const cu=mapUser(careRow(urow0,prop));
       return send(res,200,{homeProfile:cu.homeProfile||{},homeDocuments:cu.homeDocuments||[],status:computeHomeStatus(cu.homeProfile,cu.carePlanItems),locked:!isPaidPlan(u),propertyId:prop.id});
+    }
+    // Display preferences that follow the account across devices: Easy view, text size, high contrast.
+    if(p==='/api/prefs' && req.method==='PUT'){
+      const b=await body(req);
+      const cur=(await q1('SELECT ui_prefs FROM users WHERE id=$1',[u.id])||{}).ui_prefs||{};
+      const next={...cur};
+      if('easy' in b) next.easy=!!b.easy;
+      if('contrast' in b) next.contrast=!!b.contrast;
+      if('scale' in b){ const sc=Number(b.scale); if(![1,1.2,1.4].includes(sc)) return send(res,400,{error:'Invalid text size'}); next.scale=sc; }
+      await pool.query('UPDATE users SET ui_prefs=$1 WHERE id=$2',[JSON.stringify(next),u.id]);
+      return send(res,200,{uiPrefs:next});
+    }
+    // ---- Family helper: a trusted person who can do everyday things for you (see helperAllowed) ----
+    if(p==='/api/helpers' && req.method==='GET'){
+      const mine=(await pool.query("SELECT h.*,hu.name AS hu_name,hu.email AS hu_email FROM helpers h LEFT JOIN users hu ON hu.id=h.helper_user_id WHERE h.owner_id=$1 ORDER BY h.created_at",[u.id])).rows;
+      const helping=(await pool.query("SELECT h.id,h.owner_id,o.name AS owner_name FROM helpers h JOIN users o ON o.id=h.owner_id WHERE h.helper_user_id=$1 AND h.status='active' AND o.deleted=false AND o.suspended=false ORDER BY o.name",[u.id])).rows;
+      const act=(await pool.query("SELECT helper_name,action,created_at FROM helper_activity WHERE owner_id=$1 ORDER BY created_at DESC LIMIT 10",[u.id])).rows;
+      return send(res,200,{
+        helpers:mine.map(h=>({id:h.id,name:h.status==='active'?(h.hu_name||h.helper_name):h.helper_name,email:h.status==='active'?(h.hu_email||h.helper_email):h.helper_email,status:h.status,copyEmails:h.copy_emails,createdAt:toISO(h.created_at)})),
+        helping:helping.map(h=>({id:h.id,ownerId:h.owner_id,ownerName:h.owner_name})),
+        activity:act.map(a=>({helperName:a.helper_name,action:a.action,at:toISO(a.created_at)}))
+      });
+    }
+    if(p==='/api/helpers' && req.method==='POST'){
+      if(u.role!=='homeowner') return send(res,403,{error:'Only homeowners can add a family helper.'});
+      const b=await body(req);
+      const name=String(b.name||'').trim().slice(0,80), email=String(b.email||'').trim().toLowerCase().slice(0,200);
+      if(!name) return send(res,400,{error:'Please enter their name.'});
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return send(res,400,{error:'Please enter a valid email address.'});
+      if(email===String(u.email).toLowerCase()) return send(res,400,{error:'That is your own email address.'});
+      const have=(await pool.query("SELECT helper_email FROM helpers WHERE owner_id=$1",[u.id])).rows;
+      if(have.length>=3) return send(res,409,{error:'You can have up to 3 family helpers. Remove one first.'});
+      if(have.some(h=>h.helper_email===email)) return send(res,409,{error:'You already invited that person.'});
+      const raw=crypto.randomBytes(24).toString('base64url');
+      const row=await q1("INSERT INTO helpers (id,owner_id,helper_name,helper_email,token_hash,copy_emails) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *",[id('hlp'),u.id,name,email,tokHash(raw),b.copyEmails!==false]);
+      const link=appUrl()+'/#helper='+raw;
+      sendEmail({to:email,type:'helper_invite',subject:`${u.name} asked you to be their family helper`,html:emailShell('Family helper invitation',`<h2 style="margin:0 0 10px;color:#17352f">${esc_(u.name)} asked you to help</h2><p style="color:#3f4f4a;line-height:1.6;font-size:16px">${esc_(u.name)} would like you to be a family helper on Living Communities. You could send requests, pick a provider, and send messages for them. You could not change their password, email, or payments.</p><p style="color:#3f4f4a;line-height:1.6;font-size:16px">Sign in or create a free account, then open this link:</p>${btn('Accept and help '+esc_(u.name.split(' ')[0]),link)}`),userId:u.id}).catch(()=>{});
+      return send(res,201,{helper:{id:row.id,name:row.helper_name,email:row.helper_email,status:row.status,copyEmails:row.copy_emails},link,emailEnabled:!!RESEND_API_KEY});
+    }
+    if(p==='/api/helpers/accept' && req.method==='POST'){
+      if(tooManyAttempts(u.id+':helper-accept')) return send(res,429,{error:'Too many attempts. Try again later.'});
+      if(u.role!=='homeowner') return send(res,403,{error:'Please use a homeowner account to be a family helper.'});
+      const b=await body(req);
+      const h=await q1("SELECT * FROM helpers WHERE token_hash=$1 AND status='invited'",[tokHash(String(b.token||''))]);
+      if(!h) return send(res,400,{error:'This invitation is no longer valid. Ask them to send a new link.'});
+      if(h.owner_id===u.id) return send(res,400,{error:'You cannot be your own helper.'});
+      await pool.query("UPDATE helpers SET helper_user_id=$1,status='active',token_hash=NULL,accepted_at=now() WHERE id=$2",[u.id,h.id]);
+      const owner=await q1('SELECT name,email FROM users WHERE id=$1',[h.owner_id]);
+      if(owner) sendEmail({to:owner.email,type:'helper_accepted',subject:`${u.name} is now your family helper`,html:emailShell('Family helper',`<h2 style="margin:0 0 10px;color:#17352f">${esc_(u.name)} accepted</h2><p style="color:#3f4f4a;line-height:1.6;font-size:16px">${esc_(u.name)} (${esc_(u.email)}) can now help with your jobs. If this is not who you meant, remove them from Family helper.</p>`),userId:h.owner_id}).catch(()=>{});
+      return send(res,200,{ok:true,ownerId:h.owner_id,ownerName:owner?owner.name:''});
+    }
+    if(p.startsWith('/api/helpers/') && ['PATCH','DELETE','POST'].includes(req.method)){
+      const parts=p.split('/'), hid=parts[3], sub=parts[4]||'';
+      const h=await q1('SELECT * FROM helpers WHERE id=$1',[hid]); if(!h) return send(res,404,{error:'Not found'});
+      const isOwner=h.owner_id===u.id, isHelper=h.helper_user_id===u.id;
+      if(req.method==='DELETE' && !sub){
+        if(!isOwner&&!isHelper) return send(res,403,{error:'Not authorized'});
+        await pool.query('DELETE FROM helpers WHERE id=$1',[hid]); return send(res,200,{ok:true});
+      }
+      if(!isOwner) return send(res,403,{error:'Not authorized'});
+      if(req.method==='PATCH' && !sub){ const b=await body(req); await pool.query('UPDATE helpers SET copy_emails=$1 WHERE id=$2',[!!b.copyEmails,hid]); return send(res,200,{ok:true,copyEmails:!!b.copyEmails}); }
+      if(req.method==='POST' && sub==='link'){
+        if(h.status!=='invited') return send(res,409,{error:'That helper already accepted.'});
+        const raw=crypto.randomBytes(24).toString('base64url');
+        await pool.query('UPDATE helpers SET token_hash=$1 WHERE id=$2',[tokHash(raw),hid]);
+        return send(res,200,{link:appUrl()+'/#helper='+raw});
+      }
     }
     if(p==='/api/home-profile' && req.method==='PUT'){
       if(u.role!=='homeowner')return send(res,403,{error:'Only homeowners have a Home Profile'});
@@ -2778,6 +3112,26 @@ const server=http.createServer(async (req,res)=>{
       if(qstr) accounts=accounts.filter(a=>(a.name||'').toLowerCase().includes(qstr)||(a.email||'').toLowerCase().includes(qstr));
       return send(res,200,{accounts});
     }
+    // Admin sends a "rewards for top providers" email (free month, gift card, or anything else), at
+    // their own discretion. The provider also gets an in-app announcement; each send is logged.
+    if(p.startsWith('/api/admin/accounts/') && p.endsWith('/reward') && req.method==='POST'){
+      if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
+      const aid=p.split('/')[4];
+      const target=await q1('SELECT * FROM users WHERE id=$1 AND COALESCE(deleted,false)=false',[aid]);
+      if(!target) return send(res,404,{error:'Account not found'});
+      if(target.role!=='provider') return send(res,400,{error:'Rewards go to service providers.'});
+      if(!target.email) return send(res,400,{error:'This provider has no email on file.'});
+      const b=await body(req);
+      const kind=REWARD_KINDS[b.kind]?b.kind:'other';
+      const details=String(b.details||'').trim().slice(0,300);
+      const message=String(b.message||'').trim().slice(0,1500);
+      if(!details&&!message) return send(res,400,{error:'Add the reward details or a message.'});
+      const rid=id('rwd');
+      await pool.query('INSERT INTO provider_rewards (id,provider_id,kind,details,message,sent_by) VALUES ($1,$2,$3,$4,$5,$6)',[rid,aid,kind,details,message,u.id]);
+      await pool.query('INSERT INTO announcements (id,user_id,title,body) VALUES ($1,$2,$3,$4)',[id('ann'),aid,'You earned a reward',(REWARD_KINDS[kind]+' for being a top provider.'+(details?' '+details+'.':'')).slice(0,500)]);
+      sendEmail({to:target.email,type:'provider_reward',subject:'You earned a reward from Living Communities',html:providerRewardEmailHtml(mapUser(target),kind,details,message),userId:target.id}).catch(()=>{});
+      return send(res,200,{ok:true,id:rid});
+    }
     if(p.startsWith('/api/admin/accounts/') && p.endsWith('/suspend') && req.method==='POST'){
       if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
       const aid=p.split('/')[4];
@@ -2935,6 +3289,19 @@ const server=http.createServer(async (req,res)=>{
     // minimum age, service type, quote/dispatch status, and a homeowner/title search. Supersedes
     // the old "stale only" dispatch list — the Dispatch tab now shows the whole open-requests
     // picture, not just the ones with zero quotes.
+    // Admin can look at and remove request photos (moderation).
+    if(/^\/api\/admin\/requests\/[^/]+\/photos(\/[^/]+)?$/.test(p)){
+      const parts=p.split('/'), rid=parts[4], pid=parts[6]||null;
+      if(req.method==='GET' && !pid){
+        const rows=await q('SELECT id,data_url FROM request_photos WHERE request_id=$1 ORDER BY created_at, id',[rid]);
+        return send(res,200,{photos:rows.map(r=>({id:r.id,dataUrl:r.data_url}))});
+      }
+      if(req.method==='DELETE' && pid){
+        await pool.query('DELETE FROM request_photos WHERE id=$1 AND request_id=$2',[pid,rid]);
+        const c=await q1('UPDATE requests SET photo_count=(SELECT count(*) FROM request_photos WHERE request_id=$1) WHERE id=$1 RETURNING photo_count',[rid]);
+        return send(res,200,{photoCount:c?Number(c.photo_count)||0:0});
+      }
+    }
     if(p==='/api/admin/requests/open' && req.method==='GET'){
       if(u.role!=='admin')return send(res,403,{error:'Not authorized'});
       const minHours=Math.max(0,Number(url.searchParams.get('minHours'))||0);

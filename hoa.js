@@ -4,8 +4,8 @@
 // Rules in one place:
 //  - The HOA roster (hoa_homes) is the billing source of truth. A home is billable only when it is
 //    on the roster AND a homeowner has joined through the HOA join link (state 'active').
-//  - 90-day free pilot (pilot_end). After it, billable = max(active homes on the 1st, floor), capped
-//    by seat_cap when set. floor = floor_pct% of the active count when the pilot ended; sold/rented
+//  - 1 month (30 day) free pilot (pilot_end). After it, billable = max(active homes on the 1st, floor,
+//    min_homes), capped by seat_cap when set. min_homes defaults to 30 (the advertised 30 home minimum). floor = floor_pct% of the active count when the pilot ended; sold/rented
 //    removals lower it by one each, other removals do not.
 //  - Removals need a reason and take effect on the next billing date (the 1st). Homeowners keep their
 //    data when sponsorship ends; Plus features lock and they can keep Plus themselves.
@@ -79,6 +79,7 @@ async function initSchema(){
       floor_pct integer NOT NULL DEFAULT 50,
       floor_seats integer NOT NULL DEFAULT 0,
       floor_set boolean NOT NULL DEFAULT false,
+      min_homes integer NOT NULL DEFAULT 30,
       boundary_address text,
       center_lat numeric,
       center_lng numeric,
@@ -144,6 +145,7 @@ async function initSchema(){
     CREATE INDEX IF NOT EXISTS hoa_homes_org_idx ON hoa_homes(org_id,state);
     CREATE INDEX IF NOT EXISTS hoa_changes_org_idx ON hoa_changes(org_id,created_at DESC);
   `);
+  await pool.query(`ALTER TABLE hoa_orgs ADD COLUMN IF NOT EXISTS min_homes integer NOT NULL DEFAULT 30`);
 }
 
 // ---------- billing math ----------
@@ -151,7 +153,10 @@ function computeBilling(org,active,period){
   const price=org.price_cents||699;
   if(org.status==='paused') return {active,floor:0,billable:0,amountCents:0,price,mode:'paused'};
   if(org.pilot_end && period<=org.pilot_end) return {active,floor:0,billable:0,amountCents:0,price,mode:'pilot'};
-  const floor=org.floor_set?(org.floor_seats||0):0;
+  // The advertised minimum (30 homes by default) always applies after the pilot, on top of the
+  // percentage floor that is set when the pilot ends.
+  const minHomes=org.min_homes==null?30:Math.max(0,org.min_homes);
+  const floor=Math.max(org.floor_set?(org.floor_seats||0):0,minHomes);
   let billable=Math.max(active,floor);
   let capped=false;
   if(org.seat_cap!=null && billable>org.seat_cap){ billable=org.seat_cap; capped=true; }
@@ -379,12 +384,12 @@ async function portalData(org,{admin=false}={}){
   const daysSince=Math.floor((Date.now()-new Date(base).getTime())/86400000);
   return {
     org:{id:org.id,name:org.name,status:org.status,joinCode:org.join_code,joinLink:joinLinkFor(org),priceCents:org.price_cents,pilotStart:org.pilot_start,pilotEnd:org.pilot_end,
-      seatCap:org.seat_cap,floorPct:org.floor_pct,floorSeats:org.floor_seats,floorSet:org.floor_set,lastConfirmedAt:org.last_confirmed_at,confirmStale:daysSince>90,
+      seatCap:org.seat_cap,minHomes:org.min_homes==null?30:org.min_homes,floorPct:org.floor_pct,floorSeats:org.floor_seats,floorSet:org.floor_set,lastConfirmedAt:org.last_confirmed_at,confirmStale:daysSince>90,
       confirmDaysSince:daysSince,boundaryAddress:org.boundary_address||'',radiusMi:org.radius_mi!=null?Number(org.radius_mi):null,
       ...(admin?{notes:org.notes||'',createdAt:org.created_at,confirmReminders:org.confirm_reminders}:{})},
     stats:{roster:stats.roster,active:stats.active,notJoined:stats.not_joined,review:stats.review,ending:stats.ending,ended:stats.ended},
     nextInvoice:{period,active,floor:bill.floor,billable:bill.billable,amountCents:bill.amountCents,mode:bill.mode,priceCents:bill.price,
-      afterPilot:{floor:estFloor,billable:est.billable,amountCents:est.amountCents}},
+      afterPilot:{floor:est.floor,billable:est.billable,amountCents:est.amountCents}},
     homes:homes.map(h=>({id:h.id,address:h.address,state:h.state,label:STATE_LABEL[h.state],endsOn:h.state==='active'?h.removal_effective_at:null,pendingReason:h.state==='active'?h.removal_reason:null,
       endReason:h.state==='ended'?(END_LABEL[h.end_reason]||h.end_reason||''):null,source:h.source})),
     invoices:invoices.map(i=>({id:i.id,period:i.period,active:i.active_count,floor:i.floor_seats,billable:i.billable,priceCents:i.price_cents,amountCents:i.amount_cents,status:i.status,issuedAt:i.issued_at,paidAt:i.paid_at,note:admin?i.note:undefined})),
@@ -618,13 +623,16 @@ async function adminCreate(u,b){
   // The HOA's list of addresses is how the site knows which homes belong, so one is required to sign an HOA up.
   const valid=(Array.isArray(b.addresses)?b.addresses:String(b.addresses||'').split(/\r?\n/)).filter(a=>hasStreetNumber(String(a||'').trim()));
   if(!valid.length) throw bad('Add the HOA\'s list of home addresses (one per line, with street number and name). The site matches homeowners against this list.');
-  const days=Math.max(0,Math.min(365,parseInt(b.pilotDays,10)||90));
+  const days=Math.max(0,Math.min(365,(b.pilotDays===''||b.pilotDays==null||isNaN(parseInt(b.pilotDays,10))?30:parseInt(b.pilotDays,10))));
   const start=dstr(new Date()); const end=addDays(start,days);
   const cap=b.seatCap===''||b.seatCap==null?null:Math.max(1,parseInt(b.seatCap,10)||0)||null;
+  const minHomes=b.minHomes===''||b.minHomes==null?30:parseInt(b.minHomes,10);
+  if(!(minHomes>=0)) throw bad('Minimum homes must be 0 or more.');
+  if(cap!=null&&cap<minHomes) throw bad(`The seat cap (${cap}) cannot be below the ${minHomes} home minimum.`);
   let center=null; const boundary=String(b.boundaryAddress||'').trim().slice(0,200); const radius=b.radiusMi!==''&&b.radiusMi!=null?Math.max(0.1,Math.min(25,Number(b.radiusMi)||0)):null;
   if(boundary && radius){ center=await geocodeAddress(boundary).catch(()=>null); if(!center) throw new HttpErr(422,"We couldn't locate the boundary address. Try a street address inside the neighborhood."); }
-  const org=await q1(`INSERT INTO hoa_orgs (id,name,join_code,status,pilot_start,pilot_end,seat_cap,boundary_address,center_lat,center_lng,radius_mi,notes)
-    VALUES ($1,$2,$3,'pilot',$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,[id('hoa'),name,newJoinCode(),start,end,cap,boundary||null,center?center.lat:null,center?center.lng:null,center?radius:null,String(b.notes||'').slice(0,2000)]);
+  const org=await q1(`INSERT INTO hoa_orgs (id,name,join_code,status,pilot_start,pilot_end,seat_cap,min_homes,boundary_address,center_lat,center_lng,radius_mi,notes)
+    VALUES ($1,$2,$3,'pilot',$4,$5,$6,$12,$7,$8,$9,$10,$11) RETURNING *`,[id('hoa'),name,newJoinCode(),start,end,cap,boundary||null,center?center.lat:null,center?center.lng:null,center?radius:null,String(b.notes||'').slice(0,2000),minHomes]);
   let roster=await addHomes(org,b.addresses);
   let contact=null; if(b.contactEmail) contact=await inviteContact(org,{name:b.contactName||'HOA contact',email:b.contactEmail},u.name);
   return {org:await portalData(org,{admin:true}),roster,contact};
@@ -635,7 +643,10 @@ async function adminSettings(org,b){
   if(b.status!=null){ if(!['pilot','active','paused'].includes(b.status)) throw bad('Status must be pilot, active, or paused.'); set('status',b.status); }
   if(b.pilotStart!=null){ if(b.pilotStart!==''&&!isDate(b.pilotStart)) throw bad('Pilot start must be a date.'); set('pilot_start',b.pilotStart||null); }
   if(b.pilotEnd!=null){ if(b.pilotEnd!==''&&!isDate(b.pilotEnd)) throw bad('Pilot end must be a date.'); set('pilot_end',b.pilotEnd||null); }
-  if('seatCap' in b){ const c=b.seatCap===''||b.seatCap==null?null:parseInt(b.seatCap,10); if(c!=null&&(!(c>=1))) throw bad('Seat cap must be 1 or more, or blank for none.'); set('seat_cap',c); }
+  let newMin=org.min_homes==null?30:org.min_homes, newCap=org.seat_cap;
+  if(b.minHomes!=null&&b.minHomes!==''){ const m=parseInt(b.minHomes,10); if(!(m>=0)) throw bad('Minimum homes must be 0 or more.'); newMin=m; set('min_homes',m); }
+  if('seatCap' in b){ const c=b.seatCap===''||b.seatCap==null?null:parseInt(b.seatCap,10); if(c!=null&&(!(c>=1))) throw bad('Seat cap must be 1 or more, or blank for none.'); newCap=c; set('seat_cap',c); }
+  if(newCap!=null&&newCap<newMin) throw bad(`The seat cap (${newCap}) cannot be below the ${newMin} home minimum.`);
   if(b.floorPct!=null){ const p=parseInt(b.floorPct,10); if(!(p>=0&&p<=100)) throw bad('Floor percent must be 0 to 100.'); set('floor_pct',p); }
   if(b.floorSeats!=null&&b.floorSeats!==''){ const f=parseInt(b.floorSeats,10); if(!(f>=0)) throw bad('Floor seats must be 0 or more.'); set('floor_seats',f); set('floor_set',true); }
   if(b.priceCents!=null){ const p=parseInt(b.priceCents,10); if(!(p>=0&&p<=100000)) throw bad('Price must be between $0 and $1,000.'); set('price_cents',p); }
