@@ -22,7 +22,71 @@ button{font:inherit;cursor:pointer}
 .logo span{color:var(--green)}
 .logo-badge{width:1.6em;height:1.6em;border-radius:.32em;background:var(--green);display:flex;align-items:center;justify-content:center;flex:0 0 auto;padding:.2em}
 .logo-badge img{width:100%;height:100%;object-fit:contain;display:block}
-.navlinks{display:flex;gap:30px;color:#3f4f4a;font-size:14.5px;font-weight:500}
+
+/* outline icons (no emoji) */
+.ico{display:inline-block;width:1em;height:1em;vertical-align:-.15em;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ico-star{color:#b8862f}
+.e-ic .ico{width:1em;height:1em;color:var(--green)}
+.e-big.p .e-ic .ico{color:inherit}
+.e-tile .e .ico{width:1em;height:1em;color:var(--green)}
+.e-ok .ico{width:1em;height:1em;color:var(--green)}
+.e-mic .ico{width:1.1em;height:1.1em}
+.sentbox .bigicon .ico{width:42px;height:42px;color:var(--green)}
+.hm-item .ck .ico{width:1em;height:1em}
+.tag .ico{width:1em;height:1em;vertical-align:-.12em}
+.statusline .ico{width:13px;height:13px}
+.ph-link .ico{width:14px;height:14px}
+.bigbtn .ico{width:1.1em;height:1.1em;margin-right:4px}
+.price li:before{content:"";flex:0 0 16px;height:16px;margin-top:1px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23286b58' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") no-repeat center/contain}
+
+/* provider sign-up page */
+.pv-hero{padding:56px 6% 36px;display:grid;grid-template-columns:1.2fr .8fr;gap:44px;align-items:center}
+.pv-banner{display:inline-flex;gap:8px;align-items:center;background:#fbf1dc;color:#7a5412;font-weight:700;font-size:13px;padding:8px 14px;border-radius:999px;margin-bottom:18px}
+.pv-hero h1{font-size:clamp(36px,4.4vw,52px);line-height:1.06;letter-spacing:-1.6px;margin:0 0 16px}
+.pv-sub{font-size:18px;line-height:1.6;color:var(--muted);margin:0 0 26px;max-width:620px}
+.pv-cta{display:flex;gap:12px;flex-wrap:wrap}
+.pv-proof{margin-top:14px;font-size:13px;color:var(--muted)}
+.pv-card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:26px;box-shadow:0 18px 40px -22px #17352f40}
+.pv-card h3{margin:0 0 4px;font-size:19px}.pv-card p{margin:0 0 14px;color:var(--muted);font-size:14px}
+.pv-card .field{margin-bottom:12px}
+.pv-duo{padding:24px 6%;display:grid;grid-template-columns:1fr 1fr;gap:22px}
+.pv-panel{display:flex;flex-direction:column;background:#fff;border:1px solid var(--line);border-radius:20px;padding:28px}
+.pv-panel h2{font-size:26px;letter-spacing:-.8px;margin:6px 0 18px}
+.pv-list,.pv-steps{list-style:none;margin:0;padding:0}
+.pv-list li{display:flex;gap:14px;align-items:flex-start;padding:12px 0;border-top:1px solid var(--line)}
+.pv-list li:first-child{border-top:0;padding-top:0}
+.pv-oi{flex:0 0 38px;height:38px;border-radius:10px;background:var(--mint);color:var(--green);display:flex;align-items:center;justify-content:center}
+.pv-oi .ico{width:20px;height:20px}
+.pv-list b,.pv-steps b{display:block;font-size:15px;margin-bottom:2px}
+.pv-list li span:not(.pv-oi),.pv-steps li span:not(.pv-sn){font-size:14px;color:#54655f;line-height:1.45}
+.pv-steps li{display:flex;gap:14px;position:relative;padding-bottom:22px}
+.pv-steps li:not(:last-child)::before{content:"";position:absolute;left:16px;top:36px;bottom:4px;width:2px;background:var(--line)}
+.pv-sn{flex:0 0 34px;height:34px;border-radius:50%;background:var(--green);color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center}
+.pv-panel .primary{align-self:flex-start;margin-bottom:22px}
+.pv-offer{margin-top:auto;display:flex;gap:14px;align-items:flex-start;background:#fbf1dc;border-radius:12px;padding:16px}
+.pv-offer b{display:block;font-size:15px;margin-bottom:2px}
+.pv-offer span:not(.pv-oi){font-size:14px;color:#5c4513;line-height:1.45}
+.pv-oi.gold{background:#f3dfb2;color:#7a5412}
+.pv-plans{padding:36px 6%}
+.pv-plans h2{font-size:32px;letter-spacing:-1px;margin:6px 0 8px}
+.pv-note{margin-top:14px;font-size:13px;color:var(--muted)}
+.pv-faq{padding:24px 6%}
+.pv-faq h2{font-size:32px;letter-spacing:-1px;margin:6px 0 18px}
+.pv-faq details{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:10px}
+.pv-faq summary{font-weight:700;cursor:pointer}
+.pv-faq p{margin:10px 0 0;color:#3f4f4a;font-size:14.5px;line-height:1.55}
+.pv-final{background:var(--green);color:#fff;border-radius:20px;padding:40px;text-align:center;margin:20px 6% 48px}
+.pv-final h2{color:#fff;font-size:30px;letter-spacing:-.8px;margin:0 0 8px}
+.pv-final p{opacity:.9;margin:0 0 20px}
+.pv-final .primary{background:#fff;color:var(--green)}
+@media(max-width:900px){.pv-hero,.pv-duo{grid-template-columns:1fr}.pv-final{padding:28px 18px}}
+.provlink{margin:14px 0 0;font-size:14px;color:var(--muted)}.provlink a{color:var(--green);font-weight:800;cursor:pointer}
+@media(max-width:600px){.nav{padding:0 4%;height:64px;gap:8px}.nav .logo{font-size:15px;gap:.35em}.navcta{gap:6px}.navcta .secondary,.navcta .primary{padding:8px 10px;font-size:12.5px}}
+.navlinks{display:flex;gap:clamp(12px,1.5vw,28px);color:#3f4f4a;font-size:14px;font-weight:500;white-space:nowrap}
+.navlinks a{white-space:nowrap}
+.nav{gap:18px}.navcta{display:flex;gap:10px;align-items:center}.navcta button{white-space:nowrap}
+#providers{scroll-margin-top:90px}
+@media(max-width:1180px){.navlinks{display:none}}
 .navlinks a{cursor:pointer}
 .navlinks a:hover{color:var(--green)}
 .navcta{display:flex;gap:10px;align-items:center}
@@ -96,7 +160,7 @@ button{font:inherit;cursor:pointer}
 .price .amount small{font-size:14px;font-weight:600;color:var(--muted)}
 .price ul{padding:0;margin:14px 0 18px}
 .price li{list-style:none;margin:11px 0;color:#3f4f4a;font-size:14px;display:flex;gap:8px}
-.price li:before{content:"✓";color:var(--green);font-weight:800}
+
 
 .band{background:var(--ink);color:#fff;padding:40px 6%;text-align:center}
 .band h2{font-size:32px}
@@ -283,7 +347,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .care-card.selected{border-color:var(--green);background:#f6faf8}
 .care-checkbox{width:22px;height:22px;border-radius:7px;border:1.5px solid #c7d6cf;flex:0 0 auto;margin-top:2px;display:grid;place-items:center;color:#fff;font-size:13px;font-weight:800}
 .care-checkbox.checked{background:var(--green);border-color:var(--green)}
-.care-checkbox.checked::after{content:"✓"}
+.care-checkbox.checked::after{content:"";width:14px;height:14px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") no-repeat center/contain}
 .care-icon{width:22px;height:22px;flex:0 0 auto;color:var(--green)}
 .care-body{flex:1}
 .care-body .name{font-weight:800;font-size:15.5px}
@@ -497,6 +561,7 @@ html.hc .tag,html.hc .notice{border:1px solid #8fa39b}
   <div class="navlinks">
     <a onclick="scrollToSection('how-it-works')">How It Works</a>
     <a onclick="scrollToSection('services')">Services</a>
+    <a href="/providers" onclick="event.preventDefault();show('providers')">For Providers</a>
     <a onclick="scrollToSection('careplan')">Home Care Plan</a>
     <a onclick="scrollToSection('pricing')">Pricing</a>
     <a onclick="scrollToSection('about')">About Us</a>
@@ -515,6 +580,7 @@ html.hc .tag,html.hc .notice{border:1px solid #8fa39b}
   <h1>Property care made <em>simple.</em></h1>
   <p>Living Communities connects homeowners with trusted local providers for every home service need. Quality work. Transparent pricing. Peace of mind.</p>
   <div class="actions"><button class="primary" onclick="openSignup('homeowner')">Get Started</button><button class="secondary" onclick="scrollToSection('how-it-works')">How It Works</button></div>
+  <p class="provlink">Are you a service provider? <a href="/providers" onclick="event.preventDefault();show('providers')">Join free</a></p>
 </div>
 <div class="hero-visual">
   <div class="photo-slot hero-photo" data-label="images/hero-house.jpg, a bright home exterior" style="aspect-ratio:5/4"><img src="images/hero-house.jpg" alt="Home exterior" onerror="this.closest('.photo-slot').classList.add('missing')"></div>
@@ -593,8 +659,57 @@ html.hc .tag,html.hc .notice{border:1px solid #8fa39b}
 <div class="eyebrow">Contact</div>
 <h2>We'd love to hear from you.</h2>
 <p class="lead">Questions about Living Communities, partnering with us, or bringing this to your community? Reach out any time.</p>
-<p style="font-weight:700"><a href="mailto:hello@livingcommunities.example" style="color:var(--green);text-decoration:none">hello@livingcommunities.example</a></p>
+<p style="font-weight:700"><a href="mailto:support@living-communities.com" style="color:var(--green);text-decoration:none">support@living-communities.com</a></p>
 </section>
+
+<footer class="footer"><b>Living Communities</b><a href="/providers" onclick="event.preventDefault();show('providers')" style="cursor:pointer;color:var(--green);font-weight:700">For providers</a><span>© 2026 Living Communities · Property care made simple.</span></footer>
+</main>
+
+<main id="providers" class="page">
+<section class="pv-hero">
+<div>
+  <div class="pv-banner">The first 20 verified providers get Pro free for 1 month.</div>
+  <h1>Find jobs without paying for leads</h1>
+  <p class="pv-sub">Living Communities connects homeowners with local pros. Homeowners post a job. You send a quote. No per-lead fees. No commission.</p>
+  <div class="pv-cta"><button class="primary" onclick="openSignup('provider')">Create my free profile</button><button class="secondary" onclick="document.getElementById('pv-plans').scrollIntoView({behavior:'smooth',block:'start'})">See plans</button></div>
+  <div class="pv-proof">Free to join.</div>
+</div>
+<div class="pv-card">
+  <h3>Start your free profile</h3><p>Takes a few minutes.</p>
+  <div class="field"><label>YOUR TRADE</label><select id="pvTrade"><option>Lawn & Landscaping</option><option>House Cleaning</option><option>Handyman</option><option>Plumbing</option><option>Electrical</option><option>HVAC</option><option>Pest Control</option><option>Pool Service</option><option>Power Washing</option><option>Bulk Trash Pickup</option><option>Moving Services</option><option>Mobile Mechanic</option><option>Pet Waste Cleanup</option><option>Other</option></select></div>
+  <div class="field"><label>EMAIL</label><input id="pvEmail" type="email" placeholder="you@business.com"></div>
+  <button class="primary" style="width:100%" onclick="providerQuickStart()">Continue</button>
+</div>
+</section>
+
+<section class="pv-duo">
+<div class="pv-panel"><div class="eyebrow">Why join</div><h2>Built for working pros</h2><ul class="pv-list"><li><span class="pv-oi"><svg class="ico ico-wallet" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10h18"/><circle cx="16.5" cy="14.5" r="1"/></svg></span><div><b>No lead fees</b><span>You never pay to see a request.</span></div></li><li><span class="pv-oi"><svg class="ico ico-pin" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></span><div><b>Local jobs</b><span>Requests come from homeowners near your service area.</span></div></li><li><span class="pv-oi"><svg class="ico ico-user" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg></span><div><b>Your own profile</b><span>Show your work, your services and your reviews.</span></div></li><li><span class="pv-oi"><svg class="ico ico-chat" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z"/></svg></span><div><b>Chat directly</b><span>Talk to customers inside the site.</span></div></li><li><span class="pv-oi"><svg class="ico ico-shield" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg></span><div><b>Get verified</b><span>Earn a Verified badge homeowners can see.</span></div></li></ul></div>
+<div class="pv-panel"><div class="eyebrow">How it works</div><h2>Three steps to your first quote</h2><ol class="pv-steps"><li><span class="pv-sn">1</span><div><b>Sign up free</b><span>Create your provider profile in a few minutes.</span></div></li><li><span class="pv-sn">2</span><div><b>Get verified</b><span>Upload your documents. Our team reviews them.</span></div></li><li><span class="pv-sn">3</span><div><b>Send quotes</b><span>See open requests near you and send your price.</span></div></li></ol>
+  <button class="primary" onclick="openSignup('provider')">Create my free profile</button>
+  <div class="pv-offer"><span class="pv-oi gold"><svg class="ico ico-gift" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M5 12v8h14v-8M12 8v12M12 8c-1.5-3-5-3.5-5-1.2C7 8 9.5 8 12 8zM12 8c1.5-3 5-3.5 5-1.2C17 8 14.5 8 12 8z"/></svg></span><div><b>Founding Provider offer</b><span>The first 20 verified providers get Pro free for 1 month.</span></div></div>
+</div>
+</section>
+
+<section class="pv-plans" id="pv-plans">
+<div class="eyebrow">Plans</div><h2>Start free. Upgrade when you are ready.</h2>
+<div class="pricing3">
+  <div class="price"><h3>Free</h3><div class="amount">$0<small>/month</small></div><ul><li>3 quotes or new conversations a month</li><li>20 mile service area</li></ul></div>
+  <div class="price featured"><div class="price-badge">First 20 verified providers: 1 month free</div><div class="price-body"><h3>Pro</h3><div class="amount">$9.99<small>/month</small></div><ul><li>20 quotes or new conversations a month</li><li>50 mile service area</li></ul></div></div>
+  <div class="price"><h3>Elite</h3><div class="amount">$20.99<small>/month</small></div><ul><li>Unlimited quotes, conversations and service area</li><li>Featured badge when you qualify</li><li>Priority placement</li><li>Provider analytics dashboard</li></ul></div>
+</div>
+<div class="pv-note">Featured badge needs a 4.5 star rating and 10 completed jobs.</div>
+</section>
+
+<section class="pv-faq">
+<div class="eyebrow">Questions</div><h2>Straight answers</h2>
+<details open><summary>Do I pay per lead?</summary><p>No. There are no per-lead fees and no commission.</p></details>
+<details><summary>What does it cost to start?</summary><p>Nothing. The Free plan costs $0.</p></details>
+<details><summary>How do I get verified?</summary><p>After you sign up, upload your verification documents. Our team reviews them. Approved providers get the Verified badge.</p></details>
+<details><summary>What is the Founding Provider offer?</summary><p>The first 20 verified providers get Pro free for 1 month.</p></details>
+<details><summary>Who runs this?</summary><p>A DFW local resident founded and runs Living Communities. Questions? Email <a href="mailto:support@living-communities.com" style="color:var(--green);font-weight:700">support@living-communities.com</a>.</p></details>
+</section>
+
+<div class="pv-final"><h2>Ready to find jobs?</h2><p>Create your free profile today.</p><button class="primary" onclick="openSignup('provider')">Create my free profile</button></div>
 
 <footer class="footer"><b>Living Communities</b><span>© 2026 Living Communities · Property care made simple.</span></footer>
 </main>
@@ -663,7 +778,7 @@ html.hc .tag,html.hc .notice{border:1px solid #8fa39b}
   <div id="hometab-neighborhood" class="hidden"></div>
 </div>
 <div class="panel hidden" data-panel="profile"><div id="ho-profile-view"></div></div>
-<div class="panel hidden" data-panel="help"><div class="stub-notice"><div class="icon"><svg width="30" height="30" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5.8A2.8 2.8 0 015.8 3h8.4A2.8 2.8 0 0117 5.8v5.4a2.8 2.8 0 01-2.8 2.8H9l-4 3.2v-3.2H5.8A2.8 2.8 0 013 11.2V5.8z"/></svg></div>Need a hand? Email us at <a href="mailto:hello@livingcommunities.example" style="color:var(--green);font-weight:800">hello@livingcommunities.example</a> and we'll get back to you.</div></div>
+<div class="panel hidden" data-panel="help"><div class="stub-notice"><div class="icon"><svg width="30" height="30" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5.8A2.8 2.8 0 015.8 3h8.4A2.8 2.8 0 0117 5.8v5.4a2.8 2.8 0 01-2.8 2.8H9l-4 3.2v-3.2H5.8A2.8 2.8 0 013 11.2V5.8z"/></svg></div>Need a hand? Email us at <a href="mailto:support@living-communities.com" style="color:var(--green);font-weight:800">support@living-communities.com</a> and we'll get back to you.</div></div>
 </section></div></div>
 </main>
 
@@ -743,7 +858,7 @@ html.hc .tag,html.hc .notice{border:1px solid #8fa39b}
 <div class="panel hidden" data-panel="completedjobs"><div id="pr-completedjobs-list"></div></div>
 <div class="panel hidden" data-panel="payments"><div id="pr-payments-view"></div></div>
 <div class="panel hidden" data-panel="profile"><div id="pr-profile-view"></div></div>
-<div class="panel hidden" data-panel="help"><div class="stub-notice"><div class="icon"><svg width="30" height="30" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5.8A2.8 2.8 0 015.8 3h8.4A2.8 2.8 0 0117 5.8v5.4a2.8 2.8 0 01-2.8 2.8H9l-4 3.2v-3.2H5.8A2.8 2.8 0 013 11.2V5.8z"/></svg></div>Need a hand? Email us at <a href="mailto:hello@livingcommunities.example" style="color:var(--green);font-weight:800">hello@livingcommunities.example</a> and we'll get back to you.</div></div>
+<div class="panel hidden" data-panel="help"><div class="stub-notice"><div class="icon"><svg width="30" height="30" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5.8A2.8 2.8 0 015.8 3h8.4A2.8 2.8 0 0117 5.8v5.4a2.8 2.8 0 01-2.8 2.8H9l-4 3.2v-3.2H5.8A2.8 2.8 0 013 11.2V5.8z"/></svg></div>Need a hand? Email us at <a href="mailto:support@living-communities.com" style="color:var(--green);font-weight:800">support@living-communities.com</a> and we'll get back to you.</div></div>
 </section></div></div>
 </main>
 
@@ -1045,7 +1160,8 @@ html.hc .tag,html.hc .notice{border:1px solid #8fa39b}
 </div></div>
 <div id="adminPlanModal" class="modal"><div class="modalbox">
  <div class="modalhead"><div><div class="eyebrow">Account plan</div><h2 id="adminPlanTitle">Change plan</h2></div><button class="close" onclick="closeAdminPlanModal()">×</button></div>
- <p class="subtle" style="font-size:13px;margin:0 0 10px">Upgrading a plan emails the account holder an invoice.</p>
+ <p class="subtle" style="font-size:13px;margin:0 0 10px">Upgrading a plan emails the account holder an invoice, unless you pick free months below.</p>
+ <div class="field" style="margin:0 0 10px"><label>FREE MONTHS (0 = SEND INVOICE)</label><select id="adminPlanComp"><option value="0">0 (send invoice)</option><option value="1">1 month free</option><option value="2">2 months free</option><option value="3">3 months free</option><option value="6">6 months free</option><option value="12">12 months free</option></select></div>
  <div id="adminPlanOptions" style="display:flex;flex-direction:column;gap:8px"></div>
  <div id="adminPlanError" class="notice hidden" style="margin-top:12px"></div>
 </div></div>
@@ -1072,12 +1188,12 @@ html.hc .tag,html.hc .notice{border:1px solid #8fa39b}
   <div class="logo" style="margin-left:4px"><span class="logo-badge"><img class="logo-img" alt="Living Communities"></span>Living <span>Communities</span></div>
 </div>
 <div class="app">
-<div class="dash-titlebar"><div><h1>Provider Plan</h1><p class="subtle">Free: 3 quotes/convos a month, 20mi service area. Pro: 20 quotes/convos a month, 50mi. Elite: unlimited quotes, convos, and service area, plus a Featured badge (requires a 4.5★ rating and 10 completed jobs), priority placement, and quote analytics.</p></div></div>
+<div class="dash-titlebar"><div><h1>Provider Plan</h1><p class="subtle">Free: 3 quotes/convos a month, 20mi service area. Pro: 20 quotes/convos a month, 50mi. Elite: unlimited quotes, convos, and service area, plus a Featured badge (requires a 4.5 star rating and 10 completed jobs), priority placement, and quote analytics.</p></div></div>
 <div class="current-plan-banner"><div>You're currently on the <b id="pp-current-label">Free</b> plan.</div></div>
 <div class="pricing3" style="max-width:940px;margin:0 auto">
   <div class="price" id="pp-card-free"><h3>Free</h3><div class="sub">Get started at no cost</div><div class="amount">$0<small>/month</small></div><ul><li>3 quotes sent per month</li><li>3 new conversations started per month</li><li>20 mi service area</li></ul><button class="secondary" style="width:100%" id="pp-btn-free" onclick="selectProviderPlan('free')">Choose Plan</button></div>
   <div class="price featured" id="pp-card-pro"><div class="price-badge">Grow faster</div><div class="price-body"><h3>Pro Provider</h3><div class="sub">For active providers</div><div class="amount">$9.99<small>/month</small></div><ul><li>20 quotes sent per month</li><li>20 new conversations started per month</li><li>50 mi service area</li><li>Everything in Free</li></ul><button class="primary" style="width:100%" id="pp-btn-pro" onclick="selectProviderPlan('pro')">Choose Plan</button></div></div>
-  <div class="price elite" id="pp-card-elite"><div class="price-badge elite-badge">Stand out</div><div class="price-body"><h3>Elite Provider</h3><div class="sub">For providers who want the most leads</div><div class="amount">$20.99<small>/month</small></div><ul><li>Unlimited quotes</li><li>Unlimited new conversations</li><li>Unlimited service area (nationwide)</li><li>Featured badge on every quote — requires a 4.5★ rating and 10 completed jobs</li><li>Priority placement in the homeowner's compare view</li><li>Quote performance analytics</li><li>Everything in Pro</li></ul><button class="primary" style="width:100%" id="pp-btn-elite" onclick="selectProviderPlan('elite')">Choose Plan</button></div></div>
+  <div class="price elite" id="pp-card-elite"><div class="price-badge elite-badge">Stand out</div><div class="price-body"><h3>Elite Provider</h3><div class="sub">For providers who want the most leads</div><div class="amount">$20.99<small>/month</small></div><ul><li>Unlimited quotes</li><li>Unlimited new conversations</li><li>Unlimited service area (nationwide)</li><li>Featured badge on every quote — requires a 4.5 star rating and 10 completed jobs</li><li>Priority placement in the homeowner's compare view</li><li>Quote performance analytics</li><li>Everything in Pro</li></ul><button class="primary" style="width:100%" id="pp-btn-elite" onclick="selectProviderPlan('elite')">Choose Plan</button></div></div>
 </div>
 <div id="pp-elite-analytics" class="request hidden" style="margin-top:18px">
   <div class="requestrow" style="flex-direction:column;align-items:flex-start;gap:10px;width:100%">
@@ -1173,9 +1289,9 @@ html.hc .tag,html.hc .notice{border:1px solid #8fa39b}
 
  <div id="loginMain">
   <div class="field"><label>EMAIL</label><input id="loginEmail" type="email" placeholder="you@example.com" autocomplete="username"></div>
-  <button class="primary bigbtn" id="loginMagicBtn" onclick="sendMagicLink()">✉ Email me a sign in link</button>
+  <button class="primary bigbtn" id="loginMagicBtn" onclick="sendMagicLink()"><svg class="ico ico-mail" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg> Email me a sign in link</button>
   <div class="authhint" style="text-align:center;margin-top:4px">No password needed.</div>
-  <button class="secondary bigbtn" disabled aria-disabled="true">💬 Text me a code <span class="soon-tag">COMING SOON</span></button>
+  <button class="secondary bigbtn" disabled aria-disabled="true"><svg class="ico ico-chat" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z"/></svg> Text me a code <span class="soon-tag">COMING SOON</span></button>
   <div class="authsep">or sign in with a password</div>
   <div class="field"><label>PASSWORD</label><div class="pwfield"><input id="loginPassword" type="password" placeholder="Password" autocomplete="current-password"><button type="button" class="pwtoggle" onclick="togglePasswordVisibility('loginPassword',this)">SHOW</button></div></div>
   <div id="loginError" class="notice hidden"></div>
@@ -1195,7 +1311,7 @@ html.hc .tag,html.hc .notice{border:1px solid #8fa39b}
  </div>
 
  <div id="loginSent" class="hidden">
-  <div class="sentbox"><div class="bigicon" id="sentIcon">✉</div><h3 id="sentTitle">Check your email</h3><p id="sentBody"></p></div>
+  <div class="sentbox"><div class="bigicon" id="sentIcon"><svg class="ico ico-mail" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg></div><h3 id="sentTitle">Check your email</h3><p id="sentBody"></p></div>
   <button class="authlink" onclick="showLoginPanel('main')">Back to sign in</button>
   <div class="helpline hidden" id="sentHelpline"></div>
  </div>
@@ -1267,7 +1383,7 @@ html.hc .tag,html.hc .notice{border:1px solid #8fa39b}
 
 <div id="quoteModal" class="modal"><div class="modalbox">
  <div class="modalhead"><div><div class="eyebrow">Provider response</div><h2>Kitchen sink leak</h2></div><button class="close" onclick="closeModal()">×</button></div>
- <div class="profilebar"><div class="avatar">RM</div><div><b>Richardson Pro Plumbing</b><div class="statusline"><span class="dot"></span>Verified provider · 4.9 ★</div></div></div>
+ <div class="profilebar"><div class="avatar">RM</div><div><b>Richardson Pro Plumbing</b><div class="statusline"><span class="dot"></span>Verified provider · 4.9 <svg class="ico ico-star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.8 5.8 6.2.9-4.5 4.4 1.1 6.2L12 17.3l-5.6 3 1.1-6.2L3 9.7l6.2-.9z"/></svg></div></div></div>
  <p style="color:var(--muted);line-height:1.5">"I can take a look Thursday afternoon. I've handled similar sink leaks and can provide the final price after inspection."</p>
  <div class="quoteCard selected"><small>ESTIMATED QUOTE</small><h2 style="margin:7px 0">$185–$250</h2><span class="tag">Thursday · 2–4 PM</span></div>
  <div id="quoteProviderProfile"></div>
@@ -1374,13 +1490,15 @@ html.hc .tag,html.hc .notice{border:1px solid #8fa39b}
 <div id="quotesModal" class="modal"><div class="modalbox">
  <div class="modalhead"><div><div class="eyebrow">Compare providers</div><h2 id="quotesModalCount">0 responses</h2></div><button class="close" onclick="closeModal()">×</button></div>
  <div class="quotegrid">
-  <div class="quoteCard selected"><div class="profilebar"><div class="avatar">RM</div><div><b>Richardson Pro Plumbing</b><div class="statusline">★ 4.9 · 86 jobs</div></div></div><h3>$185–$250</h3><p style="color:var(--muted);font-size:13px">Thursday, 2–4 PM</p><button class="primary" style="width:100%" onclick="openQuote()">View Response</button></div>
+  <div class="quoteCard selected"><div class="profilebar"><div class="avatar">RM</div><div><b>Richardson Pro Plumbing</b><div class="statusline"><svg class="ico ico-star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.8 5.8 6.2.9-4.5 4.4 1.1 6.2L12 17.3l-5.6 3 1.1-6.2L3 9.7l6.2-.9z"/></svg> 4.9 · 86 jobs</div></div></div><h3>$185–$250</h3><p style="color:var(--muted);font-size:13px">Thursday, 2–4 PM</p><button class="primary" style="width:100%" onclick="openQuote()">View Response</button></div>
  </div>
 </div></div>
 
 <script>
 const LOGO_SRC='data:image/png;base64,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';
 document.querySelectorAll('img.logo-img').forEach(i=>{i.src=LOGO_SRC;});
+const ICONS={"mail": "<rect x=\"3\" y=\"5\" width=\"18\" height=\"14\" rx=\"2\"/><path d=\"M3 7l9 6 9-6\"/>", "chat": "<path d=\"M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z\"/>", "alert": "<path d=\"M12 3l10 18H2z\"/><path d=\"M12 10v5M12 18v.5\"/>", "star": "<path d=\"M12 3l2.8 5.8 6.2.9-4.5 4.4 1.1 6.2L12 17.3l-5.6 3 1.1-6.2L3 9.7l6.2-.9z\"/>", "check": "<path d=\"M5 12.5l4.5 4.5L19 7.5\"/>", "checkcircle": "<circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M8 12.5l2.8 2.8L16 9.5\"/>", "camera": "<path d=\"M4 8h3l1.5-2.5h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z\"/><circle cx=\"12\" cy=\"13\" r=\"3.5\"/>", "phone": "<path d=\"M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z\"/>", "tools": "<path d=\"M15 4a4.5 4.5 0 0 0-4 6.3L3.5 18a2 2 0 0 0 2.8 2.8l7.7-7.5A4.5 4.5 0 0 0 20 9l-3 3-3-1-1-3z\"/>", "clipboard": "<rect x=\"5\" y=\"4\" width=\"14\" height=\"17\" rx=\"2\"/><path d=\"M9 4h6v3H9zM9 12h6M9 16h4\"/>", "mic": "<rect x=\"9\" y=\"3\" width=\"6\" height=\"11\" rx=\"3\"/><path d=\"M5 11a7 7 0 0 0 14 0M12 18v3\"/>", "stop": "<rect x=\"6\" y=\"6\" width=\"12\" height=\"12\" rx=\"2\"/>", "calendar": "<rect x=\"3\" y=\"5\" width=\"18\" height=\"16\" rx=\"2\"/><path d=\"M3 10h18M8 3v4M16 3v4\"/>", "clock": "<circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M12 7v5l3 2\"/>", "users": "<circle cx=\"9\" cy=\"8\" r=\"3.5\"/><path d=\"M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6M16 5a3.5 3.5 0 0 1 0 7M18 14c2.2.7 3.5 2.6 3.5 5\"/>", "heart": "<path d=\"M12 20s-8-5-8-11a4.5 4.5 0 0 1 8-2.6A4.5 4.5 0 0 1 20 9c0 6-8 11-8 11z\"/>", "leaf": "<path d=\"M5 19C5 10 10 4 20 4c0 10-6 15-15 15z\"/><path d=\"M5 19c3-5 6-8 10-10\"/>", "sparkle": "<path d=\"M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z\"/><path d=\"M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z\"/>", "droplet": "<path d=\"M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z\"/>", "bulb": "<path d=\"M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z\"/>", "snow": "<path d=\"M12 2v20M3.3 7l17.4 10M3.3 17L20.7 7M9 4l3 2 3-2M9 20l3-2 3 2\"/>", "bug": "<ellipse cx=\"12\" cy=\"14\" rx=\"4\" ry=\"6\"/><path d=\"M9 8a3 3 0 0 1 6 0M8 12H3M16 12h5M8.5 17L5 20M15.5 17l3.5 3M9 9L6 6M15 9l3-3\"/>", "waves": "<path d=\"M2 8c2-1.5 4-1.5 6 0s4 1.5 6 0 4-1.5 6 0M2 14c2-1.5 4-1.5 6 0s4 1.5 6 0 4-1.5 6 0M2 20c2-1.5 4-1.5 6 0s4 1.5 6 0 4-1.5 6 0\"/>", "spray": "<path d=\"M8 4s3 3.5 3 6a3 3 0 0 1-6 0c0-2.5 3-6 3-6zM16 11s3 3.5 3 6a3 3 0 0 1-6 0c0-2.5 3-6 3-6z\"/>", "trash": "<path d=\"M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6\"/>", "box": "<path d=\"M3 7.5L12 3l9 4.5v9L12 21l-9-4.5zM3 7.5l9 4.5 9-4.5M12 12v9\"/>", "car": "<path d=\"M5 16V11l2-5h10l2 5v5M3 16h18v3H3zM7 13h.01M17 13h.01\"/>", "paw": "<circle cx=\"7\" cy=\"9\" r=\"1.8\"/><circle cx=\"11\" cy=\"6\" r=\"1.8\"/><circle cx=\"15\" cy=\"6\" r=\"1.8\"/><circle cx=\"19\" cy=\"9\" r=\"1.8\"/><path d=\"M12 12c-3 0-6 3-5 6 .6 1.7 2.5 1.5 5 1 2.5.5 4.4.7 5-1 1-3-2-6-5-6z\"/>", "wallet": "<rect x=\"3\" y=\"6\" width=\"18\" height=\"13\" rx=\"2.5\"/><path d=\"M3 10h18\"/><circle cx=\"16.5\" cy=\"14.5\" r=\"1\"/>", "pin": "<path d=\"M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z\"/><circle cx=\"12\" cy=\"10\" r=\"2.5\"/>", "user": "<circle cx=\"12\" cy=\"8\" r=\"4\"/><path d=\"M4 21c0-4 3.6-6 8-6s8 2 8 6\"/>", "shield": "<path d=\"M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z\"/><path d=\"M8.5 12l2.5 2.5 4.5-5\"/>", "gift": "<rect x=\"3\" y=\"8\" width=\"18\" height=\"4\" rx=\"1\"/><path d=\"M5 12v8h14v-8M12 8v12M12 8c-1.5-3-5-3.5-5-1.2C7 8 9.5 8 12 8zM12 8c1.5-3 5-3.5 5-1.2C17 8 14.5 8 12 8z\"/>"};
+function ico(n,x){return '<svg class="ico ico-'+n+(x?' '+x:'')+'" viewBox="0 0 24 24" aria-hidden="true">'+(ICONS[n]||'')+'</svg>';}
 const API = '/api';
 let authToken = localStorage.getItem('lc_token');
 let currentUser = null;
@@ -1579,7 +1697,7 @@ function applyHelpline(){
 }
 function applyEmailAvailability(){
   const b=document.getElementById('loginMagicBtn'), f=document.getElementById('forgotBtn');
-  if(b){ b.disabled=!siteConfig.emailEnabled; b.innerHTML=siteConfig.emailEnabled?'✉ Email me a sign in link':'✉ Email me a sign in link <span class="soon-tag">COMING SOON</span>'; }
+  if(b){ b.disabled=!siteConfig.emailEnabled; b.innerHTML=siteConfig.emailEnabled?ico('mail')+' Email me a sign in link':ico('mail')+' Email me a sign in link <span class="soon-tag">COMING SOON</span>'; }
   if(f){ f.disabled=!siteConfig.emailEnabled; f.innerHTML=siteConfig.emailEnabled?'Email me a reset link':'Email me a reset link <span class="soon-tag">COMING SOON</span>'; }
 }
 function showLoginPanel(name){
@@ -1593,7 +1711,7 @@ function openLogin(role){
   document.getElementById('loginModal').classList.add('show');
 }
 function showSent(icon,title,body){
-  document.getElementById('sentIcon').textContent=icon; document.getElementById('sentTitle').textContent=title; document.getElementById('sentBody').textContent=body;
+  document.getElementById('sentIcon').innerHTML=ico(icon); document.getElementById('sentTitle').textContent=title; document.getElementById('sentBody').textContent=body;
   showLoginPanel('sent');
 }
 async function sendMagicLink(){
@@ -1602,7 +1720,7 @@ async function sendMagicLink(){
   if(!email){ err.textContent='Type your email above first.'; err.classList.remove('hidden'); return; }
   try{
     await api('/auth/magic',{method:'POST',body:JSON.stringify({email})});
-    showSent('✉','Check your email','If there is an account for '+email+', we sent a sign in link. Open the email and click the button. The link works for 20 minutes. Look in spam if you do not see it.');
+    showSent('mail','Check your email','If there is an account for '+email+', we sent a sign in link. Open the email and click the button. The link works for 20 minutes. Look in spam if you do not see it.');
   }catch(e){ err.textContent=e.message; err.classList.remove('hidden'); }
 }
 async function sendResetLink(){
@@ -1611,7 +1729,7 @@ async function sendResetLink(){
   if(!email){ err.textContent='Type your email first.'; err.classList.remove('hidden'); return; }
   try{
     await api('/auth/forgot',{method:'POST',body:JSON.stringify({email})});
-    showSent('✉','Check your email','If there is an account for '+email+', we sent a link to choose a new password. It works for 1 hour. Look in spam if you do not see it.');
+    showSent('mail','Check your email','If there is an account for '+email+', we sent a link to choose a new password. It works for 1 hour. Look in spam if you do not see it.');
   }catch(e){ err.textContent=e.message; err.classList.remove('hidden'); }
 }
 function afterSignIn(d){
@@ -1645,7 +1763,7 @@ async function handleAuthHash(){
     const d=await api('/auth/magic/verify',{method:'POST',body:JSON.stringify({token:tok})});
     await afterSignIn(d);
   }catch(e){
-    openLogin(); showSent('⚠','That link did not work',(e.message||'This sign in link has expired.')+' Enter your email and ask for a new one.');
+    openLogin(); showSent('alert','That link did not work',(e.message||'This sign in link has expired.')+' Enter your email and ask for a new one.');
   }
   return true;
 }
@@ -2086,7 +2204,7 @@ function renderHomeNav(){
     menu.classList.toggle('hidden',!show);
     if(show){
       const sel=activeProperty();
-      menu.innerHTML=propsState.list.map(p=>`<div class="hm-item${sel&&sel.id===p.id?' sel':''}" onclick="selectProperty('${esc(p.id)}')"><div>${esc(p.nickname)}<small>${p.isPrimary?'★ Primary · ':''}${esc(p.address||'No address yet')}</small></div>${sel&&sel.id===p.id?'<span class="ck">✓</span>':''}</div>`).join('')+`<div class="hm-add" onclick="openAddProperty()">+ Add property</div>`;
+      menu.innerHTML=propsState.list.map(p=>`<div class="hm-item${sel&&sel.id===p.id?' sel':''}" onclick="selectProperty('${esc(p.id)}')"><div>${esc(p.nickname)}<small>${p.isPrimary?ico('star')+' Primary · ':''}${esc(p.address||'No address yet')}</small></div>${sel&&sel.id===p.id?'<span class="ck">'+ico('check')+'</span>':''}</div>`).join('')+`<div class="hm-add" onclick="openAddProperty()">+ Add property</div>`;
     }
   }
   renderPropertyHeader();
@@ -2104,9 +2222,9 @@ function renderPropertyHeader(){
   const p=activeProperty();
   if(!p){ el.innerHTML=''; return; }
   const multi=multiProps();
-  const tags=(p.isPrimary?'<span class="tag">★ Primary</span> ':'')+`<span class="tag">${esc(PROP_TYPE_LABELS[p.type]||'Home')}</span>`;
+  const tags=(p.isPrimary?'<span class="tag">'+ico('star')+' Primary</span> ':'')+`<span class="tag">${esc(PROP_TYPE_LABELS[p.type]||'Home')}</span>`;
   const acts=[];
-  if(!p.isPrimary) acts.push(`<button class="secondary" onclick="openMakePrimary('${esc(p.id)}')">☆ Make primary</button>`);
+  if(!p.isPrimary) acts.push(`<button class="secondary" onclick="openMakePrimary('${esc(p.id)}')">${ico('star')} Make primary</button>`);
   acts.push(`<button class="secondary" onclick="openEditProperty('${esc(p.id)}')">Edit</button>`);
   if(!p.isPrimary) acts.push(`<button class="secondary" onclick="removeProperty('${esc(p.id)}')">Remove</button>`);
   if(!multi) acts.push(`<button class="primary" onclick="openAddProperty()">+ Add property</button>`);
@@ -2188,7 +2306,7 @@ async function removeProperty(id){
   }catch(e){ toast(e.message); }
 }
 function propertiesCardHTML(){
-  const rows=propsState.list.map(p=>`<div class="prop-row"><div><b style="font-size:14px">${esc(p.nickname)}</b> ${p.isPrimary?'<span class="tag">★ Primary</span>':''}<div class="statusline">${esc(p.address||'No address yet')} · ${esc(PROP_TYPE_LABELS[p.type]||'Home')}</div></div><div class="prop-actions">${p.isPrimary?'':`<button class="secondary" onclick="openMakePrimary('${esc(p.id)}')">Make primary</button>`}<button class="secondary" onclick="openEditProperty('${esc(p.id)}')">Edit</button>${p.isPrimary?'':`<button class="secondary" onclick="removeProperty('${esc(p.id)}')">Remove</button>`}</div></div>`).join('');
+  const rows=propsState.list.map(p=>`<div class="prop-row"><div><b style="font-size:14px">${esc(p.nickname)}</b> ${p.isPrimary?'<span class="tag">'+ico('star')+' Primary</span>':''}<div class="statusline">${esc(p.address||'No address yet')} · ${esc(PROP_TYPE_LABELS[p.type]||'Home')}</div></div><div class="prop-actions">${p.isPrimary?'':`<button class="secondary" onclick="openMakePrimary('${esc(p.id)}')">Make primary</button>`}<button class="secondary" onclick="openEditProperty('${esc(p.id)}')">Edit</button>${p.isPrimary?'':`<button class="secondary" onclick="removeProperty('${esc(p.id)}')">Remove</button>`}</div></div>`).join('');
   const used=propsState.limit==null?`${propsState.list.length} properties · unlimited`:`${propsState.list.length} of ${propsState.limit} used`;
   return `<div class="request" style="display:block;grid-column:1/-1"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px"><div><b style="font-size:14.5px">Properties</b><div class="statusline">${used}</div></div><button class="primary" onclick="openAddProperty()">+ Add property</button></div>${rows}</div>`;
 }
@@ -2404,7 +2522,7 @@ async function removeRequestPhoto(rid,pid,mode){
     if(mode==='owner') loadDashboard(); else if(typeof loadAdminDispatch==='function') loadAdminDispatch();
   }catch(e){ toast(e.message); }
 }
-const photoLinkHTML=(r,mode)=>r.photoCount?`<button type="button" class="ph-link" onclick="event.stopPropagation();viewRequestPhotos('${esc(r.id)}','${mode}','${jsAttr(r.title||'Photos')}')">📷 ${r.photoCount} photo${r.photoCount===1?'':'s'}</button>`:'';
+const photoLinkHTML=(r,mode)=>r.photoCount?`<button type="button" class="ph-link" onclick="event.stopPropagation();viewRequestPhotos('${esc(r.id)}','${mode}','${jsAttr(r.title||'Photos')}')">${ico('camera')} ${r.photoCount} photo${r.photoCount===1?'':'s'}</button>`:'';
 function openRequest(service){
   if(!authToken){openLogin('homeowner');return}
   document.getElementById('serviceType').value=service;
@@ -2446,7 +2564,7 @@ async function acceptQuote(){
   try{const first=lastDashboard.homeowner&&lastDashboard.homeowner.requests[0];if(!first)return;const qs=await api('/requests/'+first.id+'/quotes');const q=qs.quotes[0];await api('/quotes/'+q.id+'/accept',{method:'POST'});closeModal();toast('Accepted — coordinate details directly with the provider');await loadDashboard()}catch(e){toast(e.message)}
 }
 async function loadQuotes(requestId){
-  try{const d=await api('/requests/'+requestId+'/quotes');quoteTargetRequestId=requestId;const cards=document.querySelector('#quotesModal .quotegrid');const liveQ=d.quotes.filter(q=>!q.archived);const archN=d.quotes.length-liveQ.length;cards.innerHTML=liveQ.map((q,i)=>`<div class="quoteCard ${i===0?'selected':''}" style="position:relative">${q.unreadCount?`<span class="card-unread-badge" style="position:absolute;top:12px;right:12px">${q.unreadCount} NEW</span>`:''}<div class="profilebar"><div class="avatar">${initials(q.provider.name)}</div><div><b>${esc(q.provider.name)}</b> ${q.status==='accepted'?'<span class="tag status-accepted">ACCEPTED</span>':''}${q.featured?'<span class="featured-tag">Featured</span>':''}<div class="statusline">★ ${esc(q.provider.rating||'New')} · ${esc(q.provider.reviewCount||0)} jobs</div></div></div><h3>$${Number(q.amountMin)}–$${Number(q.amountMax)}</h3><p style="color:var(--muted);font-size:13px">${esc(q.availability)}</p><div class="card-activity-ts">${q.unreadCount?'New message':'Last activity'} ${timeAgo(q.lastActivityAt||q.createdAt)}</div><button class="${i===0?'primary':'secondary'}" style="width:100%;margin-top:8px" onclick="viewQuote('${esc(q.id)}')">View Response</button>${q.status==='accepted'?'':`<a onclick="archiveQuote('${esc(q.id)}',true,true)" style="display:block;text-align:center;margin-top:8px;color:var(--muted);font-size:12px;cursor:pointer">Archive conversation</a>`}</div>`).join('')||'<div class="notice">No active responses.</div>';const countEl=document.getElementById('quotesModalCount');if(countEl)countEl.textContent=`${liveQ.length} response${liveQ.length===1?'':'s'}${archN?` · ${archN} archived (see My Quotes)`:''}`}catch(e){toast(e.message)}
+  try{const d=await api('/requests/'+requestId+'/quotes');quoteTargetRequestId=requestId;const cards=document.querySelector('#quotesModal .quotegrid');const liveQ=d.quotes.filter(q=>!q.archived);const archN=d.quotes.length-liveQ.length;cards.innerHTML=liveQ.map((q,i)=>`<div class="quoteCard ${i===0?'selected':''}" style="position:relative">${q.unreadCount?`<span class="card-unread-badge" style="position:absolute;top:12px;right:12px">${q.unreadCount} NEW</span>`:''}<div class="profilebar"><div class="avatar">${initials(q.provider.name)}</div><div><b>${esc(q.provider.name)}</b> ${q.status==='accepted'?'<span class="tag status-accepted">ACCEPTED</span>':''}${q.featured?'<span class="featured-tag">Featured</span>':''}<div class="statusline">${ico('star')} ${esc(q.provider.rating||'New')} · ${esc(q.provider.reviewCount||0)} jobs</div></div></div><h3>$${Number(q.amountMin)}–$${Number(q.amountMax)}</h3><p style="color:var(--muted);font-size:13px">${esc(q.availability)}</p><div class="card-activity-ts">${q.unreadCount?'New message':'Last activity'} ${timeAgo(q.lastActivityAt||q.createdAt)}</div><button class="${i===0?'primary':'secondary'}" style="width:100%;margin-top:8px" onclick="viewQuote('${esc(q.id)}')">View Response</button>${q.status==='accepted'?'':`<a onclick="archiveQuote('${esc(q.id)}',true,true)" style="display:block;text-align:center;margin-top:8px;color:var(--muted);font-size:12px;cursor:pointer">Archive conversation</a>`}</div>`).join('')||'<div class="notice">No active responses.</div>';const countEl=document.getElementById('quotesModalCount');if(countEl)countEl.textContent=`${liveQ.length} response${liveQ.length===1?'':'s'}${archN?` · ${archN} archived (see My Quotes)`:''}`}catch(e){toast(e.message)}
 }
 async function viewQuote(id){try{
   const d=await api('/requests/'+quoteTargetRequestId+'/quotes');const q=d.quotes.find(x=>x.id===id);if(!q)return;
@@ -2454,7 +2572,7 @@ async function viewQuote(id){try{
   document.querySelector('#quoteModal .modalhead h2').textContent=req?req.title:'Service request';
   document.querySelector('#quoteModal .avatar').textContent=initials(q.provider.name);
   document.querySelector('#quoteModal .profilebar b').textContent=q.provider.name;
-  document.querySelector('#quoteModal .profilebar .statusline').innerHTML=`<span class="dot"></span>${q.provider.verified?'Verified provider':'Provider'} · ${q.provider.rating?Number(q.provider.rating).toFixed(1):'New'} ★ ${q.featured?'<span class="featured-tag">Featured</span>':''}`;
+  document.querySelector('#quoteModal .profilebar .statusline').innerHTML=`<span class="dot"></span>${q.provider.verified?'Verified provider':'Provider'} · ${q.provider.rating?Number(q.provider.rating).toFixed(1):'New'} ${ico('star')} ${q.featured?'<span class="featured-tag">Featured</span>':''}`;
   document.querySelector('#quoteModal .quoteCard h2').textContent=`$${q.amountMin}–$${q.amountMax}`;
   document.querySelector('#quoteModal .quoteCard .tag').textContent=q.availability;
   document.querySelector('#quoteModal p').textContent='"'+(q.message||'No message provided.')+'"';
@@ -2825,7 +2943,7 @@ function carePlanPaymentCardsHTML(){
     const total=careItemsTotal(p.carePlanItems);
     const items=p.carePlanItems||[];
     const status=total>0?'$'+total.toFixed(2)+'/mo':(items.length?items.length+' service'+(items.length===1?'':'s')+' requested':'Not active');
-    return `<div class="request"><div class="requestrow" style="flex-direction:column;align-items:flex-start;gap:6px;width:100%"><div style="display:flex;justify-content:space-between;width:100%;gap:8px;align-items:center"><b style="font-size:14.5px">Home Care Plan${multi?' · '+esc(p.nickname):''}</b>${multi&&p.isPrimary?'<span class="tag">★ Primary</span>':''}</div><div class="statusline">${status}${p.carePlanNextBilling?' · Next charge '+esc(p.carePlanNextBilling):''}</div><button class="secondary" onclick="openCarePlanPage('homeowner','${esc(p.id)}')">Manage Home Care Plan</button></div></div>`;
+    return `<div class="request"><div class="requestrow" style="flex-direction:column;align-items:flex-start;gap:6px;width:100%"><div style="display:flex;justify-content:space-between;width:100%;gap:8px;align-items:center"><b style="font-size:14.5px">Home Care Plan${multi?' · '+esc(p.nickname):''}</b>${multi&&p.isPrimary?'<span class="tag">'+ico('star')+' Primary</span>':''}</div><div class="statusline">${status}${p.carePlanNextBilling?' · Next charge '+esc(p.carePlanNextBilling):''}</div><button class="secondary" onclick="openCarePlanPage('homeowner','${esc(p.id)}')">Manage Home Care Plan</button></div></div>`;
   }).join('');
 }
 function renderHoPayments(d){
@@ -3110,7 +3228,7 @@ async function deleteHomeDocument(docId){
 
 function renderHoProfile(d){
   const el=document.getElementById('ho-profile-view'); if(!el)return; const u=d.user;
-  const geoStatus = u.address ? (u.lat!=null ? '<span style="color:var(--green)">✓ located</span>' : '<span style="color:#b3432e">could not locate. Try a more complete address</span>') : '';
+  const geoStatus = u.address ? (u.lat!=null ? '<span style="color:var(--green)">'+ico('check')+' located</span>' : '<span style="color:#b3432e">could not locate. Try a more complete address</span>') : '';
   el.innerHTML=`<div class="request"><div class="avatar-slot" style="width:56px;height:56px;overflow:hidden">${avatarInnerHTML(u,56)}</div><div class="requestrow" style="flex-direction:column;align-items:flex-start;gap:6px"><div><b style="font-size:16px">${esc(u.name)}</b><div class="statusline">${esc(u.community||'')} · Plan: ${esc(u.subscription)}</div></div><p style="margin:6px 0 0">Email: ${esc(u.email)}<br>Phone: ${esc(u.phone||'N/A')}</p></div></div>
   <div class="boxgrid">
     ${propertiesCardHTML()}
@@ -3238,7 +3356,7 @@ function renderPrPayments(d){
 const PROVIDER_FREE_MAX_RADIUS_MI = 20;
 const PROVIDER_PRO_MAX_RADIUS_MI = 50;
 function providerServiceAreaHTML(u){
-  const geoStatus = u.address ? (u.lat!=null ? '<span style="color:var(--green)">✓ located</span>' : '<span style="color:#b3432e">could not locate. Try a more specific city or ZIP</span>') : '';
+  const geoStatus = u.address ? (u.lat!=null ? '<span style="color:var(--green)">'+ico('check')+' located</span>' : '<span style="color:#b3432e">could not locate. Try a more specific city or ZIP</span>') : '';
   const plan = u.providerPlan||'free';
   const isElite = plan==='elite';
   const isPro = plan==='pro';
@@ -3288,7 +3406,7 @@ function providerBioHTML(u){
   return `<div class="request">
     <div class="requestrow" style="flex-direction:column;align-items:flex-start;gap:6px;width:100%">
       <b style="font-size:16px">${esc(u.name)}</b>
-      <div class="statusline">★ ${esc(u.rating||'New')} · ${esc(u.reviewCount||0)} jobs${u.verified?' · Verified':''} · Plan: ${esc(u.subscription)}</div>
+      <div class="statusline">${ico('star')} ${esc(u.rating||'New')} · ${esc(u.reviewCount||0)} jobs${u.verified?' · Verified':''} · Plan: ${esc(u.subscription)}</div>
       <p style="margin:6px 0 0">${esc(u.businessDescription||'')}</p>
       <p style="margin:4px 0 0">Services: ${esc((u.serviceTypes||[]).join(', '))}<br>Phone: ${esc(u.phone||'N/A')}</p>
     </div>
@@ -3438,7 +3556,7 @@ async function submitSkills(){
 
 // --- provider business profile: work gallery (photos go live only after admin approval) ---
 function galleryStatusPill(status){
-  const map={pending:{txt:'Pending review',bg:'#fdf1e0',fg:'#8a5a1f'},approved:{txt:'✓ Live',bg:'#e3f1e9',fg:'#1e6b45'},rejected:{txt:'Rejected',bg:'#fbe8e6',fg:'#a33a2e'}};
+  const map={pending:{txt:'Pending review',bg:'#fdf1e0',fg:'#8a5a1f'},approved:{txt:'Live',bg:'#e3f1e9',fg:'#1e6b45'},rejected:{txt:'Rejected',bg:'#fbe8e6',fg:'#a33a2e'}};
   const m=map[status]||map.pending;
   return `<span class="tag" style="background:${m.bg};color:${m.fg};border-color:transparent;font-size:10.5px">${m.txt}</span>`;
 }
@@ -3494,7 +3612,7 @@ function verificationStatusPill(u){
   const map={
     unverified:{txt:(u.verificationDocuments&&u.verificationDocuments.length)||u.verificationSubmittedAt?'Docs under review':'Not verified yet',bg:'#eef2ee',fg:'#4a5c53'},
     pending:{txt:'Awaiting approval',bg:'#fdf1e0',fg:'#8a5a1f'},
-    verified:{txt:'✓ Verified',bg:'#e3f1e9',fg:'#1e6b45'},
+    verified:{txt:'Verified',bg:'#e3f1e9',fg:'#1e6b45'},
     rejected:{txt:'Needs attention',bg:'#fbe8e6',fg:'#a33a2e'}
   };
   const m=map[s]||map.unverified;
@@ -3520,7 +3638,7 @@ async function handleVerificationDocChange(input,docType,label){
     const dataUrl=await readVerificationFile(file);
     verificationDraftDocs[docType]={type:docType,label,dataUrl,fileName:file.name};
     const status=document.getElementById('vdoc-status-'+docType);
-    if(status) status.textContent='✓ '+file.name;
+    if(status) status.textContent=file.name;
   }catch(e){ toast('Could not read that file. Try again.'); }
 }
 function setVerificationEntityType(t){
@@ -3688,7 +3806,7 @@ async function loadAdminGalleryQueue(status){
 function renderAdminGalleryQueue(photos){
   const el=document.getElementById('admin-gallery-list'); if(!el)return;
   if(!photos.length){ el.innerHTML=`<div class="notice">No ${esc(adminGalleryStatus)} photos right now.</div>`; return; }
-  const statusPill={pending:{txt:'Pending review',bg:'#fdf1e0',fg:'#8a5a1f'},approved:{txt:'✓ Approved',bg:'#e3f1e9',fg:'#1e6b45'},rejected:{txt:'Rejected',bg:'#fbe8e6',fg:'#a33a2e'}};
+  const statusPill={pending:{txt:'Pending review',bg:'#fdf1e0',fg:'#8a5a1f'},approved:{txt:'Approved',bg:'#e3f1e9',fg:'#1e6b45'},rejected:{txt:'Rejected',bg:'#fbe8e6',fg:'#a33a2e'}};
   el.innerHTML=photos.map(ph=>{
     const m=statusPill[ph.status]||statusPill.pending;
     const uploaded=ph.uploadedAt?new Date(ph.uploadedAt).toLocaleDateString():'N/A';
@@ -3964,6 +4082,7 @@ async function sendReward(){
 function openAdminPlanModal(accountId,role,currentPlan,name){
   adminPlanTarget={accountId,role,currentPlan};
   document.getElementById('adminPlanTitle').textContent='Change plan: '+name;
+  const cs=document.getElementById('adminPlanComp'); if(cs)cs.value='0';
   const planMap = role==='homeowner' ? ADMIN_HOMEOWNER_PLAN_INFO : ADMIN_PROVIDER_PLAN_INFO;
   const list=document.getElementById('adminPlanOptions');
   list.innerHTML=Object.keys(planMap).map(k=>{
@@ -3985,11 +4104,12 @@ async function submitAdminPlanChange(plan){
   if(!adminPlanTarget)return;
   const {accountId,role}=adminPlanTarget;
   const payload = role==='homeowner' ? {subscription:plan} : {providerPlan:plan};
+  payload.compMonths=parseInt((document.getElementById('adminPlanComp')||{}).value,10)||0;
   const err=document.getElementById('adminPlanError');
   try{
     const d=await api('/admin/accounts/'+accountId+'/subscription',{method:'POST',body:JSON.stringify(payload)});
     closeAdminPlanModal();
-    toast(d.invoiceSent?'Plan updated. Invoice emailed to the account holder.':'Plan updated.');
+    toast(d.compUntil?'Plan updated. Free until '+d.compUntil+'.':d.invoiceSent?'Plan updated. Invoice emailed to the account holder.':'Plan updated.');
     await loadAdminAccounts();
   }catch(e){ if(err){err.textContent=e.message;err.classList.remove('hidden')} }
 }
@@ -4234,7 +4354,7 @@ function renderAdminAssignCandidates(candidates){
     <div class="admin-row" style="margin-top:0">
       <div class="admin-row-main">
         <div class="name">${esc(c.name)}${c.matchesService?' '+statusPillHTML('Matches service','ok'):''}${c.verified?' '+statusPillHTML('Verified','ok'):''}</div>
-        <div class="meta">${esc((c.serviceTypes||[]).join(', ')||'None listed')}${c.distanceMi!=null?' · '+c.distanceMi+' mi away':''}${c.rating?' · ★'+Number(c.rating).toFixed(1):''}</div>
+        <div class="meta">${esc((c.serviceTypes||[]).join(', ')||'None listed')}${c.distanceMi!=null?' · '+c.distanceMi+' mi away':''}${c.rating?' · '+ico('star')+' '+Number(c.rating).toFixed(1):''}</div>
       </div>
       <div class="admin-row-actions"><button class="primary" onclick="submitAdminAssign('${c.id}')">Assign</button></div>
     </div>`).join('');
@@ -4361,9 +4481,9 @@ function easyToFull(){ closeProfileMenus(); EASY.full=false; EASY.forced=false; 
 function easyPeekFull(panel){ EASY.full=true; show('homeowner'); if(panel) switchPanel('homeowner',panel); }
 
 const EASY_SERVICES=[
-  ['Lawn & Landscaping','🌿','Lawn care'],['House Cleaning','🧽','House cleaning'],['Handyman','🔧','Handyman'],['Plumbing','🚰','Plumbing'],
-  ['Electrical','💡','Electrical'],['HVAC','❄️','Heating and air'],['Pest Control','🐜','Pest control'],['Pool Service','🏊','Pool'],
-  ['Power Washing','💦','Power washing'],['Bulk Trash Pickup','🗑️','Trash pickup'],['Moving Services','📦','Moving'],['Mobile Mechanic','🚗','Car repair'],['Pet Waste Cleanup','🐕','Pet waste']
+  ['Lawn & Landscaping','leaf','Lawn care'],['House Cleaning','sparkle','House cleaning'],['Handyman','tools','Handyman'],['Plumbing','droplet','Plumbing'],
+  ['Electrical','bulb','Electrical'],['HVAC','snow','Heating and air'],['Pest Control','bug','Pest control'],['Pool Service','waves','Pool'],
+  ['Power Washing','spray','Power washing'],['Bulk Trash Pickup','trash','Trash pickup'],['Moving Services','box','Moving'],['Mobile Mechanic','car','Car repair'],['Pet Waste Cleanup','paw','Pet waste']
 ];
 const EASY_URGENCY=[['Flexible','Whenever'],['This week','This week'],['ASAP','As soon as possible'],['Emergency','Emergency']];
 const easyDash=()=>(lastDashboard.homeowner||{requests:[],jobs:[]});
@@ -4413,8 +4533,8 @@ const eBack=(to,label)=>`<button type="button" class="e-link2" style="justify-se
 function ePhoneBtn(cls){
   const ph=siteConfig&&siteConfig.supportPhone;
   const hrs=siteConfig&&siteConfig.supportHours;
-  if(!ph) return `<button type="button" class="e-big ${cls||''}" disabled><span class="e-ic">📞</span><span>Call us<small>Phone line not set up yet</small></span><span class="e-soon">COMING SOON</span></button>`;
-  return `<a class="e-big ${cls||''}" href="tel:${esc(ph.replace(/[^0-9+]/g,''))}"><span class="e-ic">📞</span><span>Call us<small>${esc(ph)}${hrs?' · '+esc(hrs):''}</small></span></a>`;
+  if(!ph) return `<button type="button" class="e-big ${cls||''}" disabled><span class="e-ic">${ico('phone')}</span><span>Call us<small>Phone line not set up yet</small></span><span class="e-soon">COMING SOON</span></button>`;
+  return `<a class="e-big ${cls||''}" href="tel:${esc(ph.replace(/[^0-9+]/g,''))}"><span class="e-ic">${ico('phone')}</span><span>Call us<small>${esc(ph)}${hrs?' · '+esc(hrs):''}</small></span></a>`;
 }
 
 function easyHome(){
@@ -4424,13 +4544,13 @@ function easyHome(){
   let nextCard;
   if(next) nextCard=`<div class="e-card g"><div class="e-lbl">Your next visit</div><div class="e-row" style="margin-top:.4em"><div class="e-av">${esc(initials(next.providerName||'?'))}</div><div><b>${esc(next.title||'Service visit')}</b><div class="e-sub">${esc(next.providerName||'Your provider')} · ${esc(next.scheduledFor||'Time to be confirmed')}</div></div></div></div>`;
   else nextCard=`<div class="e-card"><div class="e-lbl">Your next visit</div><p class="e-sub" style="margin-top:.3em">Nothing scheduled yet.</p></div>`;
-  const msgs=unread?`<button type="button" class="e-big" onclick="easyPeekFull('messages')"><span class="e-ic">✉️</span><span>You have ${unread} new message${unread===1?'':'s'}<small>Opens the full view</small></span></button>`:'';
+  const msgs=unread?`<button type="button" class="e-big" onclick="easyPeekFull('messages')"><span class="e-ic">${ico('mail')}</span><span>You have ${unread} new message${unread===1?'':'s'}<small>Opens the full view</small></span></button>`:'';
   return `<h1 class="e-hi" tabindex="-1" data-focus>${actingAs?'Helping '+esc(firstName())+'.':g+', '+esc(firstName())+'.'}</h1>
   <p class="e-sub">${actingAs?'What would you like to do for them?':'What would you like to do?'}</p>
   ${nextCard}
   <div class="e-bigs">
-    <button type="button" class="e-big p" onclick="easyStart()"><span class="e-ic">🛠️</span><span>Get help with a job<small>Takes about 2 minutes</small></span></button>
-    <button type="button" class="e-big" onclick="easyGo('jobs')"><span class="e-ic">📋</span><span>My jobs<small>See quotes and visits</small></span>${ready?`<span class="e-badge">${ready} quote${ready===1?'':'s'} ready</span>`:''}</button>
+    <button type="button" class="e-big p" onclick="easyStart()"><span class="e-ic">${ico('tools')}</span><span>Get help with a job<small>Takes about 2 minutes</small></span></button>
+    <button type="button" class="e-big" onclick="easyGo('jobs')"><span class="e-ic">${ico('clipboard')}</span><span>My jobs<small>See quotes and visits</small></span>${ready?`<span class="e-badge">${ready} quote${ready===1?'':'s'} ready</span>`:''}</button>
     ${ePhoneBtn()}
   </div>
   ${msgs}
@@ -4444,7 +4564,7 @@ function eDots(n){ return `<div class="e-step"><div class="e-dots">${[1,2,3].map
 function easyReq1(){
   return `${eBack('home','Home')}${eDots(1)}
   <h1 class="e-hi" tabindex="-1" data-focus>What do you need help with?</h1>
-  <div class="e-tiles">${EASY_SERVICES.map(([v,e,l])=>`<button type="button" class="e-tile${EASY.draft.svc===v?' sel':''}" onclick="easyPickService('${esc(v)}')"><span class="e">${e}</span>${esc(l)}</button>`).join('')}</div>`;
+  <div class="e-tiles">${EASY_SERVICES.map(([v,e,l])=>`<button type="button" class="e-tile${EASY.draft.svc===v?' sel':''}" onclick="easyPickService('${esc(v)}')"><span class="e">${ico(e)}</span>${esc(l)}</button>`).join('')}</div>`;
 }
 function easyPickService(v){ EASY.draft.svc=v; easyGo('req2'); }
 function easyReq2(){
@@ -4454,8 +4574,8 @@ function easyReq2(){
   <div class="e-field"><b>${esc(dr.svc)}</b>
     <textarea id="easyDesc" placeholder="For example: the kitchen sink is dripping" oninput="EASY.draft.desc=this.value" aria-label="What is going on">${esc(dr.desc||'')}</textarea></div>
   <div class="e-bigs">
-    ${hasVoice?`<button type="button" class="e-mic" id="easyMic" onclick="easyVoice()">🎤 <span>Tap and talk</span></button>`:`<div class="e-help">Talking is not available in this browser. Please type above.</div>`}
-    <button type="button" class="e-big center" onclick="document.getElementById('easyPhotoIn').click()" ${(dr.photos||[]).length>=REQ_PHOTO_MAX?'disabled':''}><span class="e-ic">📷</span><span>${(dr.photos||[]).length?'Add another photo':'Add a photo'}<small>Optional. Up to ${REQ_PHOTO_MAX}.</small></span></button>
+    ${hasVoice?`<button type="button" class="e-mic" id="easyMic" onclick="easyVoice()">${ico('mic')} <span>Tap and talk</span></button>`:`<div class="e-help">Talking is not available in this browser. Please type above.</div>`}
+    <button type="button" class="e-big center" onclick="document.getElementById('easyPhotoIn').click()" ${(dr.photos||[]).length>=REQ_PHOTO_MAX?'disabled':''}><span class="e-ic">${ico('camera')}</span><span>${(dr.photos||[]).length?'Add another photo':'Add a photo'}<small>Optional. Up to ${REQ_PHOTO_MAX}.</small></span></button>
     <input type="file" id="easyPhotoIn" accept="image/*" hidden onchange="easyPhotoPicked(this)">
   </div>
   ${(dr.photos||[]).length?`<div class="e-photos">${dr.photos.map((p,i)=>`<div class="e-ph"><img src="${p}" alt="Photo ${i+1}"><button type="button" onclick="easyPhotoRemove(${i})" aria-label="Remove photo ${i+1}">Remove</button></div>`).join('')}</div><div class="e-help">Providers who can see your request will see your photos. Please avoid people and papers.</div>`:''}
@@ -4487,8 +4607,8 @@ function easyVoice(){
   const r=new SR(); r.lang='en-US'; r.continuous=true; r.interimResults=false;
   r.onresult=ev=>{ for(let i=ev.resultIndex;i<ev.results.length;i++){ if(ev.results[i].isFinal&&ta){ ta.value=(ta.value.trim()+' '+ev.results[i][0].transcript.trim()).trim(); EASY.draft.desc=ta.value; } } };
   r.onerror=ev=>{ if(ev.error==='not-allowed'||ev.error==='service-not-allowed') toast('Microphone is blocked. Please type instead.'); };
-  r.onend=()=>{ EASY.rec=null; const b=document.getElementById('easyMic'); if(b){ b.classList.remove('on'); b.innerHTML='🎤 <span>Tap and talk</span>'; } };
-  try{ r.start(); EASY.rec=r; if(btn){ btn.classList.add('on'); btn.innerHTML='⏹ <span>Listening… tap to stop</span>'; } }catch(e){ EASY.rec=null; }
+  r.onend=()=>{ EASY.rec=null; const b=document.getElementById('easyMic'); if(b){ b.classList.remove('on'); b.innerHTML=ico('mic')+' <span>Tap and talk</span>'; } };
+  try{ r.start(); EASY.rec=r; if(btn){ btn.classList.add('on'); btn.innerHTML=ico('stop')+' <span>Listening… tap to stop</span>'; } }catch(e){ EASY.rec=null; }
 }
 function easyAddr(){ const p=propsState.list.length?primaryProperty():null; const du=actingAs?(easyDash().user||{}):currentUser; return {prop:p,address:(p&&p.address)||(du&&du.address)||''}; }
 function easyReq3(){
@@ -4517,7 +4637,7 @@ async function easySend(){
   }catch(e){ EASY.busy=false; EASY.err=(e.status===422?e.message:'We could not send that. '+e.message); renderEasy(true); }
 }
 function easyDone(){
-  return `<div class="e-ok" aria-hidden="true">✅</div>
+  return `<div class="e-ok" aria-hidden="true">${ico('checkcircle')}</div>
   <h1 class="e-hi" tabindex="-1" data-focus style="text-align:center">Your request is sent.</h1>
   <p class="e-sub" style="text-align:center">Providers near you will send quotes. We will show them under My jobs.</p>
   <div class="e-bigs"><button type="button" class="e-big p center" onclick="easyGo('jobs')">See my jobs</button><button type="button" class="e-big center" onclick="easyGo('home')">Back home</button></div>`;
@@ -4534,13 +4654,13 @@ function easyStatus(r){
 }
 function easyJobs(){
   const rs=[...(easyDash().requests||[])].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
-  const items=rs.map(r=>{ const [s,k]=easyStatus(r); const ic={ready:'💬',booked:'📅',done:'✔️',wait:'⏳'}[k];
+  const items=rs.map(r=>{ const [s,k]=easyStatus(r); const ic=ico({ready:'chat',booked:'calendar',done:'check',wait:'clock'}[k]);
     return `<button type="button" class="e-item" onclick="easyGo('job',{reqId:'${esc(r.id)}'})"><span class="e-ic">${ic}</span><span class="t"><b>${esc(r.title||r.serviceType)}</b><span>${esc(s)}</span></span><span class="e-chev">›</span></button>`; }).join('');
   return `${eBack('home','Home')}<h1 class="e-hi" tabindex="-1" data-focus>My jobs</h1>
   ${items?`<div class="e-list">${items}</div>`:`<div class="e-card"><p class="e-sub">You have no jobs yet.</p></div>`}
-  <button type="button" class="e-big p" onclick="easyStart()"><span class="e-ic">🛠️</span><span>Get help with a job</span></button>`;
+  <button type="button" class="e-big p" onclick="easyStart()"><span class="e-ic">${ico('tools')}</span><span>Get help with a job</span></button>`;
 }
-const eStars=p=>Number(p.rating)>0?`<span class="e-stars">★ ${Number(p.rating).toFixed(1)}</span> <span class="e-sub">(${p.reviewCount||0})</span>`:`<span class="e-sub">New provider</span>`;
+const eStars=p=>Number(p.rating)>0?`<span class="e-stars">${ico('star')} ${Number(p.rating).toFixed(1)}</span> <span class="e-sub">(${p.reviewCount||0})</span>`:`<span class="e-sub">New provider</span>`;
 function easyJob(){
   const r=(easyDash().requests||[]).find(x=>x.id===EASY.reqId); if(!r) return `${eBack('jobs','My jobs')}<p class="e-sub">That job is not here anymore.</p>`;
   const acc=acceptedQuote(r), j=jobForRequest(r), head=`${eBack('jobs','My jobs')}<h1 class="e-hi" tabindex="-1" data-focus>${esc(r.title||r.serviceType)}</h1>`;
@@ -4554,15 +4674,15 @@ function easyJob(){
   const bm=bestMatch(r);
   if(!bm) return head+`<div class="e-card"><b>Waiting for quotes</b><p class="e-sub" style="margin:.3em 0 0">Quotes often arrive within a day. We will show a badge on your home screen.</p></div>`;
   const q=bm.q, p=q.provider||{}, others=liveQuotes(r).filter(x=>x.id!==q.id);
-  return head+`<div class="e-card g"><div class="e-lbl">⭐ Our best match for you</div>
+  return head+`<div class="e-card g"><div class="e-lbl">${ico('star')} Our best match for you</div>
     <div class="e-row" style="margin-top:.5em"><div class="e-av">${esc(initials(p.name||'?'))}</div><div><b>${esc(p.name||'Provider')}</b><div>${eStars(p)}</div></div></div>
     <div class="e-price" style="margin:.5em 0 .2em">${money(q.amountMin)}–${money(q.amountMax)}</div>
     <div class="e-sub">${esc(q.availability||'')}</div>
     ${bm.why.length?`<ul class="e-why">${bm.why.map(w=>`<li>${esc(w)}</li>`).join('')}</ul>`:''}
     ${q.message?`<p style="margin:.6em 0 0">“${esc(q.message)}”</p>`:''}</div>
   <div class="e-bigs"><button type="button" class="e-big p center" onclick="easyGo('confirm',{quoteId:'${esc(q.id)}'})">Book ${esc((p.name||'this provider').split(' ')[0])}</button>
-  <button type="button" class="e-big center" onclick="easyGo('callme',{quoteId:'${esc(q.id)}'})">📞 Call me first</button></div>
-  ${others.length?`<h2 style="font-size:1.1em;margin:.6em 0 0">Other quotes (${others.length})</h2><div class="e-list">${others.map(o=>{const op=o.provider||{};return `<button type="button" class="e-item" onclick="easyGo('confirm',{quoteId:'${esc(o.id)}'})"><span class="e-av">${esc(initials(op.name||'?'))}</span><span class="t"><b>${esc(op.name||'Provider')} · ${money(o.amountMin)}–${money(o.amountMax)}</b><span>${op.verified?'Verified · ':''}${Number(op.rating)>0?'★ '+Number(op.rating).toFixed(1):'New provider'} · ${esc(o.availability||'')}</span></span><span class="e-chev">›</span></button>`}).join('')}</div>`:''}`;
+  <button type="button" class="e-big center" onclick="easyGo('callme',{quoteId:'${esc(q.id)}'})">${ico('phone')} Call me first</button></div>
+  ${others.length?`<h2 style="font-size:1.1em;margin:.6em 0 0">Other quotes (${others.length})</h2><div class="e-list">${others.map(o=>{const op=o.provider||{};return `<button type="button" class="e-item" onclick="easyGo('confirm',{quoteId:'${esc(o.id)}'})"><span class="e-av">${esc(initials(op.name||'?'))}</span><span class="t"><b>${esc(op.name||'Provider')} · ${money(o.amountMin)}–${money(o.amountMax)}</b><span>${op.verified?'Verified · ':''}${Number(op.rating)>0?ico('star')+' '+Number(op.rating).toFixed(1):'New provider'} · ${esc(o.availability||'')}</span></span><span class="e-chev">›</span></button>`}).join('')}</div>`:''}`;
 }
 function easyFindQuote(id){ for(const r of (easyDash().requests||[])){ const q=(r.quotes||[]).find(x=>x.id===id); if(q) return {r,q}; } return null; }
 
@@ -4618,7 +4738,7 @@ async function easySendCallMe(){
   }catch(e){ EASY.busy=false; EASY.err=e.message; renderEasy(true); }
 }
 function easyCallSent(){
-  return `<div class="e-ok" aria-hidden="true">📞</div><h1 class="e-hi" tabindex="-1" data-focus style="text-align:center">Message sent.</h1><p class="e-sub" style="text-align:center">They have your number and will call you. Your quotes are still under My jobs.</p><div class="e-bigs"><button type="button" class="e-big p center" onclick="easyGo('job')">Back to my quotes</button><button type="button" class="e-big center" onclick="easyGo('home')">Back home</button></div>`;
+  return `<div class="e-ok" aria-hidden="true">${ico('phone')}</div><h1 class="e-hi" tabindex="-1" data-focus style="text-align:center">Message sent.</h1><p class="e-sub" style="text-align:center">They have your number and will call you. Your quotes are still under My jobs.</p><div class="e-bigs"><button type="button" class="e-big p center" onclick="easyGo('job')">Back to my quotes</button><button type="button" class="e-big center" onclick="easyGo('home')">Back home</button></div>`;
 }
 
 // ---- Family helper (Easy view) ----
@@ -4630,9 +4750,9 @@ async function easyLoadHelpers(){
 function easyHelperCard(){
   if(actingAs) return '';
   const H=EASY.helpers||{helpers:[],helping:[]};
-  const helping=(H.helping||[]).map((x,i)=>`<button type="button" class="e-big p" onclick="easyStartActing(${i})"><span class="e-ic">🤝</span><span>Help ${esc((x.ownerName||'').split(' ')[0]||'them')}<small>Do a job for them</small></span></button>`).join('');
+  const helping=(H.helping||[]).map((x,i)=>`<button type="button" class="e-big p" onclick="easyStartActing(${i})"><span class="e-ic">${ico('heart')}</span><span>Help ${esc((x.ownerName||'').split(' ')[0]||'them')}<small>Do a job for them</small></span></button>`).join('');
   const n=(H.helpers||[]).length;
-  return helping+`<button type="button" class="e-big" onclick="easyGo('helper')"><span class="e-ic">👪</span><span>Family helper<small>${n?n+' helper'+(n===1?'':'s')+' set up':'Let someone you trust help'}</small></span></button>`;
+  return helping+`<button type="button" class="e-big" onclick="easyGo('helper')"><span class="e-ic">${ico('users')}</span><span>Family helper<small>${n?n+' helper'+(n===1?'':'s')+' set up':'Let someone you trust help'}</small></span></button>`;
 }
 function easyOpenHelper(){ closeProfileMenus(); EASY.full=false; EASY.forced=true; EASY.view='helper'; show('easy'); }
 function easyStartActing(i){
@@ -4708,6 +4828,14 @@ function show(id){
   if(id==='hoa') loadHoaPortal();
   if(id==='admin'){ const nm=document.getElementById('admin-header-name'); if(nm&&currentUser)nm.textContent=currentUser.name; applyAdminAccess(); switchAdminPanel('overview'); }
 }
+
+function providerQuickStart(){
+  const t=document.getElementById('pvTrade'), e=document.getElementById('pvEmail');
+  openSignup('provider');
+  const st=document.getElementById('signupServiceTypes'), se=document.getElementById('signupEmail');
+  if(st&&t&&t.value&&t.value!=='Other') st.value=t.value;
+  if(se&&e&&e.value) se.value=e.value.trim();
+}
 async function bootAuth(){
   if(authToken){
     const ok=await ensureAuth();
@@ -4715,6 +4843,7 @@ async function bootAuth(){
     else{ authToken=null; }
   }
   updateNavAuthUI();
+  if(!authToken && (window.__LC_PAGE==='providers'||location.hash==='#providers'||location.hash==='#for-providers')) {show('providers');window.scrollTo(0,0);}
 }
 
 // ---- Admin team (main admin only) ----

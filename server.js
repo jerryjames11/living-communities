@@ -887,6 +887,12 @@ function providerRewardEmailHtml(u,kind,details,message){
      <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Questions? Reply to this email.</p>
      ${btn('Open Living Communities',appUrl())}`);
 }
+function adminPlanCompEmailHtml(u,label,months,until){
+  return emailShell('Free plan upgrade',
+    `<h2 style="margin:0 0 10px;color:#17352f">${esc_(label)} is free for ${months} month${months===1?'':'s'}</h2>
+     <p style="color:#3f4f4a;line-height:1.6;font-size:14.5px">Hi ${esc_(u.name||'there')}, your account now has the ${esc_(label)} plan at no cost until ${esc_(until)}. No payment is needed. We will tell you before it ends.</p>
+     ${btn('Open Living Communities',appUrl())}`);
+}
 function accountSuspendedEmailHtml(u){
   return emailShell('Your account was suspended',
     `<h2 style="margin:0 0 10px;color:#17352f">Your account has been suspended</h2>
@@ -1579,7 +1585,21 @@ const MIME={'.html':'text/html','.js':'application/javascript','.css':'text/css'
 // planning/flyer folders are never served.
 const PUBLIC_FILE = rel => rel==='/index.html' || ((rel.startsWith('/images/')||rel.startsWith('/assets/')) && !/\.(md|js|json|html)$/i.test(rel));
 const SEO_DESCRIPTION = 'Living Communities connects homeowners with trusted local home service providers, keeps home maintenance on track, and brings neighbors and HOAs together. Quality work, transparent pricing, peace of mind.';
-function seoHead(base){
+const PROV_FAQ=[
+  ['Do I pay per lead?','No. There are no per-lead fees and no commission.'],
+  ['What does it cost to start?','Nothing. The Free plan costs $0.'],
+  ['How do I get verified?','After you sign up, upload your verification documents. Our team reviews them. Approved providers get the Verified badge.'],
+  ['What is the Founding Provider offer?','The first 20 verified providers get Pro free for 1 month.'],
+  ['Who runs this?','A DFW local resident founded and runs Living Communities. Questions? Email support@living-communities.com.']
+];
+function provFaqLd(base){
+  return JSON.stringify({'@context':'https://schema.org','@type':'FAQPage','mainEntity':PROV_FAQ.map(([q,a])=>({'@type':'Question','name':q,'acceptedAnswer':{'@type':'Answer','text':a}}))}).replace(/</g,'\\u003c');
+}
+function seoHead(base,page){
+  const isProv = page==='providers';
+  const pageUrl = base + (isProv?'/providers':'/');
+  const pageTitle = isProv ? 'Join Free: Get Home Service Jobs in DFW | Living Communities' : 'Living Communities: property care made simple';
+  const pageDesc = isProv ? 'DFW home service pros: create a free profile, see local job requests, and send quotes. No per-lead fees and no commission. The first 20 verified providers get Pro free for 1 month.' : SEO_DESCRIPTION;
   const verify = [];
   if(process.env.GOOGLE_SITE_VERIFICATION) verify.push(`<meta name="google-site-verification" content="${esc_(process.env.GOOGLE_SITE_VERIFICATION)}">`);
   if(process.env.BING_SITE_VERIFICATION) verify.push(`<meta name="msvalidate.01" content="${esc_(process.env.BING_SITE_VERIFICATION)}">`);
@@ -1587,22 +1607,22 @@ function seoHead(base){
     {'@type':'Organization','@id':base+'/#org','name':'Living Communities','url':base+'/','logo':base+'/assets/logo.png'},
     {'@type':'WebSite','@id':base+'/#site','url':base+'/','name':'Living Communities','alternateName':['LivingCommunities','Living Communities home services'],'publisher':{'@id':base+'/#org'}}
   ]}).replace(/</g,'\\u003c');
-  return `<meta name="description" content="${esc_(SEO_DESCRIPTION)}">
-<link rel="canonical" href="${esc_(base)}/">
+  return `<meta name="description" content="${esc_(pageDesc)}">
+<link rel="canonical" href="${esc_(pageUrl)}">
 <link rel="icon" type="image/png" href="/assets/logo.png">
 <meta name="theme-color" content="#286b58">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Living Communities">
-<meta property="og:title" content="Living Communities: property care made simple">
-<meta property="og:description" content="${esc_(SEO_DESCRIPTION)}">
-<meta property="og:url" content="${esc_(base)}/">
+<meta property="og:title" content="${esc_(pageTitle)}">
+<meta property="og:description" content="${esc_(pageDesc)}">
+<meta property="og:url" content="${esc_(pageUrl)}">
 <meta property="og:image" content="${esc_(base)}/images/hero-house.jpg">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Living Communities: property care made simple">
-<meta name="twitter:description" content="${esc_(SEO_DESCRIPTION)}">
+<meta name="twitter:title" content="${esc_(pageTitle)}">
+<meta name="twitter:description" content="${esc_(pageDesc)}">
 <meta name="twitter:image" content="${esc_(base)}/images/hero-house.jpg">
 ${verify.join('\n')}
-<script type="application/ld+json">${ld}</script>`;
+<script type="application/ld+json">${ld}</script>${isProv?'\n<script type="application/ld+json">'+provFaqLd(base)+'</script>':''}${isProv?'\n<script>window.__LC_PAGE="providers";</script>':''}`;
 }
 function serveStatic(req,res,pathname){
   if(pathname==='/robots.txt'){
@@ -1611,8 +1631,10 @@ function serveStatic(req,res,pathname){
   }
   if(pathname==='/sitemap.xml'){
     res.writeHead(200,{'Content-Type':'application/xml; charset=utf-8','Cache-Control':'public, max-age=3600'});
-    return res.end(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>${siteBase(req)}/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>\n</urlset>\n`);
+    return res.end(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>${siteBase(req)}/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>\n  <url><loc>${siteBase(req)}/providers</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>\n</urlset>\n`);
   }
+  let page=null;
+  if(pathname==='/providers'||pathname==='/providers/'||pathname==='/for-providers'){page='providers';pathname='/';}
   let rel=pathname==='/'?'/index.html':pathname;
   if(!PUBLIC_FILE(rel)){res.writeHead(404,{'Content-Type':'text/plain'});return res.end('Not found');}
   const filePath=path.normalize(path.join(ROOT,rel));
@@ -1620,7 +1642,7 @@ function serveStatic(req,res,pathname){
   fs.readFile(filePath,(err,content)=>{
     if(err){res.writeHead(404,{'Content-Type':'text/plain'});return res.end('Not found');}
     const ext=path.extname(filePath);
-    if(rel==='/index.html') content=Buffer.from(content.toString('utf8').replace('<!--SEO-->',seoHead(siteBase(req))));
+    if(rel==='/index.html') { let h=content.toString('utf8').replace('<!--SEO-->',seoHead(siteBase(req),page)); if(page==='providers') h=h.replace(/<title>[^<]*<\/title>/,'<title>Join Free: Get Home Service Jobs in DFW | Living Communities</title>'); content=Buffer.from(h); }
     res.writeHead(200,{'Content-Type':(MIME[ext]||'application/octet-stream')+(ext==='.html'?'; charset=utf-8':''),'Cache-Control':ext==='.html'?'no-store':'public, max-age=86400'});
     res.end(content);
   });
@@ -3172,14 +3194,23 @@ const server=http.createServer(async (req,res)=>{
       } else {
         return send(res,400,{error:'This account type has no subscription to change'});
       }
-      let invoiceNo=null;
-      if(isUpgrade && planInfo.priceCents>0 && row.email){
+      let invoiceNo=null, compUntil=null;
+      const compMonths=Math.min(12,Math.max(0,parseInt(b.compMonths,10)||0));
+      if(isUpgrade && compMonths>0 && planInfo.priceCents>0){
+        const d=new Date(); d.setUTCMonth(d.getUTCMonth()+compMonths);
+        compUntil=d.toISOString().slice(0,10);
+        const col=target.role==='provider'?'provider_plan_next_billing':'subscription_next_billing';
+        row=await q1(`UPDATE users SET ${col}=$1 WHERE id=$2 RETURNING *`,[compUntil,aid]);
+        await pool.query('INSERT INTO announcements (id,user_id,title,body) VALUES ($1,$2,$3,$4)',
+          [id('ann'),row.id,'Free plan upgrade',`You now have the ${planInfo.label} plan free for ${compMonths} month${compMonths===1?'':'s'}, until ${compUntil}. No payment is needed.`]);
+        if(row.email) sendEmail({to:row.email,type:'admin_plan_comp',subject:`You got ${planInfo.label} free for ${compMonths} month${compMonths===1?'':'s'}`,html:adminPlanCompEmailHtml(mapUser(row),planInfo.label,compMonths,compUntil),userId:row.id}).catch(()=>{});
+      } else if(isUpgrade && planInfo.priceCents>0 && row.email){
         invoiceNo='INV-'+crypto.randomBytes(5).toString('hex').toUpperCase();
         await pool.query('INSERT INTO announcements (id,user_id,title,body) VALUES ($1,$2,$3,$4)',
           [id('ann'),row.id,'Plan upgraded',`An admin upgraded your plan to ${planInfo.label} ($${(planInfo.priceCents/100).toFixed(2)}/mo). An invoice was emailed to you.`]);
         sendEmail({to:row.email,type:'admin_plan_invoice',subject:`Your invoice for the ${planInfo.label} plan (${invoiceNo})`,html:adminPlanInvoiceEmailHtml(mapUser(row),planInfo.label,planInfo.priceCents,invoiceNo),userId:row.id}).catch(()=>{});
       }
-      return send(res,200,{account:adminAccountView(mapUser(row)),invoiceSent:!!invoiceNo,invoiceNo});
+      return send(res,200,{account:adminAccountView(mapUser(row)),invoiceSent:!!invoiceNo,invoiceNo,compUntil});
     }
     // Admin-initiated account deletion — the same soft delete as self-service (flag + kill
     // sessions; all requests/quotes/jobs/chat history stay in place for the Deleted Accounts log)
